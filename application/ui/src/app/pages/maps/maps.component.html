@@ -1,0 +1,420 @@
+<!-- <ng-scrollbar #scrollable track="all" pointerEventsMethod="scrollbar"> -->
+  <div class="row">
+    <div class="col-md-12 col-lg-12 ml-1">
+        <div class="border-0 rounded-0">
+
+            <!-- Zones Accordion: Start -->
+            <div *ngIf="false">
+                <!-- <ngb-accordion>
+                    <ngb-panel title="Panel One">
+                        <ng-template ngbPanelContent>
+                            Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad
+                            squid. 3 wolf moon
+                            officia
+                            aute.
+                        </ng-template>
+                    </ngb-panel>
+                    <ngb-panel title="Panel Two">
+                        <ng-template ngbPanelContent>
+                            Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad
+                            squid. 3 wolf moon
+                            officia
+                            aute.
+                        </ng-template>
+                    </ngb-panel>
+                    <ngb-panel title="Panel Three">
+                        <ng-template ngbPanelContent>
+                            Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad
+                            squid. 3 wolf moon
+                            officia
+                            aute.
+                        </ng-template>
+                    </ngb-panel>
+                </ngb-accordion> -->
+                <p>1234</p>
+            </div>
+            <!-- Zones Accordion: End -->
+
+            <div [ngSwitch]="activeRouteUrl">
+                <ng-container *ngSwitchCase="'maps'">
+
+                    <!-- Manual Route modal -->
+                    <ng-template #manualRouteTemplate>
+                        <div class="modal-header">
+                            <h5 class="modal-title pull-left"> {{ getTranslationLang("SMR") || "Send MR" }} </h5>
+                            <button type="button" class="close pull-right" aria-label="Close" (click)="smrPopupClose();">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+
+                        <div class="modal-body">
+                            <form [formGroup]="smrFormGroup" (ngSubmit)="sendManualRoute(smrFormGroup.value)"
+                                class="form" #smrForm="ngForm">
+                                <div class="form-group">
+                                    <div class="row">
+                                        <div class="col-md-5 mb-3">
+                                            <mat-form-field appearance="fill">
+                                                <mat-label> Select Robot:</mat-label>
+                                                <mat-select formControlName="robot_id" name="robot_id" (selectionChange)="robotSelection($event)">
+                                                    <mat-option *ngFor="let ugvrobot of addedRobotsForManualRoute"
+                                                        [value]="ugvrobot.ugv_id+'_'+ugvrobot.ip_address">
+                                                        {{ugvrobot.ugv_name}} - {{ugvrobot.ip_address}}
+                                                    </mat-option>
+                                                </mat-select>
+                                                <mat-error *ngIf="smrFormGroup.get('robot_id').hasError('required')">
+                                                    {{getTranslationLang("robot_id_required") || "Robot selection
+                                                    required"}}
+                                                </mat-error>
+                                            </mat-form-field>
+                                        </div>
+                                        <div class="col-md-7 mb-3">
+                                            <label>Saved Route</label>
+                                            <input type="radio" name="route_type" formControlName="route_type"
+                                                value="saved_route" class="m-2" (click)="defineRoute($event)" />
+
+                                            <label>New Route</label>
+                                            <input type="radio" name="route_type" formControlName="route_type"
+                                                value="new_route" class="m-2" (click)="defineRoute($event)" />
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <app-manual-route-map (smrMapIdOutput)="getSmrMapId($event)">
+                                            </app-manual-route-map>
+                                        </div>
+                                    </div>
+                                    <button type="reset" class="btn btn-light mr-2"
+                                        (click)="smrPopupClose();">{{getTranslationLang("cancel")}}</button>
+                                    <button type="submit" class="btn btn-primary" [disabled]="!smrFormGroup?.valid">
+                                        {{ getTranslationLang("SMR") || "Send MR" }}</button>
+                                </div>
+                            </form>
+                        </div>
+                    </ng-template>
+
+                    <div id="map" class="map">
+                      <!-- Slew TI popup -->
+                      <div class="slew-popup">
+                        <div class="popup-header">
+                          <label class="checkbox-label">
+                            {{getTranslationLang("slew_ti")}}
+                            <input type="checkbox" [(ngModel)]="enableVideo" (change)="onSlewToggle($event)" />
+                          </label>
+                          <!-- <i class="fa fa-remove close-btn" (click)="closeSlewPopup()"></i> -->
+                        </div>
+                    
+                        <div class="video-sec" *ngIf="enableVideo">
+                          
+                          <p class="videos" style="height:250px">
+                          <span class="float-right icons">
+                            <span><i (click)="manualTrack('ti');"
+                                    class="f-15 fa fa-bullseye mr-3 mt-2"
+                                    aria-hidden="true"></i></span>
+                           
+                              <span><i (click)="cancelTrack('ti');"
+                                class="f-15 fa fa-eye-slash mr-3 mt-2"
+                                aria-hidden="true"></i></span>
+                        
+                                <span>
+                                    <i (click)="openFullscreen('ti');"
+                                        class="f-15 fa fa-arrows-alt t-45 mr-3 mt-2"
+                                        aria-hidden="true"></i>
+                                </span>
+                                <span>
+                                <i class="f-15 fa fa-remove mr-3 mt-2" aria-hidden="true"
+                                    (click)="enableVideo=false;"
+                                    id="close-icon-slew-ti-popup"></i>
+                            </span>
+                        </span>
+                          <img class="video-tag" width="250" height="250" id="slew-ti-video" src="http://192.168.2.146:8091/" />
+                      </p>
+                          <div class="ptz-controls">
+                            <label>
+                              Pan:
+                              <input type="range" min="0" max="360" [(ngModel)]="ptzControls.pan" (change)="applyPTZControls('pan',$event)" />
+                              {{ptzControls.pan}}
+                            </label>
+                            <label>
+                              Tilt : 
+                              <input type="range" min="-25" max="25" [(ngModel)]="ptzControls.tilt" (change)="applyPTZControls('tilt',$event)" />
+                              {{ptzControls.tilt}}
+                            </label>
+                            <label>
+                              Zoom:
+                              <input type="range" min="0" max="17" [(ngModel)]="ptzControls.zoom" (change)="applyPTZControls('zoom',$event)" />
+                              {{ptzControls.zoom}}
+                            </label>
+                          </div>
+                         
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="default-location" id="default-location">
+                        <img src="./assets/GPS.svg" width="12" height="12" />
+                    </div>
+                    <div class="layer-controls">
+                        <div class="layerswitch">
+                            <span class="layer-btn">
+                                <img src="/assets/Layers-24px.svg" #pop="bs-popover" [popover]="layerswitchPopup"
+                                    placement="right top" containerClass="popupParent" (onShown)="onLayerSwitchShown()"
+                                    [outsideClick]="true" />
+                            </span>
+                            <span class="layer-btn">
+                                <img src="/assets/Flip-To-Back-24px.svg" #pop1="bs-popover" [popover]="zoneswitchPopup"
+                                    placement="right top" containerClass="popupParent" [outsideClick]="true" />
+                            </span>
+                        </div>
+                        <ng-template #layerswitchPopup>
+                            <div>
+                                <span>{{getTranslationLang("theme")}}</span>
+                                <ul class="popup-list">
+                                    <!-- <li class="popup-list-item">
+                                        <input type="radio" class="lyr-chkbx" name="theme_select" value="black" checked="true" (click)="themeSelection($event);">
+                                        Dark
+                                    </li>
+                                    <li class="popup-list-item">
+                                        <input type="radio" class="lyr-chkbx" name="theme_select" value="white" (click)="themeSelection($event);">
+                                        Light
+                                    </li> -->
+                                    <li class="popup-list-item">
+                                        <input type="checkbox" class="lyr-chkbx" name="theme_select" value="satellite"
+                                            [checked]="mapParams.satelliteThemeChecked"
+                                            (click)="themeSelection($event);">
+                                        {{getTranslationLang("satellite")}}
+                                    </li>
+                                </ul>
+                            </div>
+                            <div>
+                                <span class="mb-3">{{getTranslationLang("layers")}}</span>
+                                <ng-scrollbar class="lc-list-items" #scrollable track="all"
+                                    pointerEventsMethod="scrollbar">
+                                    <ul class="popup-list">
+                                        <li class="popup-list-item" *ngFor="let layer of clonedLayers; let i = index;">
+                                            <input type="checkbox" class="lyr-chkbx" id="{{'layer_'+i}}"
+                                                [checked]="layer.checked" [(value)]="layer.LayerTitle"
+                                                (change)="onChkBoxChange($event,layer)" />
+                                            {{layer?.LayerTitle}}
+                                        </li>
+                                    </ul>
+                                </ng-scrollbar>
+                                <br />
+                                <span class="mb-3">RNDF</span>
+                                <ul class="popup-list">
+                                    <li class="popup-list-item" *ngFor="let layer of rndfLayers; let i = index;">
+                                        <input type="checkbox" class="lyr-chkbx" id="{{'layer_'+i}}"
+                                            [checked]="layer.checked" [(value)]="layer.LayerTitle"
+                                            (change)="onChkBoxChange($event,layer)" />
+                                        {{layer?.LayerTitle}}
+                                    </li>
+                                </ul>
+                            </div>
+                        </ng-template>
+                        <ng-template #zoneswitchPopup>
+                            <div *ngIf="zoneLayers.length > 0">
+                                <ul class="popup-list" *ngFor="let zonelayer of zoneLayers; let z = index;">
+                                    <span class="mb-3">{{getZoneLayerTitle(zonelayer?.LayerTitle)}}</span>
+                                    <li class="popup-list-item"
+                                        *ngFor="let zone of getZoneFeature(zonelayer); let i = index;">
+                                        <input type="checkbox" class="lyr-chkbx" id="{{'zone_'+i}}"
+                                            [checked]="zone.properties.checked" [value]="zone.properties.zone_area"
+                                            (change)="onZoneChkBoxChange($event,zonelayer,zone,z,i)" />
+
+                                        <span #pop2="bs-popover" [popover]="zoneDetailsPopup" placement="right top"
+                                            containerClass="zoneDetailsPopup"
+                                            [outsideClick]="true">{{getTranslationLang("zone")}}-{{zone?.properties?.zone_area}}
+                                        </span>
+
+                                        <ng-template #zoneDetailsPopup>
+                                            <div class="w-mx-con">
+                                                <p class="mb-1">
+                                                    <span>{{getTranslationLang("zone_id")}}:</span>
+                                                    {{getTranslationLang("zone")}}-{{zone?.properties?.zone_area}}
+
+                                                    <span class="custom-switch pl-5">
+                                                        <input type="checkbox" class="custom-control-input"
+                                                            [id]="'switch_'+i"
+                                                            [checked]="zone.properties.current_status"
+                                                            (change)="changeStatus($event, zone.properties)">
+                                                        <label class="custom-control-label" [for]="'switch_'+i"></label>
+                                                    </span>
+                                                </p>
+                                                <p class="mb-1">
+                                                    <span>{{getTranslationLang('priority')}}:</span>
+                                                    {{(zone?.properties?.zone_priority) ? 'Yes' : 'No'}}
+                                                </p>
+                                            </div>
+                                        </ng-template>
+                                    </li>
+                                </ul>
+                                <ul class="popup-list"
+                                    *ngIf="signedInUserInfo?.isSignedIn && (signedInUserInfo?.role === 1 || signedInUserInfo?.role === 6)">
+                                    <li class="popup-list-item">
+                                        <span #pop3="bs-popover" [popover]="zonecreatePopup" placement="right top"
+                                            containerClass="createZonePopup" [outsideClick]="true" triggers=""
+                                            (click)="show(pop3)">{{getTranslationLang("draw zones") || "Draw Zones"}}
+                                            <i class="fa fa-caret-right" aria-hidden="true"></i>
+                                        </span>
+                                        <ng-template #zonecreatePopup>
+                                            <div class="d-flex justify-content-center align-items-center container "
+                                                style="border-color: white;">
+                                                <div class="row">
+                                                    <form class="form-group form-inline drawable-layer">
+                                                        <label class="control-label">{{getTranslationLang("mask_type")}}
+                                                            :
+                                                        </label>
+                                                        <select class="form-control mb-3" id="maskType" #maskType
+                                                            (change)="changeMaskType($event)">
+                                                            <option value="None">{{getTranslationLang("none")}}</option>
+                                                            <option value="1">{{getTranslationLang("un_masked")}}
+                                                            </option>
+                                                            <option value="0">{{getTranslationLang("masked")}}</option>
+                                                        </select>
+
+                                                        <label class="control-label"
+                                                            *ngIf="isMaskTypeSelected">{{getTranslationLang("geometry_type")}}:
+                                                        </label>
+                                                        <span *ngIf="isMaskTypeSelected" class="d-flex mb-3">
+                                                            <img class="zone-icon"
+                                                                [ngClass]="{'active-shape' : selectedShape === 'Square'}"
+                                                                (click)="clickedShape($event, 'Square')"
+                                                                src="/assets/Square.svg" />
+                                                            <img class="zone-icon"
+                                                                [ngClass]="{'active-shape' : selectedShape === 'Circle'}"
+                                                                (click)="clickedShape($event, 'Circle')"
+                                                                src="/assets/Circle.svg" />
+                                                            <img class="zone-icon"
+                                                                [ngClass]="{'active-shape' : selectedShape === 'Box'}"
+                                                                (click)="clickedShape($event, 'Box')"
+                                                                src="/assets/Rectangle.svg" />
+                                                            <img class="zone-icon"
+                                                                [ngClass]="{'active-shape' : selectedShape === 'Polygon'}"
+                                                                (click)="clickedShape($event, 'Polygon')"
+                                                                src="/assets/Random.svg" />
+                                                        </span>
+                                                        <button type="reset" class="btn btn-dark mr-2"
+                                                            (click)="cancel(pop3)">{{getTranslationLang("cancel")}}</button>
+                                                        <button *ngIf="isMaskTypeSelected" type="submit"
+                                                            (click)="drawZone(pop3)"
+                                                            class="btn btn-primary">{{getTranslationLang("draw")}}</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </ng-template>
+                                    </li>
+                                </ul>
+                            </div>
+                        </ng-template>
+                    </div>
+                </ng-container>
+                <ng-container *ngSwitchCase="'post-analysis'">
+                    <div class="mb-4 pb-4">
+                        <div id="post-analysismap" class="post-analysismap"></div>
+                    </div>
+
+                    <div id="pa-popup" class="ol-papopup popup-left" #paPopupElement>
+                        <div id="pa-popup-closer" #paPopupCloser class="ol-papopup-closer"></div>
+                        <div id="pa-popup-content" #paOverlayElement>
+                        </div>
+                    </div>
+
+                    <div class="default-location" id="default-location">
+                        <img src="./assets/GPS.svg" width="12" height="12" />
+                    </div>
+                </ng-container>
+                <ng-container *ngSwitchCase="'diagnostics'">
+                    <div class="mb-4 pb-4 d-map">
+                        <div id="diagnostics-map" class="diagnostics-map">
+                            <div id="da-popup" class="ol-dapopup" #dapopupElement>
+                                <div id="da-popup-closer" #daPopupCloser class="ol-popup-closer"></div>
+                                <div id="da-popup-content" #daOverlayElement>
+                                </div>
+                            </div>
+                            <div class="default-location" id="default-location">
+                                <img src="./assets/GPS.svg" width="12" height="12" />
+                            </div>
+                        </div>
+                    </div>
+                </ng-container>
+                <ng-container *ngSwitchCase="'sensor'">
+                    <div class="mb-4 pb-4 d-map">
+                        <div id="diagnostics-map" class="sensor-conf-map">
+                            <div id="da-popup" class="ol-dapopup" #dapopupElement>
+                                <div id="da-popup-closer" #daPopupCloser class="ol-popup-closer"></div>
+                                <div id="da-popup-content" #daOverlayElement>
+                                </div>
+                            </div>
+                            <div class="default-location" id="default-location">
+                                <img src="./assets/GPS.svg" width="12" height="12" />
+                            </div>
+                        </div>
+                    </div>
+                </ng-container>
+                <ng-container *ngSwitchCase="'system-configuration'">
+                    <div id="system-config-map" class="sys-confg-map">
+                        <div class="default-location" id="default-location">
+                            <img src="./assets/GPS.svg" width="12" height="12" />
+                        </div>
+                    </div>
+                </ng-container>
+            </div>
+
+            <!-- <div id="mouseposition"></div> -->
+
+        </div>
+    </div>
+
+</div>
+
+<!-- </ng-scrollbar> -->
+
+
+<!-- <div id="slew-ti-popup" [ngClass]="{'popup': enableUAVModal}">
+    <select *ngIf="!enableUAVModal" class="enable-uav-modal" (click)="enableUAVModal = true;">
+    </select>
+
+    <div *ngIf="enableUAVModal">
+
+        <div class="slew-ti-wrapper">
+            <p class="text-center alarm-id">Alarm ID: 123</p>
+            <hr />
+            <div class="ml-2 uav-icon-sec">
+                <span class="slew-text">Slew TI
+                    <input type="checkbox" [(ngModel)]="enableVideo" class="ml-2 mr-2 mb-1" />
+                    <span class="vertical-line"></span>
+                </span>
+                <span>
+                    <img src="../../../assets//sensor-icons/UAV-26px.svg" class="uav-icon" />
+                </span>
+            </div>
+        </div>
+        <div class="more-btn">
+        </div>
+
+
+        <div class="video-sec" *ngIf="enableVideo">
+            <p class="videos">
+                <span class="live-icon">LIVE
+                    <i class="fa fa-video-camera ml-2" aria-hidden="true"></i>
+                </span>
+                <span class="video-alarms-id">Alarm ID: 12345</span>
+                <span class="float-right icons">
+                    <span><i class="f-15 fa fa-map-pin mr-3 mt-2" aria-hidden="true"></i></span>
+                <span>
+                        <span>
+                            <i class="f-15 fa fa-arrows-alt t-45 mr-3 mt-2" aria-hidden="true"></i>
+                        </span>
+                <i class="f-15 fa fa-remove mr-3 mt-2" aria-hidden="true" (click)="enableUAVModal = false;"></i>
+                </span>
+                </span>
+                <video controls style="width: 100%;
+                /* height: 100%; */
+                position: relative;
+                top: 20px;">
+                    <source src=http://techslides.com/demos/sample-videos/small.webm type=video/webm>
+                </video>
+            </p>
+        </div>
+    </div>
+</div> -->

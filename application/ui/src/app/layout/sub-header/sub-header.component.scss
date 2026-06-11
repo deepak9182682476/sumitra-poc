@@ -1,0 +1,185 @@
+$white: #fff;
+
+.zones-accordion .card {
+    border: none;
+    border-bottom: 1px solid #808080 !important;
+
+    .card-header {
+        height: 40px;
+        background-color: #000000d4;
+    }
+
+    .btn.btn-link {
+        margin-top: -8px;
+        color: $white;
+        text-decoration: none;
+        position: relative;
+        // right: 8%;
+        right: 41%;
+        font-size: 11px;
+        width: 100%;
+
+        .plus-minus-icon {
+            position: relative;
+            left: 10%;
+        }
+    }
+
+    .card-body {
+        padding: 0px;
+        background-color: #000000bf;
+        color: $white;
+        padding-left: 0px;
+        font-size: 10px;
+        padding-top: 13px;
+        padding-right: 10px;
+    }
+
+    .dropdown-sec {
+        border-bottom: 1px solid #808080;
+        margin-left: 25px;
+    }
+
+    .re-assign-sec {
+        display: flex;
+        justify-content: center;
+        margin-left: 35px;
+
+        #bloc1 {
+            position: relative;
+            bottom: 23px;
+        }
+
+        div {
+            label {
+                position: relative;
+                top: 23px;
+                left: 3px;
+                color: #ffff0099;
+            }
+
+            select {
+                width: 100px;
+                background: black;
+                color: $white;
+                font-size: 11px;
+                border: none;
+                border-bottom: 1px solid grey;
+                height: 34px;
+                padding-top: 10px;
+            }
+
+            button {
+                width: 115px;
+                font-size: 10px !important;
+                height: 32px;
+            }
+        }
+    }
+
+    .carrot-icon {
+        color: white;
+        position: relative;
+        float: right;
+        bottom: 22px;
+        z-index: 9999;
+    }
+}
+
+.zones-accordion .card:last-child {
+    border-bottom: none !important;
+}
+
+.zones-accordion {
+    background-color: black;
+    position: absolute;
+    top: 5em;
+    z-index: 999;
+    right: 2%;
+    width: 270px;
+}
+
+.br-white {
+    border-bottom: #ffffff8a solid 1px;
+}
+
+.system-config-container {
+    background-color: var(--bg1);
+}
+
+fieldset {
+  box-shadow: none;
+  border: 1px solid var(--border-color);
+}
+
+legend {
+  color: var(--color);
+  padding: 5px 25px;
+  width: auto;
+  font-size: calc(0.9rem + var(--custom-font-size));
+}
+
+.mat-card {
+  background: var(--bg1);
+  color: var(--color);
+
+  .mat-card-title {
+    font-size: 14px;
+  }
+}
+
+.mat-card.mat-focus-indicator {
+  box-shadow: none;
+  // border: 1px solid var(--border-color);
+}
+
+.mat-divider {
+  border-top-color: var(--border-color);
+}
+
+.mat-form-field-appearance-fill {
+  .mat-focused {
+    color: var(--select-label);
+  }
+
+  .mat-form-field-flex {
+    background-color: var(--box-bg);
+    color: var(--box-bg);
+    font-size: 12px;
+    // width: 220px;
+
+    .mat-input-element {
+      color: var(--color);
+    }
+  }
+  .mat-form-field-underline::before {
+    background-color: var(--color);
+  }
+}
+
+.mat-form-field-label,
+.mat-form-field.mat-focused .mat-form-field-label {
+  color: #f3e273;
+}
+
+.mat-form-field.mat-focused .mat-form-field-ripple {
+  background-color: var(--color);
+  color: var(--color);
+}
+
+.mat-select {
+  .mat-select-value {
+    color: var(--color);
+  }
+
+  .mat-select-arrow-wrapper {
+    .mat-select-arrow {
+      color: var(--color);
+    }
+  }
+}
+
+.cancel-btn {
+  color: var(--bcolor) !important;
+  border: 1px solid var(--border-color) !important;
+}

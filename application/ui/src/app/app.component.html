@@ -1,0 +1,35 @@
+<!--The content below is only a placeholder and can be replaced.-->
+
+<div class="wrapper default-theme" app-theme>
+    <!-- Header -->
+    <app-header *ngIf="showHeader"></app-header>
+    <!-- Header -->
+
+    <!-- Sub-Header -->
+    <app-sub-header *ngIf="showSubHeader"></app-sub-header>
+    <!-- Sub-Header -->
+
+    <main>
+        <!-- Sidebar -->
+        <app-sidebar *ngIf="showSidebar"></app-sidebar>
+        <!-- Sidebar -->
+
+        <!-- Diagnostics Sidebar -->
+        <app-maintenance-user-sidebar *ngIf="diagnosticsSideBar"></app-maintenance-user-sidebar>
+        <!-- Diagnostics Sidebar -->
+
+        <!-- Timeline -->
+        <app-timeline *ngIf="showTimeline"></app-timeline>
+        <!-- Timeline -->
+
+        <!-- Main content -->
+        <div class="pages container-fluid pr-0 pl-0">
+            <router-outlet></router-outlet>
+        </div>
+        <!-- Main content -->
+    </main>
+
+    <!-- Footer -->
+    <app-footer *ngIf="showFooter"></app-footer>
+    <!-- Footer -->
+</div>

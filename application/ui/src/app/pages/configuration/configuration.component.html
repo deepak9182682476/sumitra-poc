@@ -1,0 +1,618 @@
+<div class="row pl-2 pr-2">
+  <div class="col-12">
+    <mat-tab-group>
+      <mat-tab label="{{config_type | uppercase }}" *ngIf="config_type === 'user' || config_type === 'sensor'">
+        <div class="table-title">
+          <span>{{config_type | uppercase }} CONFIGURATION</span>
+          <span *ngIf="config_type === 'sensor'">
+            <select class="mode-dropdown float-right ml-2" name="filter" [(ngModel)]="filterVal">
+              <option value="">Filter</option>
+              <option *ngFor="let sensor of sensorsList" [value]="sensor"> {{sensor}} </option>
+            </select>
+
+            <button type="button" class="btn btn-sm btn-primary add-btn" (click)="openModal(template)">Add New
+              {{config_type | titlecase}}</button>
+
+            <input type="file" id="upload" hidden (change)="uploadFile($event)" />
+            <label for="upload" class="custom-fileupload">Upload File</label>
+
+          </span>
+        </div>
+        <div class="table-responsive" *ngIf="config_type !== 'system' && config_type !== 'rndf'">
+          <ng-scrollbar class="tbl-resp" #scrollable track="all" pointerEventsMethod="scrollbar">
+            <table class="table table-hover dark-table">
+              <thead>
+                <tr>
+                  <th *ngFor="let column of columns">{{column}}</th>
+                </tr>
+              </thead>
+              <tbody *ngIf="config_type === 'sensor'">
+                <tr *ngFor="let item of tbodyData | dataFilter: 'sensor_type':filterVal; let i = index">
+                  <!-- <td>{{i+1}}</td>
+              <td *ngFor="let column of columns">
+                {{item[column]}}
+              </td> -->
+                  <td>{{i+1}}</td>
+                  <td>
+                    <img class="pr-2" width="26" height="26" src="assets/sensor-icons/{{item.sensor_type}}-26px.svg" />
+                    {{item.sensor_type}}
+                  </td>
+                  <td>{{item.sensor_id}}</td>
+                  <td>{{(item.zone_id) ? item.zone_id : '--'}}</td>
+                  <td>{{item.ip}}</td>
+                  <td>{{item.mac_address}}</td>
+                  <td>{{(item.sensor_location && item.sensor_location?.coordinates?.length === 2) ?
+                    (item.sensor_location?.coordinates[0]) : '--'}}</td>
+                  <td>{{(item.sensor_location && item.sensor_location?.coordinates?.length === 2) ?
+                    (item.sensor_location?.coordinates[1]) : '--'}}</td>
+                  <td>{{item.azimuth}}</td>
+                  <td>{{item.height}}</td>
+                  <td>{{(item.current_status == null) ? 'N/A' : (item.current_status) ? 'Good' : 'Fault'}}</td>
+                  <td>{{(item.installed_on) ? (item.installed_on | date:'MM/dd/yy h:mm a') : '--'}}</td>
+                  <td>
+                    <i class="fa fa-pen icon-white pr-1" aria-hidden="true" (click)="openModal(template, item)"></i>
+                    <i class="fa fa-trash icon-white pr-1" aria-hidden="true" #pop="bs-popover" [popover]="popTemplate"
+                      placement="bottom" [outsideClick]="true"></i>
+                    <span *ngIf="item.current_status != null" class="custom-switch">
+                      <input type="checkbox" class="custom-control-input" [id]="'switch_'+i"
+                        [checked]="item.current_status" (change)="changeStatus($event, item)">
+                      <label class="custom-control-label" [for]="'switch_'+i"></label>
+                    </span>
+                    <ng-template #popTemplate>
+                      <span class="d-flex mb-3">Are You Sure?</span>
+                      <span class="d-flex">
+                        <button type="reset" class="btn btn-light mr-2" (click)="pop.hide()">No</button>
+                        <button type="submit" class="btn btn-primary" (click)="changeStatus(null, item)">Yes</button>
+                      </span>
+                    </ng-template>
+                  </td>
+                </tr>
+              </tbody>
+              <tbody *ngIf="config_type === 'user'">
+                <tr *ngFor="let item of tbodyData; let i = index">
+                  <td>{{i+1}}</td>
+                  <td>{{item.user_name}}</td>
+                  <td>{{item.role_name}}</td>
+                  <td>{{(item.lastlogin_attempt) ? (item.lastlogin_attempt | date:'MM/dd/yy h:mm a') : '--'}}</td>
+                  <td>
+                    <img src="/assets/Password-Reset-24px.svg" class="icon-color pr-1"
+                      (click)="openUserModal(template1, item)" />
+                    <i class="fa fa-trash pr-1" aria-hidden="true" #pop="bs-popover" [popover]="popTemplate1"
+                      placement="bottom" [outsideClick]="true"></i>
+                    <ng-template #popTemplate1>
+                      <span class="d-flex mb-3">Are You Sure?</span>
+                      <span class="d-flex">
+                        <button type="reset" class="btn btn-light mr-2" (click)="pop.hide()">No</button>
+                        <button type="submit" class="btn btn-primary" (click)="changeUserStatus(item)">Yes</button>
+                      </span>
+                    </ng-template>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </ng-scrollbar>
+        </div>
+
+      </mat-tab>
+      <mat-tab label="UAV" *ngIf="config_type === 'sensor'">
+        <div class="table-title">
+          <span class="dynamic-color">UAV CONFIGURATION</span>
+          <span *ngIf="config_type === 'sensor'">
+            <button type="button" class="btn btn-sm btn-primary add-btn"
+              (click)="editUAV(uavTemplate, '', false);uavUgvData.forms.isEditAdd.uav = false;">Add New UAV</button>
+          </span>
+        </div>
+        <div class="table-responsive" *ngIf="config_type !== 'system'">
+          <ng-scrollbar #scrollable track="all" pointerEventsMethod="scrollbar">
+            <table class="table table-hover dark-table">
+              <thead>
+                <tr>
+                  <th>SI.No</th>
+                  <th>IP</th>
+                  <th>Status</th>
+                  <th>Zone ID</th>
+                  <th>Latitude</th>
+                  <th>Longitude</th>
+                  <th>Is Assigned</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody *ngIf="config_type === 'sensor'">
+                <tr *ngFor="let item of uavUgvData?.uav; let i = index">
+                  <td>{{i+1}}</td>
+                  <td>{{item.ip}}</td>
+                  <td>{{item.current_status}}</td>
+                  <td>{{item.zone_id}}</td>
+                  <td>{{item?.rth_location?.coordinates[1]}}</td>
+                  <td>{{item?.rth_location?.coordinates[0]}}</td>
+                  <td>{{item?.is_assigned ? item?.is_assigned : '--'}}</td>
+                  <td>
+                    <i class="fa fa-pen icon-white pr-1" aria-hidden="true"
+                      (click)="editUAV(uavTemplate, item, true);uavUgvData.forms.isEditAdd.uav = true;"></i>&nbsp;
+                    <i class="fa fa-trash icon-white pr-1" aria-hidden="true" #pop="bs-popover"
+                      [popover]="uavDeleteTemplate" placement="bottom" [outsideClick]="true"></i>
+
+                    <ng-template #uavDeleteTemplate>
+                      <span class="d-flex mb-3">Are You Sure?</span>
+                      <span class="d-flex">
+                        <button type="reset" class="btn btn-light mr-2" (click)="pop.hide()">No</button>
+                        <button type="submit" class="btn btn-primary"
+                          (click)="deleteUAVUGV(item, 'delete', 'uav', i+1)">Yes</button>
+                      </span>
+                    </ng-template>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </ng-scrollbar>
+        </div>
+      </mat-tab>
+      <mat-tab label="UGV" *ngIf="config_type === 'sensor'">
+
+        <div class="table-title">
+          <span class="dynamic-color">UGV CONFIGURATION</span>
+          <span *ngIf="config_type === 'sensor'">
+            <button type="button" class="btn btn-sm btn-primary add-btn"
+              (click)="editUGV(ugvTemplate, '', false);uavUgvData.forms.isEditAdd.ugv = false;">
+              Add New UGV
+            </button>
+          </span>
+        </div>
+
+        <div class="table-responsive" *ngIf="config_type !== 'system'">
+          <ng-scrollbar #scrollable track="all" pointerEventsMethod="scrollbar">
+            <table class="table table-hover dark-table">
+              <thead>
+                <tr>
+                  <th>SI.No</th>
+                  <th>IP</th>
+                  <th>Status</th>
+                  <th>Latitude</th>
+                  <th>Longitude</th>
+                  <th>Zone ID</th>
+                  <th>Is Assigned</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody *ngIf="config_type === 'sensor'">
+                <tr *ngFor="let item of uavUgvData?.ugv; let i = index">
+                  <td>{{i+1}}</td>
+                  <td>{{item.ip}}</td>
+                  <td>{{item.current_status}}</td>
+                  <td>{{item.base_location?.coordinates[1]}}</td>
+                  <td>{{item.base_location?.coordinates[0]}}</td>
+                  <td>{{item.zone_id}}</td>
+                  <td>{{item.is_assigned ? item.is_assigned : '--' }}</td>
+                  <td>
+                    <i class="fa fa-pen icon-white pr-1" aria-hidden="true"
+                      (click)="editUGV(ugvTemplate, item, true);uavUgvData.forms.isEditAdd.ugv = true;"></i>
+                    &nbsp;
+                    <i class="fa fa-trash icon-white pr-1" aria-hidden="true" #pop="bs-popover"
+                      [popover]="ugvDeleteTemplate" placement="bottom" [outsideClick]="true"></i>
+
+                    <ng-template #ugvDeleteTemplate>
+                      <span class="d-flex mb-3">Are You Sure?</span>
+                      <span class="d-flex">
+                        <button type="reset" class="btn btn-light mr-2" (click)="pop.hide()">No</button>
+                        <button type="submit" class="btn btn-primary"
+                          (click)="deleteUAVUGV(item, 'delete', 'ugv', i+1)">Yes</button>
+                      </span>
+                    </ng-template>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </ng-scrollbar>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+
+    <!-- Sensor Configuration -->
+    <ng-template #template>
+      <div class="modal-header">
+        <h4 class="modal-title pull-left">{{config_type | titlecase }} Configuration</h4>
+        <button type="button" class="close pull-right" aria-label="Close" (click)="modalRef.hide()">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="form?.formGroup" novalidate (ngSubmit)="onSubmit(form?.formGroup?.value)">
+          <div class="form-group">
+            <div class="row">
+              <div *ngFor="let prop of form?.metaData" class="col-md-4 mb-3">
+                <label [attr.for]="prop">{{prop.label}}</label>
+                <ng-container [ngSwitch]="prop.type">
+
+                  <ng-container *ngSwitchCase="'parent_select'">
+                    <select [formControlName]="prop.key" (change)="getChildParams($event, prop.key)"
+                      *ngSwitchCase="'parent_select'" class="form-control">
+                      <option *ngFor="let option of prop.options" [value]="option.value">
+                        {{option.label}}
+                      </option>
+                    </select>
+                  </ng-container>
+
+                  <ng-container *ngSwitchCase="'image'">
+                    <p class="sensor-icon" *ngIf="prop.key === 'icon'">
+                      <img [src]="prop.value" />
+                    </p>
+                  </ng-container>
+
+                  <ng-container *ngSwitchCase="'select'">
+                    <select [formControlName]="prop.key" *ngSwitchCase="'select'" class="form-control">
+                      <option *ngFor="let option of prop.options" [value]="option.value">
+                        {{option.label}}
+                      </option>
+                    </select>
+                  </ng-container>
+
+                  <input *ngSwitchCase="'hidden'" class="form-control" [formControlName]="prop.key" [id]="prop.key"
+                    [type]="prop.type">
+                  <input *ngSwitchCase="'text'" class="form-control" [formControlName]="prop.key" [id]="prop.key"
+                    [type]="prop.type">
+                  <input *ngSwitchCase="'password'" class="form-control" [formControlName]="prop.key" [id]="prop.key"
+                    [type]="prop.type">
+                  <input *ngSwitchCase="'email'" class="form-control" type="email" [id]="prop.key" [value]="prop.value"
+                    [formControlName]="prop.key">
+                  <input *ngSwitchCase="'date'" class="form-control" type="date" [id]="prop.key" [value]="prop.value"
+                    [formControlName]="prop.key">
+                  <input *ngSwitchCase="'datetime'" class="form-control" type="datetime" [id]="prop.key"
+                    [value]="prop.value" [formControlName]="prop.key">
+                  <input *ngSwitchCase="'datetime-local'" class="form-control" type="datetime-local" [id]="prop.key"
+                    [value]="prop.value" [formControlName]="prop.key">
+                  <input *ngSwitchCase="'number'" class="form-control" type="number" [id]="prop.key"
+                    [value]="prop.value" [formControlName]="prop.key">
+                  <input *ngSwitchCase="'reset'" class="form-control" type="reset" [id]="prop.key" [value]="prop.value"
+                    [formControlName]="prop.key">
+                  <input *ngSwitchCase="'tel'" class="form-control" type="tel" [id]="prop.key" [value]="prop.value"
+                    [formControlName]="prop.key">
+                  <input *ngSwitchCase="'url'" class="form-control" type="url" [id]="prop.key" [value]="prop.value"
+                    [formControlName]="prop.key">
+
+                  <ng-container *ngSwitchCase="'radio'">
+                    <div class="custom-control custom-radio custom-control-inline"
+                      *ngFor="let option of prop.options; let i = index">
+                      <input type="radio" [id]="prop.key+i" [name]="prop.key" [formControlName]="prop.key"
+                        [value]="option.value" class="custom-control-input">
+                      <label class="custom-control-label" [for]="prop.key+i">{{option.label}}</label>
+                    </div>
+                  </ng-container>
+
+                  <ng-container *ngSwitchCase="'checkbox'">
+                    <div class="custom-control custom-checkbox custom-control-inline"
+                      *ngFor="let option of prop.options; let i = index">
+                      <input type="checkbox" [id]="prop.key+i" [name]="prop.key" [formControlName]="prop.key"
+                        [value]="option.value" class="custom-control-input">
+                      <label class="custom-control-label" [for]="prop.key+i">{{option.label}}</label>
+                    </div>
+                  </ng-container>
+
+                  <span *ngSwitchCase="'switch'" class="ml-2 custom-switch">
+                    <input type="checkbox" class="custom-control-input" [id]="prop.key" [value]="prop.value"
+                      [formControlName]="prop.key">
+                    <label class="custom-control-label" [for]="prop.key"></label>
+                  </span>
+
+                  <span class="location-marker" *ngIf="prop.key === 'location_marker'" (click)="getCoord($event)">
+                    <i class="fa fa-map-marker-alt" aria-hidden="true"></i>
+                  </span>
+
+                  <!-- <input *ngSwitchCase="'switch'" type="checkbox" [id]="prop.key" [value]="prop.value" [formControlName]="prop.key"> -->
+
+                </ng-container>
+
+                <div class="error"
+                  *ngIf="(form.formGroup.get(prop.key).dirty || form.formGroup.get(prop.key).touched) && form.formGroup.get(prop.key).invalid">
+                  <p>
+                    {{(form.formGroup.get(prop.key).errors.required) ? prop.label+' is mandatory' : ''}}
+                    {{(form.formGroup.get(prop.key).errors.minlength) ? prop.label+' should be minimum
+                    '+form.formGroup.get(prop.key).errors.minlength.requiredLength+' characters' : ''}}
+                    {{(form.formGroup.get(prop.key).errors.maxlength) ? prop.label+' should not be maximum
+                    '+form.formGroup.get(prop.key).errors.maxlength.requiredLength+' characters' : ''}}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="map-section" *ngIf="showMapForCoords">
+              <app-maps></app-maps>
+              <!-- <app-diagnostics></app-diagnostics> -->
+            </div>
+
+            <button type="reset" class="btn btn-light mr-2" (click)="modalRef.hide()">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!form?.formGroup?.valid">{{(isEditable)? 'Update':
+              'Add'}}</button>
+          </div>
+        </form>
+      </div>
+    </ng-template>
+
+    <ng-template #template1>
+      <div class="modal-header">
+        <h4 class="modal-title pull-left">{{config_type | titlecase }} Configuration</h4>
+        <button type="button" class="close pull-right" aria-label="Close" (click)="modalRef.hide()">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="form?.formGroup" novalidate (ngSubmit)="onUserConfigSubmit(form?.formGroup?.value)">
+          <div class="form-group">
+            <div class="row">
+              <div *ngFor="let prop of form?.metaData" class="col-md-3 mb-3">
+                <label [attr.for]="prop">{{prop.label}}</label>
+                <ng-container [ngSwitch]="prop.type">
+
+                  <p *ngSwitchCase="'label'">{{prop.value}}</p>
+
+                  <input *ngSwitchCase="'hidden'" class="form-control" [formControlName]="prop.key" [id]="prop.key"
+                    [type]="prop.type">
+                  <input *ngSwitchCase="'text'" class="form-control" [formControlName]="prop.key" [id]="prop.key"
+                    [type]="prop.type">
+                  <input *ngSwitchCase="'password'" class="form-control" [formControlName]="prop.key" [id]="prop.key"
+                    [type]="prop.type">
+
+                </ng-container>
+
+                <div class="error"
+                  *ngIf="(form.formGroup.get(prop.key).dirty || form.formGroup.get(prop.key).touched) && form.formGroup.get(prop.key).invalid">
+                  <p>
+                    {{(form.formGroup.get(prop.key).errors.required) ? prop.label+' is mandatory' : ''}}
+                    {{(form.formGroup.get(prop.key).errors.minlength) ? prop.label+' should be minimum
+                    '+form.formGroup.get(prop.key).errors.minlength.requiredLength+' characters' : ''}}
+                    {{(form.formGroup.get(prop.key).errors.maxlength) ? prop.label+' should not be maximum
+                    '+form.formGroup.get(prop.key).errors.maxlength.requiredLength+' characters' : ''}}
+                  </p>
+                </div>
+              </div>
+
+            </div>
+            <button type="reset" class="btn btn-light mr-2" (click)="modalRef.hide()">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!form?.formGroup?.valid">Save</button>
+          </div>
+        </form>
+      </div>
+    </ng-template>
+
+    <!-- RNDF Configuration : Start -->
+    <div class="table-responsive p-4 rndf-configuration" *ngIf="config_type === 'rndf'">
+
+      <button type="button" class="btn btn-secondary float-right mb-1" *ngIf="!rndfConfig.isUploadFile"
+        (click)="uploadFiles();rndfConfig.isUploadFile = !rndfConfig.isUploadFile">Upload File</button>
+
+      <!-- Upload KML File -->
+      <div class="d-flex mb-4 p-2 bg-grey" *ngIf="rndfConfig.isUploadFile">
+        <span class="col-4">
+          <input type="text" class="form-control file-title"
+            [ngClass]="{'error': (rndfConfig.isFormSubmitted === true && !rndfConfig.formData.title)}"
+            placeholder="Title is required" [(ngModel)]="rndfConfig.formData.title" />
+        </span>
+        <span class="col-4 kml-sec"
+          [ngClass]="{'error': (rndfConfig.isFormSubmitted === true && (!rndfConfig.formData.file && !rndfConfig.updateData.file_name))}">
+          <label for="file">{{(rndfConfig.isUpdate && !rndfConfig.formData.file?.name) ? rndfConfig.updateData.file_name
+            : (rndfConfig.formData.file?.name ? rndfConfig.formData.file?.name: 'Choose File')}}</label>
+          <input type="file" (change)="selectFile($event)" />
+        </span>
+        <span class="col-4">
+          <button class="btn btn-primary col-3 mr-4" (click)="saveRndfConfig()"
+            [disabled]="rndfConfig.submit.isFormSubmitted">
+            Submit
+            <i class="fa fa-circle-o-notch fa-spin" *ngIf="rndfConfig.submit.isFormSubmitted"></i>
+          </button>
+          <button class="btn btn-secondary col-3" (click)="rndfConfig.isUploadFile = false">Cancel</button>
+        </span>
+      </div>
+      <!-- Upload KML File -->
+
+      <table class="table table-hover dark-table">
+        <thead>
+          <tr>
+            <th *ngFor="let column of rndfConfig?.columns">{{column}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let config of rndfConfig?.configData; let i = index">
+            <td> {{config?.title}}</td>
+            <td> {{config?.file_name}}</td>
+            <td> {{config?.updated_date | date: 'mediumDate'}}</td>
+            <td>
+              <span class="mr-2 cursor-pointer" (click)="editRndfConfig(config)">
+                <i class="fa fa-pencil-square-o" title="Edit" aria-hidden="true"></i>
+              </span>
+              <span class="cursor-pointer" >
+                <i class="fa fa-trash" title="Delete" aria-hidden="true" #pop="bs-popover" [popover]="rndfPopTemplate" 
+                placement="bottom" [outsideClick]="true"></i>
+              </span>
+              <span class="ml-2" *ngIf="config.is_selected">
+                Selected
+              </span>
+              <span class="ml-2 cursor-pointer" *ngIf="!config.is_selected" (click)="setDefaultRndf(config.id)">
+                <i class="fa fa-check" title="Set as Default" aria-hidden="true"></i>
+              </span>
+              <ng-template #rndfPopTemplate>
+                <span class="d-flex mb-3">Are You Sure?</span>
+                <span class="d-flex">
+                  <button type="reset" class="btn btn-light mr-2" (click)="pop.hide()">No</button>
+                  <button type="submit" class="btn btn-primary" (click)="deleteRndf(config, i)">Yes</button>
+                </span>
+              </ng-template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="text-center color-white" *ngIf="rndfConfig.isLoading">Loading...</div>
+      <div class="text-center color-white mt-2" *ngIf="!rndfConfig.isLoading && !rndfConfig?.configData?.length">No
+        Records Found...</div>
+    </div>
+    <!-- RNDF Configuration : End -->
+  </div>
+</div>
+
+<!-- UAV Edit Modal -->
+<ng-template #uavTemplate>
+  <div class="modal-header">
+    <h4 class="modal-title pull-left">UAV Configuration</h4>
+    <button type="button" class="close pull-right" aria-label="Close"
+      (click)="modalRef.hide();uavUgvData.forms.isEditAdd.uav = false;">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <form [formGroup]="uavForm" class="container" (ngSubmit)="uavFormsubmit()">
+      <div class="form-group">
+        <div class="row">
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUAVormSubmitted && formControls.longitude.errors }">
+              <input type="text" placeholder="Longitude" formControlName="longitude" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUAVormSubmitted && formControls.longitude.errors" class="help-block">
+              <div *ngIf="formControls.longitude.errors.required">Longitude is required</div>
+            </div>
+          </div>
+
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUAVormSubmitted && formControls.latitude.errors }">
+              <input type="text" placeholder="Latitude" formControlName="latitude" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUAVormSubmitted && formControls.latitude.errors" class="help-block">
+              <div *ngIf="formControls.latitude.errors.required">Latitude is required</div>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUAVormSubmitted && formControls.zone_id.errors }">
+              <input type="text" placeholder="Zone Id" formControlName="zone_id" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUAVormSubmitted && formControls.zone_id.errors" class="help-block">
+              <div *ngIf="formControls.zone_id.errors.required">Zone ID is required</div>
+            </div>
+          </div>
+
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUAVormSubmitted && formControls.is_assigned.errors }">
+              <input type="text" placeholder="Is Assigned" formControlName="is_assigned" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUAVormSubmitted && formControls.is_assigned.errors" class="help-block">
+              <div *ngIf="formControls.is_assigned.errors.required">Is Assigned is required</div>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUAVormSubmitted && formControls.ipaddress.errors }">
+              <input type="text" placeholder="IP Address" formControlName="ipaddress" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUAVormSubmitted && formControls.ipaddress.errors" class="help-block">
+              <div *ngIf="formControls.ipaddress.errors.required">IP Address is required</div>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+            <span> Status </span><br />
+            <input type="checkbox" value="true" checked="true" formControlName="current_status" />
+          </div>
+
+
+        </div>
+
+
+        <button type="reset" class="btn btn-light mr-2"
+          (click)="modalRef.hide();uavUgvData.forms.isEditAdd.uav = false;">Cancel</button>
+        <button type="submit" class="btn btn-primary"
+          [disabled]="!uavForm.valid  || uavUgvData.forms.isLoading.uavForm">{{(uavUgvData?.forms?.isEditAdd.uav)?
+          'Update': 'Add'}}</button>
+      </div>
+    </form>
+  </div>
+</ng-template>
+
+<!-- UGV Edit Modal -->
+<ng-template #ugvTemplate>
+  <div class="modal-header">
+    <h4 class="modal-title pull-left">UGV Configuration</h4>
+    <button type="button" class="close pull-right" aria-label="Close"
+      (click)="modalRef.hide();uavUgvData.forms.isEditAdd.ugv = false;">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <form [formGroup]="ugvForm" class="container" (ngSubmit)="ugvFormsubmit()">
+      <div class="form-group">
+        <div class="row">
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUGVormSubmitted && ugvFormControls.longitude.errors }">
+              <input type="text" placeholder="Longitude" formControlName="longitude" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUGVormSubmitted && ugvFormControls.longitude.errors" class="help-block">
+              <div *ngIf="ugvFormControls.longitude.errors.required">Longitude is required</div>
+            </div>
+          </div>
+
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUGVormSubmitted && ugvFormControls.latitude.errors }">
+              <input type="text" placeholder="Latitude" formControlName="latitude" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUGVormSubmitted && ugvFormControls.latitude.errors" class="help-block">
+              <div *ngIf="ugvFormControls.latitude.errors.required">Latitude is required</div>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUGVormSubmitted && ugvFormControls.zone_id.errors }">
+              <input type="text" placeholder="Zone Id" formControlName="zone_id" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUGVormSubmitted && ugvFormControls.zone_id.errors" class="help-block">
+              <div *ngIf="ugvFormControls.zone_id.errors.required">Zone ID is required</div>
+            </div>
+          </div>
+
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUGVormSubmitted && ugvFormControls.is_assigned.errors }">
+              <input type="text" placeholder="Is Assigned" formControlName="is_assigned" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUGVormSubmitted && ugvFormControls.is_assigned.errors" class="help-block">
+              <div *ngIf="ugvFormControls.is_assigned.errors.required">Is Assigned is required</div>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+            <p [ngClass]="{ 'has-error': uavUgvData.forms.isUGVormSubmitted && ugvFormControls.ipaddress.errors }">
+              <input type="text" placeholder="IP Address" formControlName="ipaddress" class="form-control">
+            </p>
+
+            <div *ngIf="uavUgvData.forms.isUGVormSubmitted && ugvFormControls.ipaddress.errors" class="help-block">
+              <div *ngIf="ugvFormControls.ipaddress.errors.required">IP Address is required</div>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-4">
+            <span> Status </span><br />
+            <input type="checkbox" value="true" checked="true" formControlName="current_status" />
+          </div>
+
+
+        </div>
+
+
+        <button type="reset" class="btn btn-light mr-2"
+          (click)="modalRef.hide();uavUgvData.forms.isEditAdd.ugv = false;">Cancel</button>
+        <button type="submit" class="btn btn-primary"
+          [disabled]="!ugvForm.valid || uavUgvData.forms.isLoading.ugvForm">{{(uavUgvData?.forms?.isEditAdd.ugv)?
+          'Update': 'Add'}}</button>
+      </div>
+    </form>
+  </div>
+</ng-template>

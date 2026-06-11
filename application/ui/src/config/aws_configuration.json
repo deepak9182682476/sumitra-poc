@@ -1,0 +1,235 @@
+{
+    "aws": [
+        {
+            "key": "Sn",
+            "name": "Wind speed minimum",
+            "unit": [
+                "m/s",
+                "km/h",
+                "mph",
+                "knots"
+            ],
+            "status": [
+                "#",
+                "M",
+                "K",
+                "S",
+                "N"
+            ]
+        },
+        {
+            "key": "Sm",
+            "name": "Wind speed average",
+            "unit": [
+                "m/s",
+                "km/h",
+                "mph",
+                "knots"
+            ],
+            "status": [
+                "#",
+                "M",
+                "K",
+                "S",
+                "N"
+            ]
+        },
+        {
+            "key": "Sx",
+            "name": "Wind speed maximum",
+            "unit": [
+                "m/s",
+                "km/h",
+                "mph",
+                "knots"
+            ],
+            "status": [
+                "#",
+                "M",
+                "K",
+                "S",
+                "N"
+            ]
+        },
+        {
+            "key": "Dn",
+            "name": "Wind direction minimum",
+            "unit": [
+                "deg"
+            ],
+            "status": [
+                "#",
+                "D"
+            ]
+        },
+        {
+            "key": "Dm",
+            "name": "Wind direction average",
+            "unit": [
+                "deg"
+            ],
+            "status": [
+                "#",
+                "D"
+            ]
+        },
+        {
+            "key": "Dx",
+            "name": "Wind direction maximum",
+            "unit": [
+                "deg"
+            ],
+            "status": [
+                "#",
+                "D"
+            ]
+        },
+        {
+            "key": "Pa",
+            "name": "Air Pressure",
+            "unit": [
+                "hPa",
+                "Pa",
+                "bar",
+                "mmHg",
+                "inHg"
+            ],
+            "status": [
+                "#",
+                "H",
+                "P",
+                "B",
+                "M",
+                "I"
+            ]
+        },
+        {
+            "key": "Ta",
+            "name": "Air Temperature",
+            "unit": [
+                "℃",
+                "℉"
+            ],
+            "status": [
+                "#",
+                "C",
+                "F"
+            ]
+        },
+        {
+            "key": "Tp",
+            "name": "Internal Temperature",
+            "unit": [
+                "℃",
+                "℉"
+            ],
+            "status": [
+                "#",
+                "C",
+                "F"
+            ]
+        },
+        {
+            "key": "Ua",
+            "name": "Relative humidity",
+            "unit": [
+                "%RH"
+            ],
+            "status": [
+                "#",
+                "P"
+            ]
+        },
+        {
+            "key": "Rc",
+            "name": "Rain accumulation",
+            "unit": [
+                "mm",
+                "in"
+            ],
+            "status": [
+                "#",
+                "M",
+                "I"
+            ]
+        },
+        {
+            "key": "Rd",
+            "name": "Rain duration",
+            "unit": [
+                "s"
+            ],
+            "status": [
+                "#",
+                "S"
+            ]
+        },
+        {
+            "key": "Ri",
+            "name": "Rain intensity",
+            "unit": [
+                "mm/h",
+                "in/h"
+            ],
+            "status": [
+                "#",
+                "M",
+                "I"
+            ]
+        },
+        {
+            "key": "Rp",
+            "name": "Rain peak intensity",
+            "unit": [
+                "mm/h",
+                "in/h"
+            ],
+            "status": [
+                "#",
+                "M",
+                "I"
+            ]
+        },
+        {
+            "key": "Hc",
+            "name": "Hail accumulation",
+            "unit": [
+                "hits/cm²",
+                "hits/in2",
+                "hits"
+            ],
+            "status": [
+                "#",
+                "M",
+                "I",
+                "H"
+            ]
+        },
+        {
+            "key": "Hd",
+            "name": "Hail duration",
+            "unit": [
+                "s"
+            ],
+            "status": [
+                "#",
+                "S"
+            ]
+        },
+        {
+            "key": "Hi",
+            "name": "Hail intensity",
+            "unit": [
+                "hits/cm²h",
+                "hits/in2h",
+                "hits/h"
+            ],
+            "status": [
+                "#",
+                "M",
+                "I",
+                "H"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="46" height="46.001" viewBox="0 0 46 46.001">
+  <defs>
+    <filter id="Path_1286" x="0" y="0" width="46" height="46.001" filterUnits="userSpaceOnUse">
+      <feOffset dy="3" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-opacity="0.161"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="Group_3796" data-name="Group 3796" transform="translate(-866 -622)">
+    <g id="Group_3795" data-name="Group 3795" transform="translate(112 -44)">
+      <g transform="matrix(1, 0, 0, 1, 754, 666)" filter="url(#Path_1286)">
+        <path id="Path_1286-2" data-name="Path 1286" d="M14,0A14,14,0,1,1,0,14,14,14,0,0,1,14,0Z" transform="translate(9 6)" fill="#5f2cd8"/>
+      </g>
+      <g id="Group_2684" data-name="Group 2684" transform="translate(767 680)">
+        <g id="Group_2683" data-name="Group 2683" transform="translate(6.516 2.739)">
+          <g id="Ellipse_218" data-name="Ellipse 218" fill="none" stroke="#fff" stroke-width="1">
+            <circle cx="3.439" cy="3.439" r="3.439" stroke="none"/>
+            <circle cx="3.439" cy="3.439" r="2.939" fill="none"/>
+          </g>
+          <g id="Ellipse_219" data-name="Ellipse 219" transform="translate(2.58 2.58)" fill="none" stroke="#fff" stroke-width="2">
+            <circle cx="0.86" cy="0.86" r="0.86" stroke="none"/>
+            <circle cx="0.86" cy="0.86" r="0.14" fill="none"/>
+          </g>
+        </g>
+        <path id="Path_1505" data-name="Path 1505" d="M0,2.472,1.115,3.559a7.227,7.227,0,0,1,10.032,0l1.115-1.086A8.838,8.838,0,0,0,0,2.472ZM2.229,4.645,3.344,5.731a4.016,4.016,0,0,1,5.574,0l1.115-1.086A5.627,5.627,0,0,0,2.229,4.645Z" transform="translate(0 12.262) rotate(-90)" fill="#fff"/>
+        <path id="Path_1506" data-name="Path 1506" d="M0,3.258,1.115,2.172a7.227,7.227,0,0,0,10.032,0l1.115,1.086A8.837,8.837,0,0,1,0,3.258ZM2.229,1.086,3.344,0A4.016,4.016,0,0,0,8.917,0l1.115,1.086A5.627,5.627,0,0,1,2.229,1.086Z" transform="translate(14.082 12.262) rotate(-90)" fill="#fff"/>
+      </g>
+    </g>
+    <g id="Ellipse_265" data-name="Ellipse 265" transform="translate(870 623)" fill="none" stroke="red" stroke-width="2">
+      <circle cx="19" cy="19" r="19" stroke="none"/>
+      <circle cx="19" cy="19" r="18" fill="none"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,205 @@
+<nav class="navbar pl-3 pr-3 flex-fill bg-sub-nav">
+  <!-- left box -->
+  <div class="navbar-nav flex-fill align-items-left justify-content-start warning-nav">
+    <div class="d-flex">
+      <div class="btn-group btn-group-sm btns-nav border-right-0" *ngIf="isSignedIn">
+        <button class="btn btn-sm btn-success" title="Add Robot to PMM" #selRobotsPopover="bs-popover"
+          [popover]="addRobotTemplate" placement="bottom right" containerClass="sysNotifyPopup" [outsideClick]="false">
+          <i class="fa fa-plus icon-white" aria-hidden="true"></i> &nbsp; Add Robot
+        </button>
+        <ng-template #addRobotTemplate>
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <mat-form-field appearance="fill">
+                <mat-label> Add Robot:</mat-label>
+                <mat-select [formControl]="selectedRobots" multiple>
+                  <mat-select-trigger>
+                    {{selectedRobots.value ? selectedRobots.value[0] : ''}}
+                    <span *ngIf="selectedRobots.value?.length > 1" class="example-additional-selection">
+                      (+{{selectedRobots.value.length - 1}} {{selectedRobots.value?.length === 2 ? 'other' : 'others'}})
+                    </span>
+                  </mat-select-trigger>
+                  <mat-option *ngFor="let item of ugvs; let i = index" [value]="'UGV_'+item.properties.ugv_id+'_'+item.properties.ip">
+                    UGV - {{ item?.properties?.ip }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <div class="col-md-12 mb-3">
+              <mat-form-field appearance="fill">
+                <mat-label> Algorithm Type:</mat-label>
+                <mat-select [formControl]="selectedAlgoType">
+                  <mat-option *ngFor="let algo_type of algorithm_types; let i = index" [value]="algo_type.id">
+                    {{ algo_type?.label }}
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <div class="col-md-12 mb-3">              
+              <button type="reset" class="btn btn-sm btn-primary" (click)="selRobotsPopover.hide()">
+                {{ getTranslationLang("save") }}
+              </button>              
+            </div>
+          </div>
+        </ng-template>
+
+        <button class="btn btn-sm btn-success" title="Patrol Initialization" (click)="sendPIRequest()">Init</button>
+    
+
+        <!-- <button type="submit" class="btn btn-sm btn-primary" title="Send Manual Route" (click)="sendSelectedRobots()"
+                [disabled]="!selectedRobots?.value?.length">
+                {{ getTranslationLang("SMR") || "Send MR" }}
+              </button> -->
+        
+        <button class="btn btn-sm btn-primary" title="Assign Manual Route" (click)="manualRoute($event);">Assign MR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- right box -->
+  <div class="navbar-nav flex-fill flex-row align-items-center justify-content-end warning-nav">
+    <div class="d-flex">
+      <div class="btn-group btn-group-sm btns-nav" *ngIf="isSignedIn">
+        <button href="#" class="btn rthz-btn rthz-light" *ngFor="let item of uavs; let i = index"
+          (click)="assignToDefault(item, 'UAV')" id="{{ item?.properties?.zone_id }}-uav">
+          RTH - {{ item?.properties?.uav_id }}
+        </button>
+      </div>
+<!-- 
+      <div class="btn-group btn-group-sm btns-nav" *ngIf="isSignedIn">
+        <button href="#" class="btn estopz-btn" *ngFor="let item of ugvs; let i = index"
+          (click)="assignToDefault(item, 'UGV')" id="{{ item?.properties?.zone_id }}-ugv">
+          ESTOPZ - {{ item?.properties?.ugv_id }} // *** COMMENTED AS NOT NEEDED IN SUNDARBAD
+        </button>
+      </div> -->
+    </div>
+
+    <div class="d-flex">
+      <ul class="navbar-nav">
+        <li class="nav-item sliderWrapper">
+          <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="switch1" checked />
+            <label class="custom-control-label" for="switch1">{{
+              getTranslationLang("iff")
+              }}</label>
+          </div>
+        </li>
+        <li class="nav-item sliderWrapper">
+          <div class="custom-control custom-switch">
+            <input type="checkbox" (change)="changeLayerVisibility($event)" class="custom-control-input" id="switch2"
+              checked />
+            <label class="custom-control-label" for="switch2">{{
+              getTranslationLang("early_warning")
+              }}</label>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- NGX Accordion -->
+  <div class="zones-accordion">
+    <accordion [isAnimated]="true">
+      <accordion-group [heading]="
+          getTranslationLang('zone')
+            ? getTranslationLang('zone')
+            : 'Zone ' + item?.zoneData?.zone_id
+        " class="br-white" *ngFor="let item of zonesData; let j = index" [isOpen]="false" #accordionGroupRef>
+        <ul>
+          <li>
+            UAV is already assigned to Alarm ID:
+            {{
+            getSelectedAlarm?.id
+            ? getSelectedAlarm?.id
+            : item?.alarmData
+            ? item?.alarmData[0]?.alarm_id
+            : ""
+            }}
+          </li>
+          <li>Slew TI is not assigned</li>
+        </ul>
+
+        <h5 class="m-0" accordion-heading>
+          <i class="fas carrot-icon" [ngClass]="{
+              'fa-caret-down': accordionGroupRef?.isOpen,
+              'fa-caret-up': !accordionGroupRef?.isOpen
+            }"></i>
+        </h5>
+
+        <div class="dropdown-sec"></div>
+
+        <div id="block_container" class="mt-2 re-assign-sec">
+          <div id="bloc1">
+            <label>Select Alarm ID</label>
+            <select #selectedVal (change)="getSelectedAlarms(item, selectedVal.value)">
+              <option *ngFor="let data of item?.alarmData" [value]="data.alarm_id">
+                {{ data?.alarm_id }}
+              </option>
+            </select>
+          </div>
+          <div id="bloc2">
+            <button class="btn btn-primary" (click)="reAssignUGV(item)">
+              REASSIGN UGV
+              <span class="spinner-border spinner ml-1 float-right" *ngIf="reAssignLoading"></span>
+            </button>
+          </div>
+        </div>
+      </accordion-group>
+    </accordion>
+  </div>
+  <!-- NGX Accordion -->
+
+  <!-- Zone Accordion -->
+  <!-- <div class="zones-accordion">
+        <ngb-accordion (panelChange)="accPanelChange($event)">
+            <ng-container *ngFor="let item of zonesData; let j = index;">
+                <ngb-panel activeIds="ngb-panel-{{j}}">
+
+                    <ng-template ngbPanelTitle>
+                        <span class="float-left">
+                            {{getTranslationLang("zone")}} {{item?.zoneData?.zone_id}}
+                        </span>
+                        <span class="float-right plus-minus-icon" *ngIf="openById['ngb-panel-' + j]">
+                            <i class="fa fa-caret-down"></i>
+                        </span>
+                        <span class="float-right plus-minus-icon" *ngIf="!openById['ngb-panel-' + j]">
+                            <i class="fa fa-caret-up"></i>
+                        </span>
+                    </ng-template>
+
+                    <ng-template ngbPanelContent>
+                        <ul>
+                            <li>
+                                UAV is already assigned to Alarm ID: 32145E4
+                            </li>
+                            <li>
+                                Slew TI is not assigned
+                            </li>
+                        </ul>
+                        <div class="dropdown-sec"></div>
+
+                        <div id="block_container" class="mt-2 re-assign-sec">
+                            <div id="bloc1">
+                                <label>Select Alarm ID</label>
+                                <select #selectedVal (change)="getSelectedAlarms(item, selectedVal.value)">
+                                    <option *ngFor="let data of item?.alarmData" [value]="data.alarm_id">
+                                        {{data?.alarm_id}}
+                                    </option>
+                                </select>
+                            </div>
+                            <div id="bloc2">
+                                <button class="btn btn-primary" (click)="reAssignUGV(item)">
+                                    REASSIGN UGV
+                                    <span class="spinner-border spinner ml-1 float-right"
+                                        *ngIf="reAssignLoading"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                    </ng-template>
+                </ngb-panel>
+            </ng-container>
+        </ngb-accordion>
+    </div> -->
+  <!-- Zone Accordion -->
+</nav>

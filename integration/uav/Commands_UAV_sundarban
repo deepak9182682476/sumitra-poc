@@ -1,0 +1,15 @@
+Start UAV api Server: 
+$ cd uav/
+$ python3 -m venv sundarban_uav_env
+$ source sundarban_uav_env/bin/activate
+$ pip install -r requirements.txt
+$ python3 -m uvicorn uav:app --host 0.0.0.0 --port 7999
+
+1. Fly to coordinates (/fly_track)
+curl -X POST http://127.0.0.1:7999/fly_track -H "Content-Type: application/json" -d '{"track_id": 101}'
+
+- Above curl takes the lat logns fromt radar kafka topic if available otherwise defaults.
+
+2. RTL command (/rtl)
+curl "http://127.0.0.1:7999/rtl"
+

@@ -1,0 +1,36 @@
+{
+    "user_name": {
+        "label": "Username",
+        "value": "",
+        "type": "label",
+        "validations": {
+        }
+    },
+    "password": {
+        "label": "New Password",
+        "value": "",
+        "type": "password",
+        "validations": {
+            "required": true,
+            "minLength": 6,
+            "maxLength": 12
+        }
+    },
+    "confirmpassword": {
+        "label": "Confirm Password",
+        "value": "",
+        "type": "password",
+        "validations": {
+            "required": true,
+            "minLength": 6,
+            "maxLength": 12,
+            "compare": true
+        }
+    },
+    "user_id": {
+        "label": null,
+        "value": null,
+        "type": "hidden",
+        "validations": {}
+    }
+}

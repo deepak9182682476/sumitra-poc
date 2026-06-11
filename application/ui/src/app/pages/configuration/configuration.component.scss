@@ -1,0 +1,182 @@
+* {
+  font-size: calc(0.9rem + var(--custom-font-size));
+}
+
+.table-title {
+  background: var(--bg3) 0% 0% no-repeat padding-box;
+  color: var(--color);
+  padding: 12px;
+  text-transform: uppercase;
+  opacity: 1;
+  border: 1px solid var(--border-color);
+  border-bottom: 0;
+}
+
+.add-btn {
+  float: right;
+  margin-top: -5px;
+}
+
+label.custom-fileupload{
+  background-color: #007bff;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  margin: -0.35rem 0.35rem;
+  float: right;
+  text-transform: initial;
+  font-size: inherit;
+}
+
+ng-scrollbar {
+  --scrollbar-size: 3px;
+  --scrollbar-thumb-color: #00b9ff;
+  --scrollbar-hover-size: 5px;
+  --scrollbar-track-color: var(--border-color);
+  --scrollbar-border-radius: 3px;
+  border-radius: 3px;
+}
+
+.dynamic-color {
+  color: var(--bg4-color);
+}
+
+.mat-tab-label {
+  color: var(--bg4-color);
+}
+
+.table-responsive {
+  border-collapse: collapse;
+
+  .table.table-hover tbody tr:hover {
+    background-color: var(--bg2) !important;
+    color: var(--color);
+  }
+
+  .table thead tr:nth-child(1) th {
+    background: var(--bg3) 0% 0% no-repeat padding-box;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .dark-table {
+    margin-bottom: 0 !important;
+
+    thead {
+      background: var(--bg3) 0% 0% no-repeat padding-box;
+      border: 1px solid var(--border-color);
+      opacity: 1;
+      tr {
+        color: var(--color);
+        text-transform: capitalize;
+      }
+    }
+    tbody {
+      background: var(--bg3) 0% 0% no-repeat padding-box;
+      border: 1px solid var(--border-color);
+      opacity: 1;
+      tr {
+        letter-spacing: 0px;
+        color: var(--color);
+        text-transform: capitalize;
+        opacity: 1;
+
+        td > i,
+        td > img {
+          cursor: pointer;
+        }
+
+        td > img.icon-color {
+          filter: var(--invert);
+        }
+      }
+    }
+  }
+}
+
+/* For PC with minimum resolution till your PC resolution */
+@media screen and (min-width: 769px) and (max-width: 1400px) {
+  .tbl-resp {
+    height: 80vh !important;
+    max-height: 80vh !important;
+    width: 99vw !important;
+    max-width: 99vw !important;
+  }
+}
+
+/* For Screen Higher than 1400px */
+@media screen and (min-width: 1401px) {
+  .tbl-resp {
+    height: 175vh !important;
+    max-height: 175vh !important;
+    width: 99vw !important;
+    max-width: 99vw !important;
+  }
+}
+
+.location-marker {
+  background-color: #d46606;
+  padding: 5px;
+  color: var(--color);
+  cursor: pointer;
+}
+
+.map-section {
+  padding: 20px;
+}
+
+.mode-dropdown {
+  width: 100px;
+  height: 30px;
+  margin-top: -5px;
+  background: var(--bg2) 0% 0% no-repeat padding-box;
+  border: 1px solid transparent;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0px 1px 6px var(--box-shadow-color);
+  opacity: 1;
+  padding: 5px;
+  color: var(--bg1-color);
+  font-size: calc(0.75rem + var(--custom-font-size));
+  &:focus {
+      outline: none;
+  }
+}
+
+.rndf-configuration {
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  .kml-sec {
+    background: white;
+    height: 35px;
+    border: 1px solid #fff;
+    position: relative;
+    color: #000;
+    border-radius: 2px;
+    text-align: center;
+    cursor: pointer;
+
+    input[type="file"] {
+      width: 100% !important;
+      z-index: 1000;
+      opacity: 0;
+      cursor: pointer;
+      height: 35px;
+      position: relative;
+      bottom: 30px;
+    }
+  }
+  .error {
+    border: solid 1px red;
+  }
+  .bg-grey {
+    background: #ffffff85;
+  }
+}
+
+.file-title {
+  height: 35px;
+}

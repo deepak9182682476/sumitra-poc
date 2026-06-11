@@ -1,0 +1,446 @@
+<div class="row">
+    <div class="col">
+        <nav class="navbar navbar-expand-md">
+            <div class="col-4 d-flex ml-1 p-0 align-items-start logoDivCLs">
+                <!-- header -->
+                <div class="navbar-header text-center">
+                    <a class="navbar-brand m-0 w-100" routerLink="/maps">
+                        <img *ngIf="activeTheme && activeTheme.name === 'dark'" class="logo" src="./assets/logo.png"
+                            alt="DRDO" />
+                        <img *ngIf="activeTheme && activeTheme.name === 'light'" class="logo" src="./assets/logo.png"
+                            alt="DRDO" />
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-4 navbar-nav justify-content-end left-nav headerCol2Cls" *ngIf="!mccsUsers?.isSuperUser"></div>
+            <div class="col-4 navbar-nav justify-content-end left-nav search-alarms headerCol2Cls" *ngIf="mccsUsers?.isSuperUser">
+                <!-- left box -->
+                <div class="d-flex search-container">
+                    <div class="input-group">
+
+                        <label for="stuff" class="fa fa-arrow-left input-icon back-icon" routerLink="/maps"
+                            *ngIf="!enableFilterIcon"></label>
+                        <input class="form-control search search-input border-0 color-white" type="search"
+                            [placeholder]="getTranslationLang('search_alarms')" autocomplete="off"
+                            id="example-search-input" [(ngModel)]="searchAlarmFilter" />
+                        <div class="search-filters cursor-pointer pt-2" dropdown #dropdown="bs-dropdown"
+                            [autoClose]="false" (isOpenChange)="toggleFilters()">
+                            <span dropdownToggle class="dropdown-toggle" *ngIf="enableFilterIcon"
+                                aria-controls="filters-dropdown" (click)="saveSearchDropDown.hide();">
+                                <i class="fa fa-filter icon-white" aria-hidden="true"></i>
+                            </span>
+                            <!-- Search Filter -->
+                            <span id="filters-dropdown" *dropdownMenu aria-labelledby="filters-link"
+                                class="dropdown-menu mt-2" role="menu">
+                                <div>
+                                    <div class="col-12 search-section mt-3">
+                                        <select class="mr-6" [(ngModel)]="searchObj.filter.zoneId"
+                                            (change)="alarmFilter()">
+                                            <option value="">{{getTranslationLang("all")}}</option>
+                                            <option *ngFor="let zoneData of dropDownDataSource.zoneData"
+                                                value="{{zoneData?.zone_id}}">
+                                                {{getTranslationLang("zone")}} {{zoneData?.zone_id}}
+                                            </option>
+                                        </select>
+                                        <select class="ml-7" [(ngModel)]="searchObj.filter.alarmId">
+                                            <option value="">{{getTranslationLang("all")}}</option>
+                                            <option *ngFor="let alarmData of dropDownDataSource.alarmData"
+                                                value="{{alarmData?.alarm_id}}">
+                                                {{alarmData?.alarm_id}}
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12 search-section mt-3">
+                                        <div class="d-inline-block">
+                                            <input type="date" max="{{minDate}}" class="datePicker"
+                                                [(ngModel)]="searchObj.filter.startDate" />
+                                        </div>
+                                        <div class="d-inline-block">
+                                            <input type="date" max="{{minDate}}" class="ml-2 datePicker"
+                                                [(ngModel)]="searchObj.filter.endDate" />
+                                        </div>
+                                    </div>
+                                    <div class="float-left mt-4 ml-3">
+                                        <button class="btn btn-default save-search" (click)="saveSearch(dropdown)"
+                                            [disabled]="searchObj.isSaveSearchLoading || (searchObj.filter.startDate && !searchObj.filter.endDate) || 
+                                            (!searchObj.filter.startDate && searchObj.filter.endDate)">{{getTranslationLang("save_search")}}
+                                            <span class="spinner-border spinner ml-1"
+                                                *ngIf="searchObj.isSaveSearchLoading"></span>
+                                        </button>
+                                    </div>
+                                    <div class='mt-4 float-right mr-4 ml-1'>
+                                        <button class="btn btn-light mr-3 cancelcls"
+                                            (click)="dropdown.hide()">{{getTranslationLang("cancel")}}</button>
+                                        <button class="btn btn-primary" [disabled]="!searchObj.enableSearchBtn || (searchObj.filter.startDate && !searchObj.filter.endDate) || 
+                                        (!searchObj.filter.startDate && searchObj.filter.endDate)"
+                                            (click)="getPostAnalysisData();dropdown.hide();">
+                                            {{getTranslationLang("search")}}
+                                            <span class="spinner-border spinner ml-1"
+                                                *ngIf="searchObj.enableLoader"></span>
+                                        </button>
+                                    </div>
+                                </div>
+
+
+                            </span>
+                            <!-- Search Filter -->
+                        </div>
+                        <div class="input-group-append">
+                            <!-- Save Search -->
+                            <div class="bg-search-color border-0 pt-1" dropdown #saveSearchDropDown="bs-dropdown"
+                                (click)="false" [autoClose]="false">
+                                <span *ngIf="!isFiltersToggled"
+                                    class="input-group-text bg-search-color border-0 cursor-pointer" id="saved-search"
+                                    dropdownToggle aria-controls="saved-search-dropdown"
+                                    (click)="false;getSavedSearchData();">
+                                    <i class="fa fa-search icon-white" aria-hidden="true"></i>
+                                </span>
+
+                                <div id="saved-search-dropdown" *dropdownMenu
+                                    class="dropdown-menu dropdown-menu-right w-100 search-sec" role="menu"
+                                    aria-labelledby="saved-search">
+                                    <div>
+                                        <p class="saved-searches">{{getTranslationLang("saved_searches")}}</p>
+                                        <hr class="h-line" />
+                                    </div>
+                                    <div *ngFor="let item of dropDownDataSource.savedSearchData | search:'alarm_id,zone_id,start_date,end_date':searchAlarmFilter; let i = index"
+                                        class="saved-search-list  p-1 ml-2 cursor-pointer mb-2">
+                                        <span (click)="filterPostAnalysis(item, saveSearchDropDown)">
+                                            <span *ngIf="item?.zone_id">
+                                                {{getTranslationLang("zone_id")}}: {{item?.zone_id}}
+                                            </span>
+                                            <span *ngIf="item?.alarm_id">
+                                                <span *ngIf="item?.zone_id">,</span> {{getTranslationLang("alarm_id")}}
+                                                : {{item?.alarm_id}}
+                                            </span>
+                                            <span *ngIf="item?.start_date && item?.end_date">
+                                                , {{getTranslationLang("start_date")}}:
+                                                {{item?.start_date}}, {{getTranslationLang("to_date")}}:
+                                                {{item?.end_date}}
+                                            </span>
+                                        </span>
+                                        <span class="mr-4 float-right" (click)="deleteSavedSearch(i, item);">
+                                            <i class="fa fa-times icon-white" aria-hidden="true"></i>
+                                        </span>
+                                    </div>
+                                    <h6 class="text-center f-12 color-white"
+                                        *ngIf="searchObj?.getSaveSearchLoading && !dropDownDataSource?.savedSearchData?.length">
+                                        {{getTranslationLang("loading")}}...</h6>
+                                    <h6 class="text-center f-12 color-white"
+                                        *ngIf="!searchObj?.getSaveSearchLoading && !dropDownDataSource?.savedSearchData?.length">
+                                        {{getTranslationLang("no_records_found")}}...</h6>
+                                </div>
+                            </div>
+
+                            <div *ngIf="isFiltersToggled" class="input-group-text bg-search-color border-0">
+                                <i class="fa fa-times icon-white" (click)="saveSearchDropDown.hide();dropdown.hide()"
+                                    aria-hidden="true"></i>
+                            </div>
+                            <!-- Save Search -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-4 navbar-nav d-flex mt-2 align-items-center justify-content-end right-nav headerCol3Cls">
+                <!-- right box -->
+                <div class="d-flex align-items-top">
+                    <ul class="navbar-nav align-items-center sensors-container">
+
+                        <li class="nav-item" *ngFor="let iconInfo of iconsDetails">
+                            <span class="btn nav-link">
+                                <a placement="bottom" aria-controls="settings-link-dropdown" *ngIf="isSignedIn">
+                                    <span *ngIf="iconInfo.messageList.length > 0">
+                                        <img class="theme-icon" src={{iconInfo.url}} [popover]="popTemplate" title={{iconInfo.type}}
+                                            containerClass="healthPopup" [outsideClick]="true" />
+                                        <span class="nav-alert messages"
+                                            *ngIf="iconInfo.messageList.length > 0">{{iconInfo.messageList.length}}</span>
+                                    </span>
+                                    <span *ngIf="iconInfo.messageList.length <= 0">
+                                        <img class="theme-icon" src={{iconInfo.url}} title={{iconInfo.type}} />
+                                    </span>
+                                </a>
+                                <a placement="bottom" aria-controls="settings-link-dropdown" *ngIf="!isSignedIn">
+                                    <img class="theme-icon" src={{iconInfo.url}} title={{iconInfo.type}} />
+                                </a>
+                                <ng-template #popTemplate>
+                                    <ng-scrollbar class="notifications" #scrollable [trackX]="false"
+                                        pointerEventsMethod="scrollbar">
+                                        <div class="row mb-2"
+                                            *ngFor="let message of iconInfo.messageList; let index = index">
+                                            <div class="col-md-12 mb-2" *ngIf="!message.isCleared">
+                                                <span>{{message.content}}</span>
+                                                <span class="acn-info">
+                                                    <button *ngIf="isSignedIn && !message.isAck"
+                                                        class="btn btn-sm btn-secondary mr-1"
+                                                        (click)="updateStatus(index, iconInfo, 1)">{{getTranslationLang("ok")}}</button>
+                                                    <button *ngIf="isSignedIn && !message.isCleared"
+                                                        class="btn btn-sm btn-secondary ml-1"
+                                                        (click)="updateStatus(index, iconInfo, 0)">{{getTranslationLang("clear")}}</button>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </ng-scrollbar>
+                                </ng-template>
+
+                            </span>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div class="d-flex align-items-center">
+                    <ul class="navbar-nav align-items-center p-0 ml-1 settings-container">
+                        <li class="nav-item p-0 m-0">
+                            <select class="mode-dropdown" [(ngModel)]="getMode" (change)="setMode()">
+                                <option [value]="'auto'" selected>
+                                    {{getTranslationLang('auto')}}</option>
+                                <option [value]="'manual'" *ngIf="mccsUsers?.isOperator || mccsUsers?.isSuperUser">
+                                    {{getTranslationLang('manual')}}
+                                </option>
+                            </select>
+                        </li>
+                        <li class="nav-item  p-0 m-0" *ngIf="isSignedIn">
+                            <a class="btn nav-link p-0 m-0" (click)="switchTheme($event)" title="Theme">
+                                <img class="theme-icon" src="assets/Theme-24px.svg" />
+                            </a>
+                        </li>
+                        <li class="nav-item p-0 m-0">
+                            <a class="btn nav-link p-0 m-0" aria-controls="settings-link-dropdown" title="Notifications"
+                                *ngIf="isSignedIn">
+                                <span *ngIf="systemNotifications.length > 0">
+                                    <img class="theme-icon" src="assets/Notifications-24px.svg"
+                                        [popover]="sysNotifyTemplate" placement="right bottom"
+                                        containerClass="sysNotifyPopup" [outsideClick]="true" />
+                                    <span [ngClass]="{'blink' : alarmsLimit}" class="nav-alert messages "
+                                        *ngIf="systemNotifications.length > 0">{{systemNotifications.length}}</span>
+                                </span>
+                                <span *ngIf="systemNotifications.length <= 0">
+                                    <img class="theme-icon" src="assets/Notifications-24px.svg" />
+                                </span>
+                            </a>
+                            <a class="btn p-0 m-0 nav-link" aria-controls="settings-link-dropdown" title="Notifications"
+                                *ngIf="!isSignedIn">
+                                <img class="theme-icon" src="assets/Notifications-24px.svg" />
+                            </a>
+                            <ng-template #sysNotifyTemplate>
+                                <ng-scrollbar class="notifications" #scrollable [trackX]="false"
+                                    pointerEventsMethod="scrollbar">
+                                    <div class="mr-3 mb-4">
+                                        <a class="float-right" (click)="clearAllNotification()">Clear All</a>
+                                    </div>
+                                    <div class="row mb-2"
+                                        *ngFor="let message of systemNotifications; let index = index">
+                                        <div class="col-md-12 mb-2" *ngIf="!message.isCleared">
+                                            <span>{{message.content}}</span>
+                                            <p>{{message.timestamp | date:'MM/dd/yy h:mm a'}}</p>
+                                            <span class="acn-info">
+                                                <button *ngIf="isSignedIn && !message.isAck"
+                                                    class="btn btn-sm btn-secondary mr-1"
+                                                    (click)="updateSystemNotifyStatus(index, 1)">{{getTranslationLang("ok")}}</button>
+                                                <button *ngIf="isSignedIn && !message.isCleared"
+                                                    class="btn btn-sm btn-secondary ml-1"
+                                                    (click)="updateSystemNotifyStatus(index, 0)">{{getTranslationLang("clear")}}</button>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </ng-scrollbar>
+                            </ng-template>
+                        </li>
+
+                        <li class="nav-item p-0 m-0" *ngIf="isSignedIn" [hidden]="mccsUsers?.isOperator">
+                            <span class="btn nav-link p-0 m-0" dropdown>
+                                <a href id="settings-link" dropdownToggle (click)="false"
+                                    aria-controls="settings-link-dropdown" title="Settings">
+                                    <img class="settings-icon" src="assets/Settings-24px.svg" />
+                                </a>
+                                <ul id="settings-link-dropdown" *dropdownMenu class="dropdown-menu dropdown-menu-right"
+                                    role="menu" aria-labelledby="settings-link">
+                                    <li *ngIf="mccsUsers?.maintenanceUser || mccsUsers?.isSuperUser">
+                                        <a class="dropdown-item" href="#" routerLink="/configuration/sensor">
+                                            {{getTranslationLang("assets_configuration")}}
+                                        </a>
+                                    </li>
+                                    <li *ngIf="mccsUsers?.isSuperUser">
+                                        <a class="dropdown-item" href="#" routerLink="/configuration/user">
+                                            {{getTranslationLang("user_configuration")}}
+                                        </a>
+                                    </li>
+                                    <li *ngIf="mccsUsers?.isSuperUser">
+                                        <a class="dropdown-item" routerLink="/configuration/rndf">
+                                            {{getTranslationLang("rndf_configuration")}}
+                                        </a>
+                                    </li>
+                                    <li *ngIf="mccsUsers?.isSuperUser || mccsUsers?.isDeveloper">
+                                        <a class="dropdown-item" routerLink="/system-configuration">
+                                            {{getTranslationLang("system_configuration")}}
+                                        </a>
+                                    </li>
+                                    <!-- <li *ngIf="mccsUsers?.isSuperUser">
+                                        <a class="dropdown-item" routerLink="/draw-mask-image">
+                                            {{getTranslationLang("mask_image")}}
+                                        </a>
+                                    </li> -->
+                                    <!-- <li>
+                                <a class="dropdown-item" href="#" routerLink="/configuration/system">
+                                    System Configuration
+                                </a>
+                            </li> -->
+                                </ul>
+                            </span>
+                        </li>
+
+                        <li class="nav-item p-0 m-0 cursor-pointer">
+                            <div class="btn-group p-0 m-0" dropdown>
+                                <i class="fa fa-sign-in-alt sign-in-icon ml-1 mt-1" aria-hidden="true"
+                                    (click)="openModal(template, 'login');" *ngIf="!isSignedIn" title="Login"></i>
+                                <div *ngIf="isSignedIn" class="avatar-circle ml-1" dropdown>
+                                    <a href id="user-link" dropdownToggle (click)="false"
+                                        aria-controls="user-link-dropdown" title="Profile">
+                                        <span class="initials">{{getInitials(userInfo?.user_name)}}</span>
+                                    </a>
+                                    <ul id="user-link-dropdown" *dropdownMenu class="dropdown-menu dropdown-menu-right"
+                                        role="menu" aria-labelledby="user-link">
+                                        <li>
+                                            <a class="dropdown-item" (click)="openModal(preftemplate, 'preferences')">
+                                                {{getTranslationLang("preferences")}}
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" (click)="logOut()">
+                                                {{getTranslationLang("log_out")}}
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </div>
+    <!-- </nav> -->
+</div>
+<!-- </div> -->
+
+
+
+<!-- Sign in modal -->
+<ng-template #template>
+    <div class="modal-header">
+        <h5 class="modal-title pull-left">{{getTranslationLang("sign_in")}}</h5>
+        <!-- <button type="button" class="close pull-right" aria-label="Close" (click)="modalRef.hide()">
+            <span aria-hidden="true">&times;</span>
+        </button> -->
+    </div>
+
+    <div class="modal-body">
+        <form [formGroup]="loginForm" (ngSubmit)="signIn()" class="text-center">
+            <div class="form-group">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <input type="text" autocomplete="off" autofocus formControlName="username" id="username"
+                            class="form-control" [placeholder]="getTranslationLang('username')"
+                            [ngClass]="{ 'is-invalid': signInData.isSubmitted && f.username.errors }" #userName />
+                        <div *ngIf="signInData.isSubmitted && f.username.errors" class="invalid-feedback">
+                            <div *ngIf="f.username.errors.required" class="pull-left">
+                                {{getTranslationLang("username_required")}}</div>
+                        </div>
+                        <div *ngIf="!loginForm?.value?.username"> {{userName.focus()}} </div>
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <input type="password" formControlName="password" id="password" class="form-control"
+                            [placeholder]="getTranslationLang('password')"
+                            [ngClass]="{ 'is-invalid': signInData.isSubmitted && f.password.errors }" />
+                        <div *ngIf="signInData.isSubmitted && f.password.errors" class="invalid-feedback">
+                            <div *ngIf="f.password.errors.required" class="pull-left">
+                                {{getTranslationLang("password_required")}}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row mb-2 ml-1 color-red" *ngIf="signInData.loginFailed">
+                {{getTranslationLang("sign_in_invalid")}}...
+            </div>
+            <div class="pull-right">
+                <button class="btn btn-light btn-md cancel-btn box-shadow-none mr-2" type="button"
+                    (click)="modalRef.hide()">{{getTranslationLang("cancel")}}</button>
+                <button class="btn btn-primary btn-md box-shadow-none" type="submit" [disabled]="signInData.isLoading">
+                    {{getTranslationLang("sign_in")}}
+                    <i class="fa fa-circle-o-notch fa-spin" *ngIf="signInData.isLoading"></i>
+                </button>
+            </div>
+
+        </form>
+    </div>
+
+</ng-template>
+
+<!-- Preferences modal -->
+<ng-template #preftemplate>
+    <div class="modal-header">
+        <h5 class="modal-title pull-left"> {{getTranslationLang("preferences")}}</h5>
+        <button type="button" class="close pull-right" aria-label="Close" (click)="modalRef.hide()">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+
+    <div class="modal-body">
+        <form [formGroup]="prefFormGroup" (ngSubmit)="setPreferences(prefFormGroup.value)" class="form"
+            #preferencesForm="ngForm">
+            <div class="form-group">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <mat-form-field appearance="fill">
+                            <mat-label> {{getTranslationLang("font_size")}}:</mat-label>
+                            <mat-select formControlName="font_size" name="font_size">
+                                <mat-option value="Small">{{getTranslationLang("small")}}</mat-option>
+                                <mat-option value="Medium">{{getTranslationLang("medium")}}</mat-option>
+                                <mat-option value="Large">{{getTranslationLang("large")}}</mat-option>
+                            </mat-select>
+                            <mat-error *ngIf="prefFormGroup.get('font_size').hasError('required')">
+                                {{getTranslationLang("font_size_required")}}
+                            </mat-error>
+                        </mat-form-field>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <mat-form-field appearance="fill">
+                            <mat-label> {{getTranslationLang("language")}}:</mat-label>
+                            <mat-select formControlName="language" name="language">
+                                <div *ngFor="let transLangKey of translationLang">
+                                    <mat-option [value]="transLangKey">
+                                        {{transLangKey}}
+                                    </mat-option>
+                                </div>
+                            </mat-select>
+                        </mat-form-field>
+                    </div>
+                </div>
+                <button type="reset" class="btn btn-light mr-2"
+                    (click)="modalRef.hide()">{{getTranslationLang("cancel")}}</button>
+                <button type="submit" class="btn btn-primary"
+                    [disabled]="!prefFormGroup?.valid">{{(preferencesData?.isEditable) ? getTranslationLang("update") :
+                    getTranslationLang("save")
+                    }}</button>
+            </div>
+        </form>
+    </div>
+</ng-template>
+
+<!-- Session Timeout modal -->
+<ng-template #sessionTimeout>
+    <div class="modal-header">
+        <h4 class="modal-title pull-left">Session Expired!</h4>
+        <button type="button" class="close pull-right" aria-label="Close" (click)="modalRef.hide()">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
+        Your session expired. Please login again.!!
+    </div>
+</ng-template>

@@ -1,0 +1,105 @@
+<div class="wrapper row">
+  <div class="content col-12 video-result">
+    <div>
+      <mat-tab-group  class="zone-sec" [disableRipple]="true" *ngIf="!isLoading && postAnalysisData?.length">
+        <mat-tab label="{{ item?.zone_name }}" *ngFor="let item of postAnalysisData">
+          <mat-tab-group (selectedTabChange)="tabClick($event)" [disableRipple]="true">
+            <mat-tab label="{{ alarmVideos?.alarm_id.substring(0, 20) + '...' }}"
+              *ngFor="let alarmVideos of item?.alarms">
+              <div class="col-12 d-flex">
+                <!--    <div class="col-12 cursor-pointer video-image-slide">
+                  <span class="title">{{activeTab.toUpperCase()}}</span>
+                  <span class="float-right video-img-icn">
+                    <span [ngClass]="{
+                        'active-tab highlight-tab': activeTab === 'images',
+                        tab: activeTab !== 'images'
+                      }" (click)="activateImagesVideos(0)">
+                      <i class="fa fa-picture-o"></i>
+                    </span>
+                    <span [ngClass]="{
+                        'active-tab highlight-tab': activeTab === 'videos',
+                        tab: activeTab !== 'videos'
+                      }" (click)="activateImagesVideos(1)">
+                      <i class="fa fa-video-camera" aria-hidden="true"></i>
+                    </span>
+                  </span>
+                </div> -->
+                <!-- <div *ngIf="activeTab && activeTab == 'images'"> -->
+                <!-- <carousel [itemsPerSlide]="5" [singleSlideOffset]="true" [interval]="false" [noWrap]="true"
+                    *ngIf="alarmVideos?.images.length; else noImages">
+                    <slide *ngFor="let image of alarmVideos?.images; let j = index"> -->
+                <div *ngIf="alarmVideos?.images.length; else noImages" class="w-100">
+                  <div *ngFor="let image of alarmVideos?.images; let j = index">
+                    <div class="video-title p-1 tabs">
+                      <div class="video-inner-div">
+                        <span class="active-tab mr-1" matTooltipClass="'right'" matTooltip="aboveTemplate"
+                          matTooltipPosition="right">
+                          {{ alarmVideos?.alarm_id.substring(0, 30) + "..." }}
+                        </span>
+                        <span class="cursor-pointer">
+                          <i class="fa fa-arrows-alt maximize-icon float-right" aria-hidden="true"
+                            (click)="enableFullscreen(alarmVideos, j)"></i>
+                        </span>
+                      </div>
+                    </div>
+                    <div class="imgDivcls">
+                      <img src="{{image}}" width="230px" height="170px" alt="image slide"
+                        id="slides-{{ alarmVideos.alarm_id }}-{{ j }}" />
+                    </div>
+                    <div class="video-frame-title p-1 tabs">
+                      <span class="active-tab-bottom mr-1" matTooltipClass="'right'" matTooltip="aboveTemplate"
+                        matTooltipPosition="right">Frame ID:
+                        {{ getFrameId(image, alarmVideos?.obj_data) }}</span>
+                    </div>
+                  </div>
+                  <!-- </slide>
+                  </carousel> -->
+                </div>
+                <!-- <div *ngIf="activeTab && activeTab == 'videos'"> -->
+                <div class="row pl-2 pr-2 videocontainer">
+                  <div *ngFor="let video of alarmVideos?.videos; let i = index" class="col-md-6 br-rt">
+                    <div class="videos-div-title p-1 tabs">
+                      <div class="video-inner-div">
+                        <span class="active-tab mr-1">
+                          {{getVideoType(video, alarmVideos?.alarm_id)}}
+                        </span>
+                      </div>
+                    </div>
+                    <video class="video-clip" width="460" height="170" controls>
+                      <source src="{{ getVideo(video) }}" type="video/mp4" />
+                    </video>
+                    <div class="videos-div-start-title p-1 tabs">
+                      <div class="video-inner-div">
+                        <div class="active-tab mr-1">
+                          <b>Start Time: </b>
+                          {{ alarmVideos?.start_time | date: "MM/dd/yy h:mm a" }}
+                          &nbsp; &nbsp;
+                          <b>End Time: </b>
+                          {{ alarmVideos?.end_time | date: "MM/dd/yy h:mm a" }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+        </mat-tab>
+      </mat-tab-group>
+
+      <div class="text-center mt-2 mb-2 pt-3" *ngIf="isLoading">
+        {{ getTranslationLang("loading") }} ...
+      </div>
+      <ng-template #noImages>
+        <div class="text-center mt-2 mb-2 pt-3">
+          {{ getTranslationLang("no_frames_found") }} ...
+        </div>
+      </ng-template>
+      <ng-template #noVideo>
+        <div class="text-center mt-2 mb-2 pt-3">
+          {{ getTranslationLang("no_videos_found") }}
+        </div>
+      </ng-template>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,35 @@
+/*
+  This is a "Solution Style" tsconfig.json file, and is used by editors and TypeScript’s language server to improve development experience.
+  It is not intended to be used to perform a compilation.
+
+  To learn more about this file see: https://angular.io/config/solution-tsconfig.
+*/
+{
+  // "compilerOptions": {
+  //   "experimentalDecorators": true,
+  //   "types": [
+  //     "node"
+  //   ],
+  //   "lib": [
+  //     "es2020",
+  //     "dom"
+  //   ]
+  // },
+  
+    "compilerOptions": {
+      "target": "es2020",
+      "module": "es2020",
+      "lib": ["es2020", "dom"],
+      "skipLibCheck": true,
+      "strict": true
+    },
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
+    }
+  ]
+}

@@ -1,0 +1,519 @@
+<div class="row">
+    <div class="col-12 p-4">
+        <div class="box-border">
+            <div class="table-title">
+                <span>SYSTEM CONFIGURATION</span>
+            </div>
+            <tabset>
+                 <tab [heading]="getTranslationLang('perimeter_config')" id="tab1">
+                    <div class="row p-3">
+                        <div class="col-12">
+                            <div class="map-config">
+                                <form [formGroup]="formGroup" novalidate (ngSubmit)="loadMap(formGroup?.value)">
+                                    <div class="form-group">
+                                        <div class="row">
+                                            <ng-container>
+                                                <input type="hidden" formControlName="id" />
+                                                <div class="col-md-2">
+                                                    <mat-form-field appearance="fill">
+                                                        <mat-label for="latitude">{{getTranslationLang('latitude')}}
+                                                        </mat-label>
+                                                        <input matInput formControlName="latitude">
+                                                    </mat-form-field>
+                                                    <div *ngIf="formGroup.controls['latitude'].touched && formGroup.controls['latitude'].invalid"
+                                                        class="error">
+                                                        <div
+                                                            *ngIf="formGroup.controls['latitude'].errors && formGroup.controls['latitude'].errors.required">
+                                                            {{getTranslationLang("latitude_required")}}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <mat-form-field appearance="fill">
+                                                        <mat-label for="longitude">{{getTranslationLang('longitude')}}
+                                                        </mat-label>
+                                                        <input matInput formControlName="longitude">
+                                                    </mat-form-field>
+                                                    <div *ngIf="formGroup.controls['longitude'].touched && formGroup.controls['longitude'].invalid"
+                                                        class="error">
+                                                        <div
+                                                            *ngIf="formGroup.controls['longitude'].errors && formGroup.controls['longitude'].errors.required">
+                                                            {{getTranslationLang("longitude_required")}}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4 mt-2">
+                                                    <button type="submit" class="btn btn-primary"
+                                                        [disabled]="!formGroup?.valid">
+                                                        {{getTranslationLang("load_map")}}</button>
+                                                    <div class="d-inline-block"
+                                                        *ngIf="isMapLoaded && !isDrawing && !isDrawingDone && !isDrawingApply">
+                                                        <button type="button" class="btn btn-primary ml-3"
+                                                            (click)="drawSiteArea()">{{getTranslationLang("define_site_area")}}</button>
+                                                    </div>
+                                                    <div class="d-inline-block"
+                                                        *ngIf="isDrawing && !isDrawingDone && !isDrawingApply">
+                                                        <button type="button" class="btn btn-primary ml-3"
+                                                            (click)="onSiteAreaDelete()">Delete</button>
+                                                        <button type="button" class="btn btn-primary ml-3"
+                                                            (click)="onSiteAreaDone()">Done</button>
+                                                    </div>
+                                                    <div class="d-inline-block"
+                                                        *ngIf="isDrawingDone && !isDrawingApply">
+                                                        <button type="button" class="btn btn-primary ml-3"
+                                                            (click)="onSiteAreaDelete()">Delete</button>
+                                                        <button type="button" class="btn btn-primary ml-3"
+                                                            (click)="onSiteAreaApply()">Apply</button>
+                                                    </div>
+                                                </div>
+                                            </ng-container>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                            <app-maps></app-maps>
+
+                <!-- Map WMS File Upload : Start -->
+                <div class="table-responsive mb-4 mt-4 mr-4 upload-map-config">
+
+                            <span>
+                                <label class="custom-label" for="url">URL</label>
+                                <input type="radio" class="lyr-radio" name="service_select" value="url" checked="true"
+                                    (click)="serviceType($event);" />
+
+                                <label class="custom-label" for="file">File</label>
+                                <input type="radio" class="lyr-radio" name="service_select" value="file"
+                                    (click)="serviceType($event);" />
+                            </span>
+
+                            <div class="col-md-4" *ngIf="uploadMapConfig.formData.type == 'url'">
+                                <label class="custom-label" for="serviceUrl">URL</label>
+                                <input type="text" class="form-control" [(ngModel)]="uploadMapConfig.formData.url" required />
+                                <button class="btn btn-primary col-3 mr-4" (click)="saveMapFromUrl()"
+                                    [disabled]="uploadMapConfig.submit.isFormSubmitted">
+                                    Submit
+                                    <i class="fa fa-circle-o-notch fa-spin" *ngIf="uploadMapConfig.submit.isFormSubmitted"></i>
+                                </button>
+                            </div>
+
+                            <div *ngIf="uploadMapConfig.formData.type == 'file'">
+                                <button type="button" class="btn btn-secondary float-right mr-5 mb-2"
+                                    *ngIf="!uploadMapConfig.isUploadFile"
+                                    (click)="uploadMapFiles();uploadMapConfig.isUploadFile = !uploadMapConfig.isUploadFile">Upload
+                                    File</button>
+
+                                <div class="d-flex mb-4 mr-4 p-2 bg-grey" *ngIf="uploadMapConfig.isUploadFile">
+                                    <span class="col-4">
+                                        <input type="text" class="form-control file-title"
+                                            [ngClass]="{'error': (uploadMapConfig.isFormSubmitted === true && !uploadMapConfig.formData.title)}"
+                                            placeholder="Title is required" [(ngModel)]="uploadMapConfig.formData.title" />
+                                    </span>
+                                    <span class="col-4 kml-sec"
+                                        [ngClass]="{'error': (uploadMapConfig.isFormSubmitted === true && (!uploadMapConfig.formData.file && !uploadMapConfig.updateData.file_name))}">
+                                        <label for="file">{{(uploadMapConfig.isUpdate && !uploadMapConfig.formData.file?.name) ?
+                                            uploadMapConfig.updateData.file_name : (uploadMapConfig.formData.file?.name ?
+                                            uploadMapConfig.formData.file?.name: 'Choose File')}}</label>
+                                        <input type="file" (change)="selectFile($event)" />
+                                    </span>
+                                    <span class="col-4">
+                                        <button class="btn btn-primary col-3 mr-4" (click)="saveUploadedMap()"
+                                            [disabled]="uploadMapConfig.submit.isFormSubmitted">
+                                            Submit
+                                            <i class="fa fa-circle-o-notch fa-spin" *ngIf="uploadMapConfig.submit.isFormSubmitted"></i>
+                                        </button>
+                                        <button class="btn btn-secondary col-3"
+                                            (click)="uploadMapConfig.isUploadFile = false">Cancel</button>
+                                    </span>
+                                </div>
+
+                                <table class="table table-hover color-white dark-table">
+                                    <thead>
+                                        <tr>
+                                            <th *ngFor="let column of uploadMapConfig?.columns">{{column}}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr *ngFor="let config of uploadMapConfig?.configData; let i = index">
+                                            <td> {{config?.title}}</td>
+                                            <td> {{config?.file_name}}</td>
+                                            <td> {{config?.updated_date | date:'medium'}}</td>
+                                            <td>
+                                                <span class="mr-2 cursor-pointer" (click)="editUploadedMapConfig(config)">
+                                                    <i class="fa fa-pencil-square-o" aria-hidden="true"></i>
+                                                </span>
+                                                <span class="cursor-pointer" (click)="deleteUploadedMap(config, i)">
+                                                    <i class="fa fa-trash" aria-hidden="true"></i>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div class="text-center color-white" *ngIf="uploadMapConfig.isLoading">Loading...</div>
+                                <div class="text-center color-white mt-2"
+                                    *ngIf="!uploadMapConfig.isLoading && !uploadMapConfig?.configData?.length">
+                                    No
+                                    Records Found...</div>
+                            </div>
+                        </div> 
+                <!-- Map WMS File Upload : End -->
+                 </div>
+                    </div>
+                </tab> 
+                <tab [heading]="getTranslationLang('allowed_sensors')">
+                    <div class="row p-3 sensor-config">
+                        <ng-container *ngIf="!isLoading">
+                            <div class="col-md-4 sensor-data m-3" *ngFor="let data of systemConfig"
+                                (click)="getCheckedCheckbox(data.sensor_id)">
+                                <input type="checkbox" class="mr-3"
+                                    [checked]="checkedSensors.includes(data.sensor_id)" />
+                                <label>{{data?.sensor_type}}</label>
+                            </div>
+                        </ng-container>
+
+                        <ng-container *ngIf="isLoading" class="text-center pt-4">
+                            <h5 class="col-12 m-4 text-center">{{getTranslationLang("loading")}}...</h5>
+                        </ng-container>
+
+                        <ng-container *ngIf="!isLoading && !systemConfig?.length" class="text-center pt-4">
+                            <h5 class="m-4 col-12 text-center">{{getTranslationLang("no_records_found")}}...</h5>
+                        </ng-container>
+                    </div>
+                    <div class="row p-3 sensor-config">
+                        <div class="col-md-4 update-sec" *ngIf="!isLoading && systemConfig?.length">
+                            <button class="btn btn-primary" (click)="updateConfig()" [disabled]="updateLoader">
+                                {{getTranslationLang("update")}}
+                                <i class="fa fa-circle-o-notch fa-spin" *ngIf="updateLoader"></i>
+                            </button>
+                        </div>
+                    </div>
+                </tab> 
+                <tab [heading]="getTranslationLang('database_management')">
+                <div class="row">
+                    <div class="col-6 dbform mt-3">
+                        <form [formGroup]="dbConfigForm" (ngSubmit)="onSubmitDbconfig()">
+                            <div>
+                                <label class="custom-label pt-2" for="dbname">Database Name </label>
+                                <input type="text" id="dbname" name="dbname" formControlName="dbname"
+                                    placeholder="Database name" class="form-control"
+                                    [ngClass]="{ 'is-invalid': isSubmitted && f.dbname.errors }" />
+
+                                <div *ngIf="isSubmitted && f.dbname.errors" class="invalid-feedback">
+                                    <div *ngIf="f.dbname.errors.required">Database name is required</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="custom-label pt-2" for="hostname">Hostname </label>
+                                <input type="text" id="hostname" name="hostname" formControlName="hostname"
+                                    placeholder="Hostname" class="form-control"
+                                    [ngClass]="{ 'is-invalid': isSubmitted && f.hostname.errors }" />
+
+                                <div *ngIf="isSubmitted && f.hostname.errors" class="invalid-feedback">
+                                    <div *ngIf="f.hostname.errors.required">Hostname is required</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="custom-label pt-2" for="username">Username </label>
+                                <input type="text" id="username" name="username" formControlName="username"
+                                    placeholder="Username" class="form-control"
+                                    [ngClass]="{ 'is-invalid': isSubmitted && f.username.errors }" />
+
+                                <div *ngIf="isSubmitted && f.username.errors" class="invalid-feedback">
+                                    <div *ngIf="f.username.errors.required">Username is required</div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="custom-label pt-2" for="password">Password </label>
+                                <input type="password" id="password" name="password" formControlName="password"
+                                    placeholder="Password" class="form-control"
+                                    [ngClass]="{ 'is-invalid': isSubmitted && f.password.errors }" />
+
+                                <div *ngIf="isSubmitted && f.password.errors" class="invalid-feedback">
+                                    <div *ngIf="f.password.errors.required">Password is required</div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="custom-label pt-2" for="environment">Environment:</label>
+                                <select formControlName="environment" class="form-control">
+                                    <option disabled>Choose Environment</option>
+                                    <option *ngFor="let env of ['Development', 'Production']">{{env}}</option>
+                                </select>
+                                <div *ngIf="f.environment.touched && f.environment.invalid" class="invalid-feedback">
+                                    <div *ngIf="f.environment.errors.required">Environment is required.</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <button type="submit" class="btn btn-primary float-right">Submit</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </tab>
+                <!-- <tab [heading]="getTranslationLang('file_upload')">
+                    <div class="row p-3">
+                        <div class="col-6 dbform">
+                            <div class="excel-converter">
+                                <h6 class="config-header">{{'ROS Config'}}</h6>
+                                <div class="upload-section">
+                                    <input type="file" (change)="onConfigFileChange($event)" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 dbform"> -->
+                <!-- <div class="excel-converter">
+                                <h6 class="config-header">{{getTranslationLang("generate_xls_to_json")}}</h6>
+                                <div class="upload-section">
+                                    <input type="file" (change)="onFileChange($event)" />
+                                </div>
+                            </div> -->
+                <!-- </div>
+                    </div>
+                </tab> -->
+                <tab [heading]="getTranslationLang('zone_asset_assignment')">
+                    <div class="row p-3">
+                        <div class="col-12">
+                            <form class="config-form">
+                                <!-- <div class="row">
+                                        <div class="col-md-3">
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Slew Timeout / Second</mat-label>
+                                            <input matInput placeholder="Ex. 30" value="">
+                                        </mat-form-field>
+                                        </div>
+                                        <div class="col-md-3">
+                                        <mat-form-field class="matinput-full-width" appearance="fill">
+                                            <mat-label>IFF Alarm Diffusion Distance / Meters</mat-label>
+                                            <input matInput matAutosize placeholder="Ex. 60" value="">
+                                        </mat-form-field>
+                                        </div>
+                                        <div class="col-md-3">
+                                        <mat-form-field class="matinput-full-width" appearance="fill">
+                                            <mat-label>AGU Alarm Distance / Meters</mat-label>
+                                            <input matInput placeholder="Ex. 60" value="">
+                                        </mat-form-field>
+                                        </div>
+                                    </div> -->
+
+                                <mat-divider class="pb-3"></mat-divider>
+
+                                <div class="row">
+                                    <ng-scrollbar class="sys-config-map" #scrollable track="all"
+                                        pointerEventsMethod="scrollbar">
+                                        <div class="col-md-12 pb-3" *ngFor="let zone of zoneWiseData">
+                                            <fieldset>
+                                                <legend>{{getTranslationLang("zone")}} - {{zone?.zone_area}}</legend>
+                                                <div class="row pl-4">
+                                                    <mat-card>
+                                                        <mat-card-header>
+                                                            <mat-card-title>Radar TI Map</mat-card-title>
+                                                        </mat-card-header>
+                                                        <mat-card-content>
+                                                            <div class="row">
+                                                                <div class="col-md-6">
+                                                                    <mat-form-field appearance="fill">
+                                                                        <mat-label>Radar</mat-label>
+                                                                        <mat-select name="radar"
+                                                                            [(value)]="zone.selected_options.radar_id"
+                                                                            (selectionChange)="selectSensorType($event.value, 'radar', zone?.zone_area)">
+                                                                            <ng-container
+                                                                                *ngFor="let sensor of sensorsData.radorData">
+                                                                                <mat-option [disabled]="sensor.selected"
+                                                                                    [value]="sensor.sensor_id">
+                                                                                    {{sensor.sensor_id}} -
+                                                                                    {{sensor.sensor_type}}
+                                                                                </mat-option>
+                                                                            </ng-container>
+                                                                        </mat-select>
+                                                                    </mat-form-field>
+                                                                </div>
+                                                                <div class="col-md-6">
+                                                                    <mat-form-field appearance="fill">
+                                                                        <mat-label>TI</mat-label>
+                                                                        <mat-select name="ti_camera"
+                                                                            [(value)]="zone.selected_options.ti_id"
+                                                                            (selectionChange)="selectSensorType($event.value, 'ti', zone?.zone_area)">
+                                                                            <ng-container
+                                                                                *ngFor="let sensor of sensorsData.tiData">
+                                                                                <mat-option [disabled]="sensor.selected"
+                                                                                    [value]="sensor.sensor_id">
+                                                                                    {{sensor.sensor_id}} -
+                                                                                    {{sensor.sensor_type}}
+                                                                                </mat-option>
+                                                                            </ng-container>
+                                                                        </mat-select>
+                                                                    </mat-form-field>
+                                                                </div>
+                                                            </div>
+                                                        </mat-card-content>
+                                                    </mat-card>
+
+                                                    <mat-card>
+                                                        <mat-card-header>
+                                                            <mat-card-title>UAV Map</mat-card-title>
+                                                        </mat-card-header>
+                                                        <mat-card-content>
+                                                            <mat-form-field appearance="fill">
+                                                                <mat-label>UAV</mat-label>
+                                                                <mat-select name="uav"
+                                                                    [(value)]="zone.selected_options.uav_id"
+                                                                    (selectionChange)="selectSensorType($event.value, 'uav', zone?.zone_area)">
+                                                                    <ng-container
+                                                                        *ngFor="let item of sensorsData.uavData">
+                                                                        <mat-option [disabled]="item.selected"
+                                                                            [value]="item.uav_id">
+                                                                            UAV - {{item.uav_id}}
+                                                                        </mat-option>
+                                                                    </ng-container>
+                                                                </mat-select>
+                                                            </mat-form-field>
+                                                        </mat-card-content>
+                                                    </mat-card>
+
+                                                    <mat-card>
+                                                        <mat-card-header>
+                                                            <mat-card-title>UGV Map</mat-card-title>
+                                                        </mat-card-header>
+                                                        <mat-card-content>
+                                                            <mat-form-field appearance="fill">
+                                                                <mat-label>UGV</mat-label>
+                                                                <mat-select name="ugv"
+                                                                    [(value)]="zone.selected_options.ugv_id"
+                                                                    (selectionChange)="selectSensorType($event.value, 'ugv', zone?.zone_area)">
+                                                                    <ng-container
+                                                                        *ngFor="let item of sensorsData.ugvData">
+                                                                        <mat-option [disabled]="item.selected"
+                                                                            [value]="item.ugv_id">
+                                                                            UGV - {{item.ugv_id}}
+                                                                        </mat-option>
+                                                                    </ng-container>
+                                                                </mat-select>
+                                                            </mat-form-field>
+                                                        </mat-card-content>
+                                                    </mat-card>
+                                                </div>
+                                            </fieldset>
+                                        </div>
+                                    </ng-scrollbar>
+
+                                    <div class="col-md-12">
+                                        <div class="mt-2 mr-5 float-right">
+                                            <button mat-raised-button class="mr-2" (click)="onCancel()">Cancel</button>
+                                            <button mat-raised-button color="primary"
+                                                (click)="saveMappedConfig()">Save</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </tab>
+                <tab *ngIf="mccsUsers?.isSuperUser" [heading]="getTranslationLang('active_time_config')">
+                    <div class="row p-3">
+                        <div class="col-12">
+                            <form [formGroup]="timeConfigForm" (ngSubmit)="onSubmitTimeconfig()">
+                                <div class="form-group">
+                                    <div class="row">
+                                        <input type="hidden" formControlName="id" />
+                                        <div class="col-3 dbform mt-3">
+                                            <mat-form-field appearance="fill">
+                                                <mat-label for="start_time">Start Time</mat-label>
+                                                <input matInput type="datetime-local" id="start_time" name="start_time"
+                                                    formControlName="start_time" class="datePicker"
+                                                    [ngClass]="{ 'is-invalid': isSubmitted && atc.start_time.errors }">
+                                            </mat-form-field>
+
+                                            <!-- <label class="custom-label pt-2" for="start_time">Start Time </label>
+                                            <input type="datetime-local" id="start_time" name="start_time"
+                                                formControlName="start_time" placeholder="Start Time"
+                                                class="form-control datePicker"
+                                                [ngClass]="{ 'is-invalid': isSubmitted && atc.start_time.errors }" /> -->
+
+                                            <div *ngIf="isSubmitted && atc.start_time.errors" class="invalid-feedback">
+                                                <div *ngIf="atc.start_time.errors.required">Start Time is required</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-3 dbform mt-3">
+                                            <mat-form-field appearance="fill">
+                                                <mat-label for="end_time">End Time</mat-label>
+                                                <input matInput type="datetime-local" id="end_time" name="end_time"
+                                                    formControlName="end_time" class="datePicker"
+                                                    [ngClass]="{ 'is-invalid': isSubmitted && atc.end_time.errors }">
+                                            </mat-form-field>
+
+                                            <!-- <label class="custom-label pt-2" for="end_time">End Time </label>
+                                            <input type="datetime-local" id="end_time" name="end_time"
+                                                formControlName="end_time" placeholder="End Time"
+                                                class="form-control datePicker"
+                                                [ngClass]="{ 'is-invalid': isSubmitted && atc.end_time.errors }" /> -->
+
+                                            <div *ngIf="isSubmitted && atc.end_time.errors" class="invalid-feedback">
+                                                <div *ngIf="atc.end_time.errors.required">End Time is required</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-3 dbform mt-3">
+                                            <mat-form-field appearance="fill">
+                                                <mat-label>Session Timeout</mat-label>
+                                                <mat-select name="session_timeout" formControlName="session_timeout">
+                                                    <mat-option value="1h">1 Hour</mat-option>
+                                                    <mat-option value="2h">2 Hours</mat-option>
+                                                    <mat-option value="3h">3 Hours</mat-option>
+                                                    <mat-option value="4h">4 Hours</mat-option>
+                                                    <mat-option value="5h">5 Hours</mat-option>
+                                                    <mat-option value="6h">6 Hours</mat-option>
+                                                    <mat-option value="7h">7 Hours</mat-option>
+                                                    <mat-option value="8h">8 Hours</mat-option>
+                                                    <mat-option value="9h">9 Hours</mat-option>
+                                                    <mat-option value="10h">10 Hours</mat-option>
+                                                    <mat-option value="11h">11 Hours</mat-option>
+                                                    <mat-option value="12h">12 Hours</mat-option>
+                                                </mat-select>
+                                            </mat-form-field>
+
+                                            <div *ngIf="isSubmitted && atc.session_timeout.errors"
+                                                class="invalid-feedback">
+                                                <div *ngIf="atc.session_timeout.errors.required">Session Timeout is
+                                                    required</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-1 dbform mt-3">
+                                            <button type="submit" class="btn btn-primary">Submit</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </tab>
+                <tab *ngIf="mccsUsers?.isDeveloper" [heading]="getTranslationLang('assignment_rules')">
+                    <div class="row p-3">
+                        <div class="col-12">
+                            <h6 class="color-white config-header">
+                                {{getTranslationLang('auto')}} {{getTranslationLang('mode')}}
+                            </h6>
+                            <div class="custom-control custom-checkbox custom-control-inline color-white"
+                                *ngFor="let assignment of definedAssignments?.data; let i = index">
+                                <input class="custom-control-input" type="checkbox" [id]="'assignCheckbox_'+i"
+                                    [value]="assignment.value" (click)="getCheckedAssignments(assignment.value)"
+                                    [checked]="checkedAssignments.includes(assignment.value)">
+                                <label class="custom-control-label"
+                                    [for]="'assignCheckbox_'+i">{{assignment.title}}</label>
+                            </div>
+
+                            <div class="custom-control custom-control-inline">
+                                <button class="btn btn-primary" (click)="saveAssignmentRules()"
+                                    [disabled]="updateLoader">
+                                    {{getTranslationLang("save")}}
+                                    <i class="fa fa-circle-o-notch fa-spin" *ngIf="updateLoader"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </tab>
+            </tabset>
+        </div>
+    </div>
+</div>

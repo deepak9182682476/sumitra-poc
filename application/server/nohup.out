@@ -1,0 +1,24 @@
+
+> app-server@1.0.0 start /home/user/sumitra-ws/Server
+> nodemon server
+
+[33m[nodemon] 2.0.7[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,json[39m
+[32m[nodemon] starting `node server.js`[39m
+Server listening on http://localhost:3001
+Connection has been established successfully.
+Alarm table created
+Alarm Events table created
+Alarm Tail table created
+Alarm videos table created
+Groups table is connected
+Notification table is created
+Response master table created
+User role table is connected
+Response Video table created
+Notification table is created
+User table is connected
+Site dim table created
+Socket Connection Error: Error: connect EHOSTUNREACH 192.168.168.57:3250

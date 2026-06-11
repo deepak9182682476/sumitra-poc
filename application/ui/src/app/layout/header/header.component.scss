@@ -1,0 +1,367 @@
+@import "../../../assets/css/variable.scss";
+.search-section {
+    select {
+        padding: 10px;
+        background: var(--box-bg);
+        color: var(--color);
+        font-size: calc(0.75rem + var(--custom-font-size));
+        width: 150px;
+        display: inline-block;
+    }
+    input[type="date"] {
+        border-width: thin;
+        border: 1px solid var(--border-color);
+        background-color: var(--box-bg);
+        color: var(--color);
+        width: 150px;
+        height: 38px;
+        font-size: calc(0.75rem + var(--custom-font-size));
+        display: inline-block;
+    }
+    .mr-10 {
+        margin-right: 12px;
+    }
+    .ml-7 {
+        margin-left: 2px;
+    }
+    input[type="date"] {
+        position: relative;
+        padding: 6px;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        color: transparent;
+        background: none;
+        z-index: 1;
+    }
+    input[type="date"]:before {
+        color: transparent;
+        background: none;
+        display: block;
+        font-family: "FontAwesome";
+        content: "\f073";
+        /* This is the calendar icon in FontAwesome */
+        width: 15px;
+        height: 20px;
+        position: absolute;
+        top: 9px;
+        right: 6px;
+        color: var(--color);
+    }
+    .mr-6 {
+        margin-right: 6px;
+    }
+}
+
+button:focus {
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.dropdown-menu {
+    height: auto !important;
+    background: var(--box-bg) 0% 0% no-repeat padding-box;
+    box-shadow: 0px 3px 6px var(--box-shadow-color);
+    opacity: 1;
+    li {
+        border-bottom: 1px solid var(--border-color);
+        &:nth-last-child(1) {
+            border-bottom: 0;
+        }
+
+        a {
+            color: var(--bg1-color);
+        }
+        a:hover,
+        a:focus {
+            background-color: var(--box-bg) !important;
+            color: var(--color);
+        }
+    }
+}
+
+.spinner {
+    height: 15px;
+    width: 15px;
+}
+
+.filter-btn {
+    height: 30px;
+    font-size: 10px !important;
+}
+
+.mr-68 {
+    margin-right: 68px;
+}
+
+.color-white {
+    color: var(--color);
+    padding-left: 35px;
+}
+
+.back-icon {
+    cursor: pointer;
+    z-index: 999;
+    outline: none;
+    position: relative;
+    left: 8%;
+    top: 30%;
+    color: var(--color);
+}
+
+.f-13 {
+    font-size: 13px !important;
+}
+
+.sign-in-icon {
+    font-size: 20px;
+    color: var(--wcolor);
+    cursor: pointer;
+}
+
+.avatar-circle {
+    width: 30px;
+    height: 30px;
+    background-color: var(--avatar-color);
+    opacity: 1;
+    text-align: center;
+    border-radius: 50%;
+    -webkit-border-radius: 50%;
+    -moz-border-radius: 50%;
+
+    a {
+        display: inline-block;
+        width: inherit;
+        height: inherit;
+        text-decoration: none;
+    }
+}
+
+.initials {
+    position: relative;
+    top: 6px; /* 25% of parent */
+    font-size: 15px; /* 50% of parent */
+    line-height: 15px; /* 50% of parent */
+    color: var(--color);
+    font-weight: bold;
+}
+
+.close {
+    outline: var(--bg1-color);
+}
+
+.box-shadow-none,
+.box-shadow-none:active {
+    box-shadow: none;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+.color-red {
+    color: #e56b77;
+}
+
+.search-alarms {
+    position: relative;
+    right: 3%;
+}
+
+.f-12 {
+    font-size: 12px !important;
+}
+
+.save-search {
+    border: 1px solid var(--border-color);
+    color: var(--color);
+    
+    &:hover, :focus {
+        border: 1px solid var(--border-color);
+        color: var(--color);
+    }
+    font-size: calc(0.75rem + var(--custom-font-size));
+}
+
+.saved-search-list {
+    color: var(--color);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.w-100 {
+    width: 100%;
+}
+
+.color-white {
+    color: var(--color) !important;
+}
+
+.saved-searches {
+    color: var(--color);
+    font-size: 12px;
+    margin-left: 13px;
+}
+
+.h-line {
+    width: 95%;
+    background: var(--border-color);
+    height: 2px;
+}
+
+.search-sec {
+    max-height: 170px;
+    overflow: scroll;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.healthPopup, .sysNotifyPopup {
+    background-color: var(--box-bg);
+
+    .popover-arrow.arrow::after{
+        border-bottom-color: var(--rcolor);
+    }
+    .popover-body {
+        background-color: var(--box-bg);
+        color: var(--color) !important;
+
+        span.acn-info {
+            position: absolute;
+            top: 0;
+            right: 28px;
+        }
+
+        ng-scrollbar.notifications {
+            --scrollbar-size: 3px;
+            --scrollbar-thumb-color: #00b9ff;
+            --scrollbar-hover-size: 5px;
+            --scrollbar-track-color: var(--border-color);
+            --scrollbar-border-radius: 3px;
+            border-radius: 3px;
+        }
+
+        ng-scrollbar.layer-list-items {
+            --scrollbar-size: 3px;
+            --scrollbar-thumb-color: #00b9ff;
+            --scrollbar-hover-size: 5px;
+            --scrollbar-track-color: var(--border-color);
+            --scrollbar-border-radius: 3px;
+            border-radius: 3px;
+        }
+    }
+}
+
+.cdk-overlay-container, .cdk-overlay-pane {
+    z-index: 9999 !important;
+}
+
+.mat-form-field-appearance-fill {
+    .mat-focused {
+      color: var(--select-label);
+    }
+  
+    .mat-form-field-flex {
+      background-color: var(--box-bg);
+      color: var(--box-bg);
+      font-size: 12px;
+      // width: 220px;
+  
+      .mat-input-element {
+        color: var(--color);
+      }
+    }
+    .mat-form-field-underline::before {
+      background-color: var(--color);
+    }
+}
+
+.mat-form-field-label,
+.mat-form-field.mat-focused .mat-form-field-label {
+    color: var(--select-label);
+}
+
+.mat-form-field.mat-focused .mat-form-field-ripple {
+    background-color: var(--color);
+    color: var(--color);
+}
+
+.mat-select {
+    .mat-select-value {
+        color: var(--color);
+    }
+
+    .mat-select-arrow-wrapper {
+        .mat-select-arrow {
+        color: var(--color);
+        }
+    }
+}
+        
+/* For PC with minimum resolution till your PC resolution */
+@media screen and (min-width: 769px) and (max-width: 1400px) {
+    ng-scrollbar.notifications {
+        height: 20vh !important;
+        max-height: 20vh !important;
+        width: 19.3vw;
+        max-width: 19.3vw;
+    }
+
+    ng-scrollbar.layer-list-items {
+        height: 20vh !important;
+        max-height: 20vh !important;
+        width: 9vw;
+        max-width: 9vw;
+    }
+
+    ng-scrollbar.canvasImage {
+        height: 52vh !important;
+        max-height: 52vh !important;
+        width: 47vw;
+        max-width: 47vw;
+    }
+}
+
+/* For Screen Higher than 1400px */
+@media screen and (min-width: 1401px) {    
+    ng-scrollbar.notifications {
+        height: 15vh !important;
+        max-height: 15vh !important;
+        width: 13.5vw;
+        max-width: 13.5vw;
+    }
+
+    ng-scrollbar.layer-list-items {
+        height: 75vh !important;
+        max-height: 75vh !important;
+        width: 47vw;
+        max-width: 47vw;
+    }
+
+    ng-scrollbar.canvasImage {
+        height: 92vh !important;
+        max-height: 92vh !important;
+        width: 47vw;
+        max-width: 47vw;
+    }
+}
+
+.blink {
+    animation: blinker 1.5s linear infinite;
+  }
+  
+  @keyframes blinker {
+    50% {
+      opacity: 0;
+    }
+  }
+
+.logoDivCLs{
+    max-width: 26% !important;
+}
+
+.headerCol3Cls{
+    max-width: 43% !important;
+}
+
+.headerCol2Cls{
+    max-width: 29% !important;
+}

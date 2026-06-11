@@ -1,0 +1,64 @@
+/* You can add global styles to this file, and also import other style files */
+
+@import '../node_modules/font-awesome/css/font-awesome.css';
+@import "~bootstrap/dist/css/bootstrap.css";
+@import '~@fortawesome/fontawesome-free/css/all.css';
+@import '~@fortawesome/fontawesome-free/scss/fontawesome';
+@import '~@fortawesome/fontawesome-free/scss/regular';
+@import './assets/css/main';
+@import "~@angular/material/prebuilt-themes/indigo-pink.css";
+
+body,
+html {
+    padding: 0;
+    margin: 0;
+    height: 100%;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    overflow-y: hidden;
+    /* Hide vertical scrollbar */
+    overflow-x: hidden;
+    /* Hide horizontal scrollbar */
+}
+html, body { height: 100%; }
+body { margin: 0; }
+
+:root {
+    --custom-font-size: 0rem;
+}
+
+$bg-color: var(--box-bg);
+$font-color: var(--color);
+
+.modal-content {
+  .modal-header {
+    background: $bg-color 0% 0% no-repeat padding-box;
+    color: $font-color;
+
+    .close {
+      color: $font-color;
+      opacity: 1;
+    }
+  }
+
+  .modal-body {
+    background-color: $bg-color;
+    color: $font-color;
+
+    form {
+      .form-group {
+        input,
+        select {
+          color: $font-color;
+          background-color: $bg-color;
+        }
+
+        .error p {
+          color: #ff0000;
+        }
+      }
+    }
+  }
+}

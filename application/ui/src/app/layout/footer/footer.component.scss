@@ -1,0 +1,20 @@
+.footer-logo {
+    position: fixed;
+    padding: 2px;
+    background: var(--bg6);
+    z-index: 1;
+}
+
+/* For PC with minimum resolution till your PC resolution */ 
+@media screen and (min-width: 769px) and (max-width: 1400px) {
+    .footer-logo {
+        bottom: 0px;
+    }
+}
+
+/* For Screen Higher than 1400px */ 
+@media screen and (min-width: 1401px) {
+    .footer-logo {
+        bottom: 0px;
+    }
+}   

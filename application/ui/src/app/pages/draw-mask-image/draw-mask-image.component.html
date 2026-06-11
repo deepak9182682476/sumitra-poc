@@ -1,0 +1,46 @@
+<div class="row pl-5 pt-2 pb-2">
+    <div class="col-md-3">
+        <label class="custom-label" for="sensorType">Choose Camera</label>
+        <select class="form-control" [(ngModel)]="sensorType">
+            <option value="">Choose Camera</option>
+            <option *ngFor="let sensor of sensors_list; let i = index;" [value]="sensor.ip">
+                {{sensor.sensor_type}} - {{sensor.ip}}
+            </option>
+        </select>
+    </div>
+    <div class="col-md-3" *ngIf="sensorType">
+        <label class="custom-label" for="shapeType">Choose Shape</label>
+        <select class="form-control" [(ngModel)]="shapeType">
+            <option value="">Choose Shape</option>
+            <option value="rectangle">Rectangle</option>
+            <option value="circle">Circle</option>
+        </select>
+    </div>
+</div>
+
+<div class="row pl-5 pt-2 pb-2" *ngIf="shapeType">
+    <div class="col-md-3">
+        <label class="custom-label" for="canvasWidth">Width</label>
+        <input type="text" class="form-control" [(ngModel)]="canvasWidth" required />
+    </div>
+    <div class="col-md-3">
+        <label class="custom-label" for="canvasHeight">Height</label>
+        <input type="text" class="form-control" [(ngModel)]="canvasHeight" required />
+    </div>
+    <div class="col-md-2" *ngIf="canvasWidth && canvasHeight">
+        <button class="btn btn-sm btn-primary mt-4" (click)="showImage()">Show Image</button>
+    </div>
+</div>
+
+<div class="row pl-5 pt-2 pb-2">
+    <div class="col-md-12">
+        <ng-scrollbar class="canvasImage" #scrollable track="all" pointerEventsMethod="scrollbar">
+            <canvas #canvas [hidden]="!showCanvasArea" (mousedown)="mdEvent($event)" (mouseup)="muEvent($event)"
+                (mousemove)="mmEvent($event)"></canvas>
+        </ng-scrollbar>
+    </div>
+
+    <div class="col-md-12 pt-2" *ngIf="sensorType && shapeType && showCanvasArea">
+        <button class="btn btn-primary" (click)="saveCanvasAsImage()">Save</button>
+    </div>
+</div>

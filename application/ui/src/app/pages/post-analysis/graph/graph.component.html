@@ -1,0 +1,167 @@
+<div *ngIf="activeTab === 'map'">
+  <!-- <app-postanalysis-map></app-postanalysis-map>
+     -->
+  <app-maps [isPostAnalysis]="true"></app-maps>
+</div>
+
+<p
+  class="pb-4 text-center mb-75"
+  *ngIf="
+    (!isLoading &&
+      (!postAnalysisData?.length || !getChartData?.length) &&
+      activeTab === 'graph') ||
+    (getAlarmChartInfo?.enableNoRecords && activeTab === 'graph')
+  "
+>
+  {{ getTranslationLang("no_records_found") }} ...
+</p>
+
+<div class="pb-4 text-center mt-4" *ngIf="isLoading">
+  {{ getTranslationLang("loading") }} ...
+</div>
+
+<div class="col-12 row graph-content mb-4">
+  <highcharts-chart
+    [Highcharts]="highcharts"
+    [options]="chartOptions"
+    [(update)]="barChartUpdate"
+    id="barchart"
+    [callbackFunction]="getInstanceCharts"
+    *ngIf="
+      activeTab === 'graph' &&
+      getChartData?.length &&
+      !getAlarmChartInfo?.enableNoRecords &&
+      !isBarChartLoading
+    "
+  >
+  </highcharts-chart>
+
+  <!-- <highcharts-chart
+    [Highcharts]="highcharts"
+    [options]="awsChartOptions"
+    [(update)]="barChartUpdate"
+    id="awschart"
+    *ngIf="activeTab === 'graph'"
+  >
+  </highcharts-chart> -->
+
+  <div class="popup-overlay">
+    <div class="popup-content">
+      <div *ngIf="!getAlarmChartInfo.enableChartPopup">
+        <div style="border-bottom: 1px solid grey; padding: 5px">
+          {{ getTranslationLang("total_alarms") }} :
+          {{ getAlarmChartInfo?.alarmsList?.length }}
+          <span (click)="closePopup()" class="alarms-list-close-btn">
+            <i aria-hidden="true" class="f-15 fa fa-remove"></i>
+          </span>
+        </div>
+        <div
+          style="border-bottom: 1px solid grey; padding: 5px"
+          *ngFor="let item of getAlarmChartInfo.alarmsList"
+        >
+          {{ item }} &nbsp;
+          <span
+            class="cursor-pointer"
+            (click)="getAlarmChartInfo.enableChartPopup = true"
+            ><i class="fa fa-arrow-right"></i
+          ></span>
+        </div>
+      </div>
+
+      <!-- Alarm Info -->
+      <div *ngIf="getAlarmChartInfo.enableChartPopup">
+        <div class="main-content">
+          <span
+            class="float-left ml-2 mt-1 cursor-pointer"
+            (click)="getAlarmChartInfo.enableChartPopup = false"
+            *ngIf="!getAlarmChartInfo.hideCloseBtn"
+          >
+            <i class="fa fa-arrow-left"></i>
+          </span>
+          <span class="float-right mr-2 pb-2 close-btn" (click)="closePopup()">
+            <i aria-hidden="true" class="f-15 fa fa-remove"></i>
+          </span>
+          <div class="popup-wrapper">
+            <table>
+              <tr>
+                <td>{{ getTranslationLang("alarm_id") }}</td>
+                <td>{{ getAlarmChartInfo.alarmInfo.alarm_id }}</td>
+              </tr>
+              <tr>
+                <td>{{ getTranslationLang("zone_id") }}</td>
+                <td>
+                  {{
+                    getAlarmChartInfo.alarmInfo.zone_id
+                      ? getAlarmChartInfo.alarmInfo.zone_id
+                      : "--"
+                  }}
+                </td>
+              </tr>
+              <tr>
+                <td>{{ getTranslationLang("latitude") }}</td>
+                <td>
+                  {{ getAlarmChartInfo.alarmInfo.location.coordinates[0] }}
+                </td>
+              </tr>
+              <tr>
+                <td>{{ getTranslationLang("longitude") }}</td>
+                <td>
+                  {{ getAlarmChartInfo.alarmInfo.location.coordinates[1] }}
+                </td>
+              </tr>
+              <tr>
+                <td>{{ getTranslationLang("type") }}</td>
+                <td>
+                  {{
+                    getAlarmChartInfo.alarmInfo.alarm_type === 0 ||
+                    getAlarmChartInfo.alarmInfo.alarm_type === 2
+                      ? getTranslationLang("early_warning")
+                      : getAlarmChartInfo.alarmInfo.alarm_type === 1
+                      ? getTranslationLang("confirmatory_alarm")
+                      : "--"
+                  }}
+                </td>
+              </tr>
+              <tr>
+                <td>{{ getTranslationLang("priority") }}</td>
+                <td>--</td>
+              </tr>
+              <tr>
+                <td>{{ getTranslationLang("video_record") }}</td>
+                <td>--</td>
+              </tr>
+              <tr>
+                <td>{{ getTranslationLang("hours") }}</td>
+                <td>--</td>
+              </tr>
+              <tr>
+                <td>{{ getTranslationLang("sensor_id") }}</td>
+                <td>--</td>
+              </tr>
+            </table>
+            <div
+              class="pb-2 text-uppercase"
+              style="background: #00000078; height: 38px"
+            >
+              <u>
+                <a href="#">{{ getTranslationLang("video_link") }}</a></u
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div
+  class="col-8 row graph-content mb-5 ml-16"
+  *ngIf="!getAlarmChartInfo?.enableNoRecords && activeTab === 'graph'"
+>
+  <highcharts-chart
+    [Highcharts]="highcharts"
+    [options]="pieChartOptions"
+    [(update)]="pieChartUpdate"
+    *ngIf="activeTab === 'graph' && pieChartOptions?.series?.length"
+  ></highcharts-chart>
+</div>

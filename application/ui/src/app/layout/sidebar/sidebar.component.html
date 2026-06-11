@@ -1,0 +1,174 @@
+<aside class="sidebar shadow-sm">
+    <nav class="sidebar-menu pb-3">
+        <div class="sidebar-header">
+            <h4 class="col-6 d-inline-block">
+                {{getTranslationLang('alarms_list')}}
+                ({{alarms_list['Confirmatory_Alarm']?.length + alarms_list['Early_Alarm']?.length}})
+            </h4>
+            <input type="text" class="col-6 alarm-list search-alarm form-control" [(ngModel)]="searchValue"
+                [placeholder]="getTranslationLang('search_alarm')" />
+        </div>
+        <ng-scrollbar #scrollable track="all" pointerEventsMethod="scrollbar">
+            <div class="p-0" *ngFor="let obj of alarms_list | keyvalue;let i = index;">
+                <ul class="menu-items">
+                    <li *ngIf="obj.key === 'Confirmatory_Alarm'">
+                        <h6>{{getTranslationLang("alarms")}} ({{obj.value.length}})
+                            <a *ngIf='mccsUsers?.isOperator || mccsUsers?.isSuperUser' href="javascript:void(0)" class="clear-all float-right"
+                                (click)="clearAll('ca')">{{getTranslationLang('clear_all')}}</a>
+                                <a href="javascript:void(0)" class="clear-all float-right"
+                                (click)="clearAllTracks()">{{getTranslationLang('clear_tracks')}}</a>
+                            </h6>
+
+                        <p class="text-center" *ngIf="!loadingInfo?.gettingAlarmData && !obj.value.length">
+                            {{getTranslationLang("no_alarms_found")}}</p>
+
+                        <p class="text-center" *ngIf="loadingInfo?.gettingAlarmData">
+                            {{getTranslationLang("loading")}}...
+                        </p>
+
+                        <div class="alr-items pb-2"
+                            *ngFor="let item of obj.value | search:'alarm_id,zone_id,formatted_zone_id,agu_no,radar_id,id':searchValue;let caIndex=index;">
+                            <p class="alarm_id">
+                                {{item?.alarm_id ? getTranslationLang("alarm") + ' - ' + item?.id : '--'}}</p>
+                            <p>{{"zone name : Kochi"}}
+                            </p>
+                            <p> Track ID : {{item?.event_id}}
+                            </p>
+                            <p>{{getTranslationLang("sensors_triggered")}}:
+                                {{item?.sensors_triggered ? item?.sensors_triggered : '--'}}</p>
+                           <!-- <p>{{getTranslationLang("category")}}:
+                                {{item?.object_identified ? item?.object_identified : '--'}}</p>
+                            <p>{{getTranslationLang("agu")}}:
+                                {{item?.pole_number ? item?.pole_number : '--'}}</p>-->
+                            <!-- <p>Display Track:
+                                <input type="checkbox" name="display-track" value="false"
+                                    (click)="displayRadarTrack($event);" class="mr-2 radar-checkbox" /></p>  -->
+
+
+                            <!-- Enable Only When Signed In -->
+                            <div class="mrinfo" *ngIf="isSignedIn">
+
+                                <div *ngIf="mccsUsers?.isOperator || mccsUsers?.isSuperUser">
+                                    <div *ngIf="alarmIndexes[getAlarmIndex(item.alarm_id)]?.event_type == 0">
+                                        <span class="circular-shape-ack pr-2"
+                                            (click)="acknowledgeClearAlarm(item, true, caIndex)">
+                                            <i aria-hidden="true" class="fa fa-check acknowledge"
+                                                title="{{getTranslationLang('acknowledge')}}"
+                                                [disabled]="isLoading === item.alarm_id">
+                                                <!-- <span class="spinner-border ml-1"
+                                                    *ngIf="isLoading === item.alarm_id"></span> -->
+                                            </i>
+                                        </span>
+                                        <span>
+                                            <img title="Slew TI" class="theme-icon align-top" width="20" height="20"
+                                                src="assets/sensor-icons/TI-26px.svg"
+                                                (click)="showSlewTI(item,getFilterData, eaIndex);" />
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div *ngIf="mccsUsers?.isOperator || mccsUsers?.isSuperUser">
+                                    <div *ngIf="alarmIndexes[getAlarmIndex(item.alarm_id)]?.event_type > 0">
+                                        <span class="circular-shape-acked pr-3 mr-3">
+                                            <i aria-hidden="true" class="fa fa-check acknowledged"
+                                                title="{{getTranslationLang('acknowledged')}}"></i>
+                                        </span>
+                                        <span class="circular-shape-cl pr-2"
+                                            (click)="acknowledgeClearAlarm(item, false, caIndex)">
+                                            <i aria-hidden="true" class="fa fa-times fa-2x clear"
+                                                title="{{getTranslationLang('clear_alarm')}}"
+                                                [disabled]="isLoading === item.alarm_id">
+                                                <!-- <span class="spinner-border ml-1"
+                                                    *ngIf="isLoading === item.alarm_id"></span> -->
+                                            </i>
+                                        </span>
+                                    </div>
+
+                                    <!-- <div *ngIf="alarmIndexes[getAlarmIndex(item.alarm_id)]?.event_type === 1" class="mt-2 float-right mr-2">
+                                            <a href="#">
+                                                MORE INFO
+                                                <img class="theme-icon" width="7" height="7" src="assets/Right-Arrow.svg" />
+                                            </a>
+                                        </div> -->
+                                </div>
+                            </div>
+                            <ul class="navbar-nav flex-row justify-content-end action-info mt-2"
+                                *ngIf="alarmIndexes[getAlarmIndex(item.alarm_id)]?.event_type > 0 && (mccsUsers?.isOperator || mccsUsers?.isSuperUser) && (modeData === 'manual')">
+                                <li class="nav-item" *ngFor="let assignment of assignments; let assignmentIndex=index;">
+                                    <button class="btn nav-link"
+                                    [disabled]="((assignment.position && assignment.position.indexOf(caIndex) !== -1) && 
+                                    assignment.isAssigned && item.isAssigned)">
+                                        <!-- [disabled]="((assignment.position && assignment.position.indexOf(caIndex) !== -1) && 
+                                          assignment.isAssigned && item.isAssigned) ||
+                                          (enableDisableAssignments.alarmid.includes(item?.alarm_id) && 
+                                          enableDisableAssignments.eventData[enableDisableAssignments.alarmid.indexOf(item?.alarm_id)]?.assignmentType?.includes(assignment.type))"> -->
+                                        <img title="{{assignment.title}}" class="theme-icon" width="28" height="28"
+                                            src="{{assignment.src}}"
+                                            (click)="assignToResponse_map(item, item?.zone_id, assignment.type, assignmentIndex, caIndex,'ca');" />
+                                            
+                                    </button>
+                                </li>
+                            </ul>
+                            <!-- </ng-template> -->
+
+                        </div>
+                    </li>
+
+                   <!--<li *ngIf="obj.key === 'Early_Alarm'" (mouseleave)="enabeEarlyAlarmClearBtn = null;">
+                        <h6>{{getTranslationLang("early_alarm")}} ({{obj.value.length}})
+                            <a *ngIf='mccsUsers?.isOperator || mccsUsers?.isSuperUser' href="javascript:void(0)" class="clear-all float-right"
+                                (click)="clearAll('ea')">{{getTranslationLang('clear_all')}}</a>
+                            <a href="javascript:void(0)" class="clear-all float-right"
+                                (click)="clearAllTracks()">{{getTranslationLang('clear_tracks')}}</a>
+                        </h6>
+                        <p class="text-center" *ngIf="!loadingInfo?.gettingAlarmData && !obj.value.length">
+                            {{getTranslationLang("no_alarms_found")}}</p>
+
+                        <p class="text-center" *ngIf="loadingInfo?.gettingAlarmData">
+                            {{getTranslationLang("loading")}}...
+                        </p>
+
+
+                        <div class="alr-items"
+                            *ngFor="let item of obj.value | search:'alarm_id,zone_id,agu_no,radar_id,id':searchValue; let eaIndex= index;">
+                            <div class="mrinfo" *ngIf="isSignedIn">
+                                <div *ngIf="mccsUsers?.isOperator || mccsUsers?.isSuperUser">
+                                    <span *ngIf="modeData === 'manual'" class="pr-3">
+                                        <img title="Assign UAV" class="theme-icon align-top" width="20" height="20"
+                                            src="assets/sensor-icons/UAV-26px.svg"
+                                            (click)="assignToResponse(item, item?.zone_id, 'uav', assignmentIndex, eaIndex,'ea');" />
+                                    </span>
+                                    <span *ngIf="modeData === 'manual'" class="pr-3">
+                                        <img title="Slew TI" class="theme-icon align-top" width="20" height="20"
+                                            src="assets/sensor-icons/TI-26px.svg"
+                                            (click)="showSlewTI(item, eaIndex);" />
+                                    </span>
+
+                                    <span class="circular-shape-sm pr-2"
+                                        (click)="acknowledgeClearAlarm(item, false, eaIndex)">
+                                        <i aria-hidden="true" class="fa fa-times fa-1x clear"
+                                            title="{{getTranslationLang('clear_alarm')}}">
+                                            <span class="spinner-border ml-1"
+                                                *ngIf="isLoading === item.alarm_id"></span>
+                                        </i>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="d-inline-block">
+                                <p class="alarm_id">
+                                    {{item.alarm_id ? getTranslationLang("alarm") + ' - ' + item?.id : '--'}}</p>
+                                <p>{{getTranslationLang("zone_id")}}: {{(item.zone_id) ? item.zone_id : '---'}}</p>
+                                 <p>{{getTranslationLang("device_id")}}: {{item.device_id ? item.device_id: '--'}}</p> 
+                            </div>
+                        </div>
+                    </li>-->
+                </ul>
+            </div>
+        </ng-scrollbar>
+    </nav>
+
+    <!-- <div style="position: absolute;bottom: 125px;">
+        <img width="300" height="65" src="./assets/lt_swc.png" />
+    </div> -->
+</aside>

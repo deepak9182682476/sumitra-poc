@@ -1,0 +1,428 @@
+{
+    "sensor_type": {
+        "label": "Sensor Type",
+        "value": "",
+        "type": "parent_select",
+        "options": [
+            {
+                "label": "Choose One",
+                "value": "",
+                "params": null
+            },
+            {
+                "label": "RADAR",
+                "value": "RADAR",
+                "params": {
+                    "icon": {
+                        "label": "Icon",
+                        "value": "assets/sensor-icons/RADAR-26px.svg",
+                        "type": "image",
+                        "validations": {}
+                    },
+                    "ip": {
+                        "label": "IP Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "mac_address": {
+                        "label": "Mac Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": false
+                        }
+                    },
+                    "longitude": {
+                        "label": "Longitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "latitude": {
+                        "label": "Latitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "azimuth": {
+                        "label": "Azimuth",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "height": {
+                        "label": "Height",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "current_status": {
+                        "label": "Enabled",
+                        "value": true,
+                        "type": "switch",
+                        "validations": {}
+                    },
+                    "location_marker": {
+                        "label": "",
+                        "value": null,
+                        "type": "marker",
+                        "validations": {}
+                    }
+                }
+            },
+            {
+                "label": "TI",
+                "value": "TI",
+                "params": {
+                    "icon": {
+                        "label": "Icon",
+                        "value": "assets/sensor-icons/TI-26px.svg",
+                        "type": "image",
+                        "validations": {}
+                    },
+                    "ip": {
+                        "label": "IP Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "mac_address": {
+                        "label": "Mac Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "username": {
+                        "label": "User ID",
+                        "value": "",
+                        "type": "text",
+                        "validations": {
+                            "required": false
+                        }
+                    },
+                    "password": {
+                        "label": "Password",
+                        "value": null,
+                        "type": "password",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "longitude": {
+                        "label": "Longitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "latitude": {
+                        "label": "Latitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "current_status": {
+                        "label": "Enabled",
+                        "value": true,
+                        "type": "switch",
+                        "validations": {}
+                    },
+                    "location_marker": {
+                        "label": "",
+                        "value": null,
+                        "type": "marker",
+                        "validations": {}
+                    }
+                }
+            },
+            {
+                "label": "AGU",
+                "value": "AGU",
+                "params": {
+                    "icon": {
+                        "label": "Icon",
+                        "value": "assets/sensor-icons/AGU-26px.svg",
+                        "type": "image",
+                        "validations": {}
+                    },
+                    "ip": {
+                        "label": "IP Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "mac_address": {
+                        "label": "Mac Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "username": {
+                        "label": "User ID",
+                        "value": "",
+                        "type": "text",
+                        "validations": {
+                            "required": false
+                        }
+                    },
+                    "password": {
+                        "label": "Password",
+                        "value": null,
+                        "type": "password",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "longitude": {
+                        "label": "Longitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "latitude": {
+                        "label": "Latitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    
+                    "location_marker": {
+                        "label": "",
+                        "value": null,
+                        "type": "marker",
+                        "validations": {}
+                    }
+                }
+            },
+            {
+                "label": "EOIR",
+                "value": "EOIR",
+                "params": {
+                    "icon": {
+                        "label": "Icon",
+                        "value": "assets/sensor-icons/EOIR-26px.svg",
+                        "type": "image",
+                        "validations": {}
+                    },
+                    "ip": {
+                        "label": "IP Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "mac_address": {
+                        "label": "Mac Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "username": {
+                        "label": "User ID",
+                        "value": "",
+                        "type": "text",
+                        "validations": {
+                            "required": false
+                        }
+                    },
+                    "password": {
+                        "label": "Password",
+                        "value": null,
+                        "type": "password",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "longitude": {
+                        "label": "Longitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "latitude": {
+                        "label": "Latitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "zone_id": {
+                        "label": "Zone ID",
+                        "value": "",
+                        "type": "text",
+                        "validations": {
+                            "required": false
+                        }
+                    },
+                    "current_status": {
+                        "label": "Enabled",
+                        "value": true,
+                        "type": "switch",
+                        "validations": {}
+                    },
+                    "location_marker": {
+                        "label": "",
+                        "value": null,
+                        "type": "marker",
+                        "validations": {}
+                    }
+                }
+            },
+            {
+                "label": "BFO",
+                "value": "BFO",
+                "params": {
+                    "icon": {
+                        "label": "Icon",
+                        "value": "assets/sensor-icons/BFO-26px.svg",
+                        "type": "image",
+                        "validations": {}
+                    },
+                    "ip": {
+                        "label": "IP Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "port": {
+                        "label": "Port",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": false
+                        }
+                    }
+                }
+            },
+            {
+                "label": "UGS",
+                "value": "UGS",
+                "params": {
+                    "icon": {
+                        "label": "Icon",
+                        "value": "assets/sensor-icons/UGS-26px.svg",
+                        "type": "image",
+                        "validations": {}
+                    },
+                    "ip": {
+                        "label": "IP Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "port": {
+                        "label": "Port",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": false
+                        }
+                    },
+                    "health_status": {
+                        "label": "Health Status Interval (sec)",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    }
+                }
+            },
+            {
+                "label": "LF",
+                "value": "LF",
+                "params": {
+                    "icon": {
+                        "label": "Icon",
+                        "value": "assets/sensor-icons/LF-26px.svg",
+                        "type": "image",
+                        "validations": {}
+                    },
+                    "ip": {
+                        "label": "IP Address",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "port": {
+                        "label": "Port",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": false
+                        }
+                    },
+                    "longitude": {
+                        "label": "Longitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "latitude": {
+                        "label": "Latitude",
+                        "value": null,
+                        "type": "text",
+                        "validations": {
+                            "required": true
+                        }
+                    },
+                    "location_marker": {
+                        "label": "",
+                        "value": null,
+                        "type": "marker",
+                        "validations": {}
+                    }
+                }
+            }
+        ],
+        "validations": {
+            "required": true
+        }
+    },
+    "sensor_id": {
+        "label": null,
+        "value": null,
+        "type": "hidden",
+        "validations": {}
+    }
+}

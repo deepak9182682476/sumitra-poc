@@ -1,0 +1,9 @@
+{
+    "development": {
+        "ros_master_info":["195.67.15.1","195.67.11.13","195.67.11.14"],
+        "logging": false
+    },
+    "production": {
+        "ros_master_info":[]
+    }
+}

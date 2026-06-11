@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="46" height="46" viewBox="0 0 46 46">
+  <defs>
+    <filter id="Path_1051" x="0" y="0" width="46" height="46" filterUnits="userSpaceOnUse">
+      <feOffset dy="3" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-opacity="0.161"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="Group_3405" data-name="Group 3405" transform="translate(-797 -537)">
+    <g id="Group_2088" data-name="Group 2088" transform="translate(4104 7168)">
+      <g id="Group_2047" data-name="Group 2047" transform="translate(-3298 -6625)">
+        <g id="Group_1457" data-name="Group 1457" transform="translate(0 0)">
+          <g transform="matrix(1, 0, 0, 1, -9, -6)" filter="url(#Path_1051)">
+            <path id="Path_1051-2" data-name="Path 1051" d="M14,0A14,14,0,1,1,0,14,14,14,0,0,1,14,0Z" transform="translate(9 6)" fill="#a78ce5"/>
+          </g>
+        </g>
+      </g>
+      <g id="Group_2046" data-name="Group 2046" transform="translate(-3291.977 -6618.574)">
+        <g id="mouse-24px" transform="translate(0 0.853)">
+          <path id="Path_1277" data-name="Path 1277" d="M0,0H16.126V16.126H0Z" fill="none"/>
+          <path id="Path_1278" data-name="Path 1278" d="M10.047,1.07V6.4h4.7A5.368,5.368,0,0,0,10.047,1.07ZM4,10.43a5.375,5.375,0,1,0,10.751,0V7.742H4ZM8.7,1.07A5.368,5.368,0,0,0,4,6.4H8.7V1.07Z" transform="translate(-1.312 -0.351)" fill="#1d2030"/>
+        </g>
+        <circle id="Ellipse_179" data-name="Ellipse 179" cx="2.207" cy="2.207" r="2.207" transform="translate(6.092 10.083)" fill="#a78ce5"/>
+        <circle id="Ellipse_180" data-name="Ellipse 180" cx="1.324" cy="1.324" r="1.324" transform="translate(6.974 10.966)" fill="#1d2030"/>
+        <path id="Path_1279" data-name="Path 1279" d="M-3345.992-6619.907c0-1.84-.008-6.905-.008-6.905h5.377" transform="translate(3354.063 6626.813)" fill="none" stroke="#1d2030" stroke-width="2"/>
+      </g>
+    </g>
+    <g id="Ellipse_192" data-name="Ellipse 192" transform="translate(801 538)" fill="none" stroke="red" stroke-width="2">
+      <circle cx="19" cy="19" r="19" stroke="none"/>
+      <circle cx="19" cy="19" r="18" fill="none"/>
+    </g>
+  </g>
+</svg>

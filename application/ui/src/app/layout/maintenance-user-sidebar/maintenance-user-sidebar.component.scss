@@ -1,0 +1,277 @@
+@import "../../../assets/css/variable.scss";
+
+aside {
+    button:focus,
+    button:active {
+        outline: none !important;
+        outline-width: 0 !important;
+        box-shadow: none;
+        -moz-box-shadow: none;
+        -webkit-box-shadow: none;
+    }
+    button.btn-warning {
+        background-color: #ff8c00ed;
+        font-size: 9px;
+    }
+    button.btn-secondary:focus,
+    button.btn-secondary:active,
+    button.btn-secondary {
+        background-color: transparent;
+        font-size: 9px;
+    }
+    .spinner-border {
+        height: 12px;
+        width: 12px;
+    }
+    .fs-12 {
+        font-size: 12px;
+    }
+}
+
+.alarm-btn:not(:disabled):not(.disabled):active:focus {
+    box-shadow: none !important;
+}
+
+.clear-alarm-btn {
+    color: var(--bg4-color);
+    font-size: 10px !important;
+    border: 1px solid var(--border-color);
+}
+
+.wrapper main .sidebar .sidebar-menu ul.menu-items li .mrinfo {
+    padding: 5px 10px 0px 0 !important;
+}
+
+.mt-12 {
+    margin-top: 12px !important;
+}
+
+.radar-checkbox {
+    height: 15px;
+    position: relative;
+    top: 4px;
+    left: 5px;
+}
+
+.alarm-list {
+    display: inline-block;
+    position: relative;
+    right: 10px;
+}
+
+.search-alarm {
+    background: var(--bg);
+    border: 1px solid var(--border-color);
+    color: var(--bg4-color);
+}
+
+/** Pulse Animation: Start */
+.pulsingButton {
+    // width: 220px;
+    text-align: center;
+    white-space: nowrap;
+    display: block;
+    // margin: 50px auto;
+    // padding: 10px;
+    box-shadow: 0 0 0 0 rgba(232, 76, 61, 0.7);
+    border-radius: 3px;
+    background-color: #ff0000;
+    -webkit-animation: pulsing 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+    -moz-animation: pulsing 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+    -ms-animation: pulsing 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+    animation: pulsing 1.25s infinite cubic-bezier(0.66, 0, 0, 1);
+    text-decoration: none !important;
+    color: var(--bg4-color);
+    transition: all 300ms ease-in-out;
+}
+
+/* Comment-out to have the button continue to pulse on mouseover */
+
+a.pulsingButton:hover {
+    -webkit-animation: none;
+    -moz-animation: none;
+    -ms-animation: none;
+    animation: none;
+    color: var(--bg4-color);
+}
+
+.refresh-link {
+    cursor: pointer;
+    color: $white;
+}
+
+.w-18 {
+    width: 18% !important;
+}
+
+.c-white {
+    color: $white !important;
+}
+
+.f-10 {
+    font-size: 10px;
+}
+
+.diagnostics-section {
+    .checkbox {
+        outline: 1px solid grey;
+    }
+    .date-label {
+        position: relative;
+        left: 28%;
+        bottom: 3px;
+    }
+
+    .action-btn {
+        display: flex;
+        height: 30px;
+
+        :focus {
+            box-shadow: none;
+        }
+
+        button {
+            font-size: 12px;
+        }
+    }
+}
+
+.bg-grey {
+    background: #80808075;
+}
+
+hr {
+    background: $grey !important;
+    height: 1px;
+}
+
+::ng-deep {
+    .diagnostics {
+        .modal-content {
+            background: #000000b8 !important;
+        }
+        .modal-header {
+            background: $black;
+            color: $white;
+        }
+
+        .modal-body {
+            background: #000000ad !important;
+            .err-sec {
+                background: $white;
+                color: $red;
+            }
+        }
+    }
+}
+
+.update-section {
+    input[type="text"] {
+        background: $black;
+        color: $grey;
+        padding: 5px;
+    }
+
+    label {
+        @extend .c-white;
+    }
+    span {
+        color: $red;
+    }
+}
+
+.ml-6 {
+    margin-left: 6%;
+}
+
+.w-75 {
+    width: 75px !important;
+}
+
+::placeholder {
+    /* Chrome, Firefox, Opera, Safari 10.1+ */
+    color: $grey;
+}
+
+.br-none {
+    border: none;
+}
+
+button:focus,
+button:active {
+    outline: none !important;
+    outline-width: 0 !important;
+    box-shadow: none;
+    -moz-box-shadow: none;
+    -webkit-box-shadow: none;
+}
+
+.btn {
+    font-size: 0.9rem;
+}
+
+.enable-sec {
+    position: relative;
+    left: 65%;
+}
+
+/** Toggle CSS */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 20px;
+    left: 10px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: 0.4s;
+    transition: 0.4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 26px;
+    left: -2px;
+    bottom: 1px;
+    background-color: white;
+    transition: 0.4s;
+}
+
+input:checked + .slider {
+    background-color: #2196f3;
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px #2196f3;
+}
+
+input:checked + .slider:before {
+    -webkit-transform: translateX(26px);
+    -ms-transform: translateX(26px);
+    transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}

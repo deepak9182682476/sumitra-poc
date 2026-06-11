@@ -1,0 +1,61 @@
+<div class="post-analysis-section pb-3">
+    <div class="alarm-results col-12 row pt-2 pb-2">
+        <!-- Video Management -->
+        <div class="col-12">
+            <app-video></app-video>
+        </div>
+    </div>
+
+    <div class="alarm-results col-12 row pb-5">
+        <div class="col-12 cursor-pointer">
+            <span class="float-left first-letter-upper-case">{{activeTabTitle}}</span>
+            <span class="float-right">
+                <span [ngClass]="{'active-tab highlight-tab' : activeTab === 'graph', 'tab': activeTab !== 'graph'}"
+                    (click)="activateMapGraph(0)">
+                    <i class="fa fa-bar-chart"></i>
+                </span>
+                <span [ngClass]="{'active-tab highlight-tab' : activeTab === 'map', 'tab': activeTab !== 'map'}"
+                    (click)="activateMapGraph(1)">
+                    <i class="fa fa-map" aria-hidden="true"></i>
+                </span>
+            </span>
+        </div>
+
+        <hr width="100%" />
+
+        <div class="mt-4 col-12 filters" *ngIf="activeTab === 'graph'">
+            <button class="mt-4 btn bg-grey color-white" *ngIf="activeTab === 'graph' && enablePDF"
+                (click)="downloadGraph()">{{getTranslationLang('download_as_pdf')}}</button>
+
+            <div class="float-right ml-3">
+                <mat-form-field appearance="fill">
+                    <mat-label>Alarm View Month and Year</mat-label>
+                    <input matInput [matDatepicker]="dp" [formControl]="date">
+                    <mat-datepicker-toggle matSuffix [for]="dp"></mat-datepicker-toggle>
+                    <mat-datepicker #dp
+                                    startView="multi-year"
+                                    (yearSelected)="chosenYearHandler($event)"
+                                    (monthSelected)="chosenMonthHandler($event, dp)"
+                                    panelClass="example-month-picker">
+                    </mat-datepicker>
+                  </mat-form-field>
+                <!-- <button mat-button [matMenuTriggerFor]="alarmsview">{{getTranslationLang('alarm_view')}}</button> -->
+                <!-- <mat-menu #alarmsview="matMenu">
+                    <button mat-menu-item [matMenuTriggerFor]="monthwise">{{getTranslationLang('month_wise')}}</button>
+                    <button mat-menu-item disabled>{{getTranslationLang('zone_wise')}}</button>
+                </mat-menu> -->
+
+                <!-- <mat-menu #monthwise="matMenu">
+                    <div *ngFor="let month of months;">
+                        <button (click)="onMonthClick(month.key)" mat-menu-item>{{month.name}}</button>
+                    </div>
+                </mat-menu> -->
+            </div>
+        </div>
+
+        <!-- Graph Management -->
+        <div class="mt-4 col-12">
+            <app-graph [selectedMonth]="selectedMonth" [daysCount]="daysCountForMonth" (graphData)="enableDisablePDF($event)"></app-graph>
+        </div>
+    </div>
+</div>

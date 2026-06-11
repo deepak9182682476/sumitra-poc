@@ -1,0 +1,152 @@
+<aside class="sidebar shadow-sm">
+    <nav class="sidebar-menu pt-2 pb-3">
+        <ng-scrollbar #scrollable track="all" pointerEventsMethod="scrollbar">
+            <ul class="menu-items bg-grey p-2">
+                <div>
+                    <h6 class="d-inline"> {{getTranslationLang("diagnostics")}} </h6>
+                    <h6 class="d-inline float-right refresh-link w-18" (click)="getSensorsData(true)"> {{getTranslationLang("refresh")}} </h6>
+                </div>
+            </ul>
+
+            <div *ngIf="!isLoading">
+                <div class="p-0" *ngFor="let obj of sensorsList;let i = index;">
+
+                    <div class="c-white f-10 diagnostics-section mt-4">
+
+                        <div class="d-flex">
+                            <input type="checkbox" class="mr-3 checkbox"
+                                (click)="getSelectedSensors($event, obj?.sensor_id)" [(ngModel)]="checkBoxModel[i]"/>
+                            <span>
+                                <div>
+                                    {{obj?.sensor_type}}
+                                </div>
+                                <div>
+                                    {{getTranslationLang("ip")}} : {{obj?.sensor_key}}
+                                </div>
+                                <div>
+                                    {{getTranslationLang("message")}} : {{obj?.error_data || getTranslationLang("connection_lost")}}
+                                </div>
+                            </span>
+
+                            <span class="date-label">
+                                {{ obj?.installed_on | date:'MM/dd/yy h:mm a'}}
+                            </span>
+                        </div>
+
+                        <div class="row action-btn  mt-3 ml-2">
+                            <button class="btn btn-light mr-2"
+                                [disabled]="selectedSensors.indexOf(obj?.sensor_id) === -1"
+                                (click)="discardSensor(obj?.sensor_id, i)">
+                                {{getTranslationLang("discard")}}
+                            </button>
+                            <button class="btn btn-primary mr-2" (click)="fixedSensor()"
+                                [disabled]="selectedSensors.indexOf(obj?.sensor_id) === -1">
+                                {{getTranslationLang("fixed")}}
+                            </button>
+                            <button class="btn btn-warning" (click)="modifyConfiguration(template, obj)"
+                                [disabled]="selectedSensors.indexOf(obj?.sensor_id) === -1">
+                                {{getTranslationLang("configuration")}}
+                            </button>
+                        </div>
+                    </div>
+                    <hr />
+                </div>
+            </div>
+
+            <h6 class="text-center c-white mt-4" *ngIf="isLoading && !sensorsList?.length">
+                {{getTranslationLang("loading")}}...
+            </h6>
+            <h6 class="text-center c-white mt-4" *ngIf="!isLoading && !sensorsList?.length">
+                {{getTranslationLang("no_records_found")}}...
+            </h6>
+
+        </ng-scrollbar>
+    </nav>
+</aside>
+
+<ng-template #template>
+    <div class="diagnostics">
+        <div class="modal-header">
+            <h6 class="modal-title pull-left">{{sensorsData?.sensor_type}} {{getTranslationLang("configuration")}}</h6>
+            <span class="enable-sec pull-right">
+                {{getTranslationLang("enabled")}}:
+                <label class="switch">
+                    <input type="checkbox" checked [(ngModel)]="sensorsData.current_status">
+                    <span class="slider round"></span>
+                </label>
+            </span>
+            <button type="button" class="close pull-right c-white" aria-label="Close" (click)="modalRef.hide()">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <div class="p-2 err-sec">
+                <span>{{getTranslationLang("error")}}: {{sensorsData?.error_data || getTranslationLang("connection_lost")}}</span>
+            </div>
+
+            <div class="mt-4">
+                <div>
+                    <p class="c-white">{{getTranslationLang("edit_sensor")}}</p>
+                    <hr />
+                </div>
+                <div>
+                    <span class="c-white">{{getTranslationLang("name")}}: &nbsp;&nbsp; {{sensorsData?.sensor_type}}</span>
+                    <span class="c-white ml-6">{{getTranslationLang("model")}}: &nbsp;&nbsp; Pelco: IBP235-1ER+ IBP3-PLMT+ IBP3BBAP-ES</span>
+                    <hr />
+                </div>
+                <div class="row update-section">
+                    <div class="col-2">
+                        <label>{{getTranslationLang("user_name")}}<span>*</span>:</label>
+                        <input type="text" [placeholder]="getTranslationLang('user_name')" [(ngModel)]="sensorsData.sensor_type" />
+                    </div>
+                    <div class="col-2">
+                        <label>{{getTranslationLang("ip_address")}}<span>*</span>:</label>
+                        <input type="text" [placeholder]="getTranslationLang('ip_address')" [(ngModel)]="sensorsData.ip" />
+                    </div>
+                    <div class="col-2">
+                        <label>{{getTranslationLang("mac_id")}}<span>*</span>:</label>
+                        <input type="text" [placeholder]="getTranslationLang('mac_id')" [(ngModel)]="sensorsData.mac_address" />
+                    </div>
+                    <div class="col-2">
+                        <label>{{getTranslationLang("latitude")}}<span>*</span>:</label>
+                        <input type="text" [placeholder]="getTranslationLang('latitude')" [(ngModel)]="sensorsData.lat" />
+                    </div>
+                    <div class="col-2">
+                        <label>{{getTranslationLang("longitude")}}<span>*</span>:</label>
+                        <input type="text" [placeholder]="getTranslationLang('longitude')" [(ngModel)]="sensorsData.long" />
+                    </div>
+                </div>
+                <div class="row mt-4 update-section">
+                    <div class="col-2">
+                        <label>{{getTranslationLang("azimuth")}}<span>*</span>:</label>
+                        <div>
+                            <input type="text" [placeholder]="getTranslationLang('azimuth')" class="w-50" [(ngModel)]="sensorsData.azimuth" />
+                            <span class="c-white"> ({{getTranslationLang("degrees")}})</span>
+                        </div>
+                    </div>
+                    <!-- <div class="col-2">
+                        <label>{{getTranslationLang("frame_rate")}}<span>*</span>:</label>
+                        <div>
+                            <input type="text" [placeholder]="getTranslationLang('frame_rate')" class="w-75" />
+                            <span class="c-white">({{getTranslationLang("per_second")}})</span>
+                        </div>
+                    </div> -->
+                    <div class="col-2">
+                        <label>{{getTranslationLang("password")}}<span>*</span>:</label>
+                        <input type="text" [placeholder]="getTranslationLang('password')" [(ngModel)]="sensorsData.password" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer br-none mt-4">
+                <button type="button" class="btn btn-light" (click)="modalRef.hide()">{{getTranslationLang("cancel")}}</button>
+                <button type="button" class="btn btn-primary" (click)="updateSensorData()" [disabled]="isConfigLoading">
+                    {{getTranslationLang("update")}}
+                    <i class="fa fa-circle-o-notch fa-spin" *ngIf="isConfigLoading"></i>
+                </button>
+            </div>
+
+        </div>
+    </div>
+</ng-template>

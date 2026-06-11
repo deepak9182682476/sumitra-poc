@@ -1,0 +1,2 @@
+[5725:5725:0225/214114.758251:ERROR:sandbox_linux.cc(374)] InitializeSandbox() called with multiple threads in process gpu-process.
+Fontconfig error: Cannot load default config file: No such file: (null)
