@@ -181,7 +181,7 @@ export class SubHeaderComponent implements OnInit {
         alarm_data: isAssignedData.alarm_data,
       };
 
-      this.dataService.assignToResponse(data).subscribe(
+    /*  this.dataService.assignToResponse(data).subscribe(
         (res: any) => {
           if (!res.error && !res.errorInfo) {
             this.toasterService.info(
@@ -226,7 +226,7 @@ export class SubHeaderComponent implements OnInit {
           ).className = btn_color;
           this.toasterService.error("Error Occured. Please try later.");
         }
-      );
+      ); */
     }
   }
 

@@ -48,7 +48,7 @@ export class SystemConfigurationComponent implements OnInit, AfterViewInit {
   getConfig = [];
   updateLoader = false;
 
-  olmap = Map;
+  olmap: any;
   source: any;
   draw: any;
   vector: any;

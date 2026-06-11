@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --host 127.0.0.1",
+    "start": "ng serve",
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
@@ -40,7 +40,7 @@
     "ngx-bootstrap": "^5.6.1",
     "ngx-scrollbar": "^7.3.0",
     "ngx-toastr": "^13.0.1",
-    "ol": "^6.4.3",
+    "ol": "6.4.3",
     "rxjs": "~6.5.5",
     "tslib": "^2.0.0",
     "ws": "^7.5.5",

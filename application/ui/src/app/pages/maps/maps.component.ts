@@ -2682,12 +2682,12 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             .getArray()
             .forEach((layer) => {
               if (layer.values_.title === res.data.id) {
-                this.dataService.assignToResponse(res.data).subscribe(
+                /*this.dataService.assignToResponse(res.data).subscribe(
                   (res: any) => { },
                   (err) => {
                     // this.toasterService.error('Error Occured. Please try later.');
                   }
-                );
+                ); */
               }
             });
         }
