@@ -1,127 +1,178 @@
 @import "../../../assets/css/variable.scss";
 
-/* Stack container: positions both Slew TI and UAV popups */
-.video-popup-stack {
+/* Label column — fixed position, never affected by video open/close */
+.video-labels-stack {
   position: absolute;
-  top: 80px;
+  top: 100px;
   left: 5px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+/* Video column — right of labels, panels stack top-to-bottom */
+.video-panels-stack {
+  position: absolute;
+  top: 150px;
+  left: -25px;   /* 5px margin + 90px label + 5px gap */
   z-index: 1000;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  pointer-events: none;
 }
 
-/* Individual popup card */
+/* Label pill */
 .slew-popup {
-  position: relative;
-  background: rgba(30, 30, 30, 0.9);
-  padding: 6px;
+  width: 90px;
+  height: 34px;
+  background: rgba(30, 30, 30, 0.88);
   border-radius: 4px;
   color: #fff;
-  width: 100px;
-  min-height: 45px;
-  display: block;
   box-sizing: border-box;
+  pointer-events: all;
 }
 
-/* Header with checkbox and close button */
-.slew-popup .popup-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
-/* Video section styling */
-.slew-popup .video-sec {
-  margin-top: 5px;
-  top: -50px;
-  left: 110px;
-  padding-left: 10px;
-  padding-right: 10px;
-}
-
-/* PTZ sliders */
-.slew-popup .ptz-controls label {
-  display: block;
-  margin-top: 5px;
-  font-size: 12px;
-}
-.slew-popup .ptz-controls input[type=range] {
-  width: 80%;
-}
-
-/* Close button styling */
-.slew-popup .close-btn {
-  position: absolute;
-  cursor: pointer;
-  font-size: 14px;
-  right: 3px;
-
-}
-
-
-/* Header: fixed height, flex container */
 .popup-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  height: 40px; /* fix header height */
-  padding: 0 4px;
+  padding: 0 7px;
+  height: 34px;
   user-select: none;
 }
 
-/* Label wraps text + checkbox inline */
 .checkbox-label {
   display: flex;
   align-items: center;
-  white-space: nowrap; /* prevent wrapping */
-  font-size: 14px;
+  gap: 6px;
+  font-size: 11px;
+  white-space: nowrap;
   cursor: pointer;
   color: #fff;
 }
 
-/* Checkbox spacing */
 .checkbox-label input[type="checkbox"] {
-  margin-left: 8px;
+  cursor: pointer;
   flex-shrink: 0;
-  cursor: pointer;
+  width: 12px;
+  height: 12px;
 }
 
-/* Close icon */
-.close-btn {
-  cursor: pointer;
-  font-size: 16px;
-  padding: 4px;
-  line-height: 1;
-  color: #fff;
-}
-
-/* Video section shown only if enabled */
+/* Video panel — compact fixed size */
 .video-sec {
-  margin-top: 8px;
-  display: block;
-}
-
-/* Center video image */
-.video-sec img.video-tag {
-  display: block;
-  margin: 0 auto;
-  max-width: 100%;
+  width: 220px;
+  height: 220px;
+  background: rgba(20, 20, 20, 0.92);
   border-radius: 4px;
+  padding: 5px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: all;
 }
 
-/* PTZ controls */
-.ptz-controls label {
+/* Video fills all space above PTZ controls */
+.video-wrapper {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.video-wrapper img.video-tag,
+.video-wrapper video.video-tag {
   display: block;
-  font-size: 12px;
-  margin-top: 8px;
-  color: #ddd;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 3px;
 }
 
-.ptz-controls input[type="range"] {
-  width: 100%;
-  margin: 4px 0;
+/* Day / Thermal toggle — bottom-left of video */
+.feed-toggle {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  display: flex;
+  gap: 2px;
+  z-index: 10;
+
+  button {
+    background: rgba(0, 0, 0, 0.55);
+    color: #aaa;
+    border: 1px solid #555;
+    border-radius: 3px;
+    font-size: 9px;
+    padding: 2px 6px;
+    cursor: pointer;
+    line-height: 1.4;
+
+    &.active {
+      background: rgba(30, 120, 200, 0.85);
+      color: #fff;
+      border-color: #4af;
+    }
+
+    &:hover:not(.active) {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+  }
+}
+
+/* Action icons overlaid top-right of video */
+.video-icons {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+
+  span {
+    cursor: pointer;
+    color: #fff;
+    font-size: 11px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    &:hover { color: #7df; }
+  }
+}
+
+/* PTZ controls — compact, fixed at bottom of Slew TI panel */
+.ptz-controls {
+  flex-shrink: 0;
+  margin-top: 0px;
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    font-size: 10px;
+    color: #bbb;
+    white-space: nowrap;
+    margin: 0;
+
+    input[type="range"] {
+      flex: 1;
+      min-width: 0;
+      height: 0px;
+      cursor: pointer;
+    }
+
+    span {
+      width: 22px;
+      text-align: right;
+      font-size: 9px;
+      color: #999;
+    }
+  }
 }
 
 
@@ -245,6 +296,8 @@
 }
 
 .map {
+  position: relative;   /* anchor for absolute video stacks */
+
   .ol-zoom {
     right: 2.5em;
     top: 87%;

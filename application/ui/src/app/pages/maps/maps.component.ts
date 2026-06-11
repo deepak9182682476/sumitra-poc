@@ -64,6 +64,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   enableVideo = false;
   enableUavVideo = false;
   uavStreamUrl = 'http://192.168.2.146:8091/uav';
+  isThermalFeed = false;
+  slewDayUrl = 'http://192.168.2.146:8091/';
+  slewThermalUrl = 'http://192.168.2.146:8091/thermal';
+  get slewFeedUrl(): string { return this.isThermalFeed ? this.slewThermalUrl : this.slewDayUrl; }
   isSlewPopupEnabled = true; // *** thermal
   isCameraPopupEnabled = false; // *** thermal
   enableCameraVideo = false;
