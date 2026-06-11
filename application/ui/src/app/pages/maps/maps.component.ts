@@ -62,6 +62,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   modeSubscription: Subscription;
   enableUAVModal = false;
   enableVideo = false;
+  enableUavVideo = false;
+  uavStreamUrl = 'http://192.168.2.146:8091/uav';
   isSlewPopupEnabled = true; // *** thermal
   isCameraPopupEnabled = false; // *** thermal
   enableCameraVideo = false;
@@ -244,6 +246,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   
   onSlewToggle(event: any) {
     this.enableVideo = event.target.checked;
+  }
+
+  onUavToggle(event: any) {
+    this.enableUavVideo = event.target.checked;
   }
   
   closeSlewPopup() {

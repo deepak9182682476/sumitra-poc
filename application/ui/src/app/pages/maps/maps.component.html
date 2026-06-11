@@ -94,60 +94,91 @@
                     </ng-template>
 
                     <div id="map" class="map">
-                      <!-- Slew TI popup -->
-                      <div class="slew-popup">
-                        <div class="popup-header">
-                          <label class="checkbox-label">
-                            {{getTranslationLang("slew_ti")}}
-                            <input type="checkbox" [(ngModel)]="enableVideo" (change)="onSlewToggle($event)" />
-                          </label>
-                          <!-- <i class="fa fa-remove close-btn" (click)="closeSlewPopup()"></i> -->
-                        </div>
-                    
-                        <div class="video-sec" *ngIf="enableVideo">
-                          
-                          <p class="videos" style="height:250px">
-                          <span class="float-right icons">
-                            <span><i (click)="manualTrack('ti');"
-                                    class="f-15 fa fa-bullseye mr-3 mt-2"
-                                    aria-hidden="true"></i></span>
-                           
-                              <span><i (click)="cancelTrack('ti');"
-                                class="f-15 fa fa-eye-slash mr-3 mt-2"
-                                aria-hidden="true"></i></span>
-                        
+                      <!-- Video popup stack: Slew TI (top) + UAV (below) -->
+                      <div class="video-popup-stack">
+
+                        <!-- Slew TI popup -->
+                        <div class="slew-popup">
+                          <div class="popup-header">
+                            <label class="checkbox-label">
+                              {{getTranslationLang("slew_ti")}}
+                              <input type="checkbox" [(ngModel)]="enableVideo" (change)="onSlewToggle($event)" />
+                            </label>
+                            <!-- <i class="fa fa-remove close-btn" (click)="closeSlewPopup()"></i> -->
+                          </div>
+
+                          <div class="video-sec" *ngIf="enableVideo">
+                            <p class="videos" style="height:250px">
+                              <span class="float-right icons">
+                                <span><i (click)="manualTrack('ti');"
+                                        class="f-15 fa fa-bullseye mr-3 mt-2"
+                                        aria-hidden="true"></i></span>
+                                <span><i (click)="cancelTrack('ti');"
+                                        class="f-15 fa fa-eye-slash mr-3 mt-2"
+                                        aria-hidden="true"></i></span>
                                 <span>
-                                    <i (click)="openFullscreen('ti');"
-                                        class="f-15 fa fa-arrows-alt t-45 mr-3 mt-2"
-                                        aria-hidden="true"></i>
+                                  <i (click)="openFullscreen('ti');"
+                                      class="f-15 fa fa-arrows-alt t-45 mr-3 mt-2"
+                                      aria-hidden="true"></i>
                                 </span>
                                 <span>
-                                <i class="f-15 fa fa-remove mr-3 mt-2" aria-hidden="true"
-                                    (click)="enableVideo=false;"
-                                    id="close-icon-slew-ti-popup"></i>
-                            </span>
-                        </span>
-                          <img class="video-tag" width="250" height="250" id="slew-ti-video" src="http://192.168.2.146:8091/" />
-                      </p>
-                          <div class="ptz-controls">
-                            <label>
-                              Pan:
-                              <input type="range" min="0" max="360" [(ngModel)]="ptzControls.pan" (change)="applyPTZControls('pan',$event)" />
-                              {{ptzControls.pan}}
-                            </label>
-                            <label>
-                              Tilt : 
-                              <input type="range" min="-25" max="25" [(ngModel)]="ptzControls.tilt" (change)="applyPTZControls('tilt',$event)" />
-                              {{ptzControls.tilt}}
-                            </label>
-                            <label>
-                              Zoom:
-                              <input type="range" min="0" max="17" [(ngModel)]="ptzControls.zoom" (change)="applyPTZControls('zoom',$event)" />
-                              {{ptzControls.zoom}}
+                                  <i class="f-15 fa fa-remove mr-3 mt-2" aria-hidden="true"
+                                      (click)="enableVideo=false;"
+                                      id="close-icon-slew-ti-popup"></i>
+                                </span>
+                              </span>
+                              <img class="video-tag" width="250" height="250" id="slew-ti-video" src="http://192.168.2.146:8091/" />
+                            </p>
+                            <div class="ptz-controls">
+                              <label>
+                                Pan:
+                                <input type="range" min="0" max="360" [(ngModel)]="ptzControls.pan" (change)="applyPTZControls('pan',$event)" />
+                                {{ptzControls.pan}}
+                              </label>
+                              <label>
+                                Tilt :
+                                <input type="range" min="-25" max="25" [(ngModel)]="ptzControls.tilt" (change)="applyPTZControls('tilt',$event)" />
+                                {{ptzControls.tilt}}
+                              </label>
+                              <label>
+                                Zoom:
+                                <input type="range" min="0" max="17" [(ngModel)]="ptzControls.zoom" (change)="applyPTZControls('zoom',$event)" />
+                                {{ptzControls.zoom}}
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- UAV popup -->
+                        <div class="slew-popup">
+                          <div class="popup-header">
+                            <label class="checkbox-label">
+                              UAV
+                              <input type="checkbox" [(ngModel)]="enableUavVideo" (change)="onUavToggle($event)" />
                             </label>
                           </div>
-                         
+
+                          <div class="video-sec" *ngIf="enableUavVideo">
+                            <p class="videos" style="height:250px">
+                              <span class="float-right icons">
+                                <span>
+                                  <i (click)="openFullscreen('uav');"
+                                      class="f-15 fa fa-arrows-alt t-45 mr-3 mt-2"
+                                      aria-hidden="true"></i>
+                                </span>
+                                <span>
+                                  <i class="f-15 fa fa-remove mr-3 mt-2" aria-hidden="true"
+                                      (click)="enableUavVideo=false;"></i>
+                                </span>
+                              </span>
+                              <video class="video-tag" id="uav-video" autoplay muted
+                                     style="width:250px; height:230px; object-fit:cover;">
+                                <source [src]="uavStreamUrl" type="video/mp4" />
+                              </video>
+                            </p>
+                          </div>
                         </div>
+
                       </div>
                     </div>
                     
