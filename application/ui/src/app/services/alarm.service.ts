@@ -52,7 +52,7 @@ export class AlarmService {
     return new Observable<string>((observer) => {
       const that = this;
       ws.asObservable().subscribe((data: string) => {
-      // console.log("getServerPushData",data);
+      console.log("getServerPushData",data);
       //  console.log("new getServerPushData", data);
        
         

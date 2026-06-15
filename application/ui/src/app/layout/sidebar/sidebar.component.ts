@@ -63,9 +63,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
   ) {
     this.eventService.emitter.subscribe((response: any) => {
-      if(response.message && response.message.assignToDefault){
+      if (response.message && response.message.assignToDefault) {
         let assignmentIdx = this.alarmService.apiConfig.assignments.findIndex(rec => rec.type == response.type);
-        if(assignmentIdx !== -1){
+        if (assignmentIdx !== -1) {
           // delete  this.alarmService.apiConfig.assignments[assignmentIdx]['position'];
           this.alarmService.apiConfig.assignments[assignmentIdx].isAssigned = false;
         }
@@ -455,7 +455,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
               ? res.alarmData.id
               : res.alarmData.alarm_id;
             const results = [res.alarmData]; // JSON.parse(res.alarmData);
-           // console.log("results", results);
+            // console.log("results", results);
             const getNonExistingData = results.filter(
               ({ alarm_id: id1 }) =>
                 !this.alarms_list["Confirmatory_Alarm"].some(
@@ -471,7 +471,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
               if (this.alarms_list["Confirmatory_Alarm"].length) {
                 this.loadingInfo.gettingAlarmData = false;
               }
-             // console.log( getNonExistingData.length ? getNonExistingData : null)
+              // console.log( getNonExistingData.length ? getNonExistingData : null)
               this.alarmService.publishUpdatedAlarmData(
                 getNonExistingData.length ? getNonExistingData : null
               );
@@ -577,7 +577,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     if (type === "uav") {
       eventType = 5; // UAV Assignment
       let body = {
-        track_id:items.alarm_id             // Add the IP to the body
+        track_id: items.alarm_id             // Add the IP to the body
       };
       this.dataService.assignToResponse_new(body).subscribe(
         (res: any) => {
@@ -592,28 +592,27 @@ export class SidebarComponent implements OnInit, OnDestroy {
           console.log(err);
         }
       );
-    } else if(type == 'rh')
-      {
-        this.dataService.returnToHome(type).subscribe(
-          (res: any) => {
-            if (res && !res.error && !res.errorInfo) {
-              console.log(res);
-            } else {
-              console.log(res);
-            }
-          },
-          (err) => {
-            console.log(err);
+    } else if (type == 'rh') {
+      this.dataService.returnToHome(type).subscribe(
+        (res: any) => {
+          if (res && !res.error && !res.errorInfo) {
+            console.log(res);
+          } else {
+            console.log(res);
           }
-        );
-      }
-     else if (type === "ugv") {
+        },
+        (err) => {
+          console.log(err);
+        }
+      );
+    }
+    else if (type === "ugv") {
       eventType = 3; // UGV Assignment
       // this.alarmService.publishAccordionData(items);
     } else {
       eventType = 11; // QRT Assignment
     }
-    console.log("items: ",items)
+    console.log("items: ", items)
     // const data = {
     //   alarm_id: items.alarm_id,
     //   zone_id: zone_id,
@@ -669,7 +668,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     // }
 
 
-    
+
     // this.dataService.assignToResponse(data).subscribe(
     //   (res: any) => {
     //     if (!res.error && !res.errorInfo) {
@@ -787,13 +786,13 @@ export class SidebarComponent implements OnInit, OnDestroy {
   //     filteredData = result;
   //     this.alarmsData = filteredData;
 
-  
-  
+
+
   //   }
   // }
 
   // Show Slew TI on Map
-  showSlewTI(item,getFilterData, index) {
+  showSlewTI(item, getFilterData, index) {
     // let lastCoordinate: any = [];
     // this.alarmSubscription = this.alarmService
     // .getServerPushData()
@@ -802,53 +801,60 @@ export class SidebarComponent implements OnInit, OnDestroy {
     //   if (results?.category === 'radar_tracks') {
 
     //     const coordinates = results?.gJson?.geometry?.coordinates;
-      
+
     //      lastCoordinate = coordinates?.[coordinates.length - 1];
-      
+
     //     console.log("Last coordinate:", lastCoordinate);
-      
+
     //   }
-      
+
     // })
     // let params = { column: "ti_id", ip: "195.67.6.3" };
 
-    console.log("showSlewTI item",item);
-   // const track_id = item.data.alarm_id;
-    // console.log("getFilterData",this.alarmsData);
-    // var ti_coordinates = lastCoordinate
+    console.log("showSlewTI item", item);
     var ti_coordinates = item.location.coordinates;
+    console.log("testdata....", ti_coordinates)
 
-    //var ti_coordinates = lastCoordinate |item.location.coordinates;
-    // var ti_coordinates = (lastCoordinate != null) ? lastCoordinate : item.location.coordinates;
-    console.log("testdata....", ti_coordinates) 
-    var ti_camera_ip = "192.168.30.71";
-     this.setAutoPTZControl(item, ti_camera_ip, ti_coordinates);
-      var data = {
-        isSlewPopupEnabled: true,
-        data: item,
-        ti_coordinates: ti_coordinates,
-      };
-      console.log("slew data: ", data)
-      this.alarmService.publishSlewTIData(data);
+    let body = {
+      track_id: item.alarm_id
+    };
+    this.dataService.startContinuousTrack(body).subscribe(
+      (res: any) => {
+        console.log("Start continuous track response:", res);
+      },
+      (err) => {
+        console.log("Start continuous track error:", err);
+      }
+    );
 
-    // this.alarmService.getSensorMappedConfiguration(params).subscribe(
-    //   (res) => {
-    //     if (res && res.data) {
-    //       var ti_coordinates = res.data.sensor_location.coordinates;
-    //       var ti_camera_ip = res.data.ip;
-    //       this.setAutoPTZControl(item, ti_camera_ip, ti_coordinates);
-    //       var data = {
-    //         isSlewPopupEnabled: true,
-    //         data: item,
-    //         ti_coordinates: ti_coordinates,
-    //       };
-    //       this.alarmService.publishSlewTIData(data);
-    //     }
-    //   },
-    //   (err) => {
-    //     console.log("--- err --- ", err);
-    //   }
-    // );
+    // Update the alarm's event_type to 9 (Slew TI Started) in the database and local state
+    item.acknowledged_cleared = 9; // Slew TI Started
+    this.alarmService.acknowledgeClearAlarms(item).subscribe(
+      (res) => {
+        if (!res.error) {
+          const alarmIndex = this.alarmIndexes.findIndex(
+            (ele) => ele.alarm_id === item.alarm_id
+          );
+          if (alarmIndex !== -1) {
+            this.alarmIndexes[alarmIndex].event_type = 9;
+          }
+          item.event_type = 9;
+          this.alarmService.publishUpdatedAlarmData([item]);
+
+          var data = {
+            isSlewPopupEnabled: true,
+            data: item,
+            ti_coordinates: ti_coordinates,
+          };
+          console.log("slew data: ", data)
+          this.alarmService.publishSlewTIData(data);
+        }
+      },
+      (err) => {
+        console.log("Error starting slew TI event in DB:", err);
+      }
+    );
+
     // sensor_id ip_address target_id target_type distance  speed altitude
     let coordinates = item.location.coordinates;
     var slew_data = {
@@ -867,6 +873,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
     });
   }
 
+
+
   setAutoPTZControl(target_info, ti_camera_ip, ti_coordinates) {
 
     console.log("autoptzcontroll")
@@ -881,7 +889,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     // Locations
     let target_location = target_info.location.coordinates;
     let ti_location = ti_coordinates;
-    console.log("test...",ti_location)
+    console.log("test...", ti_location)
 
     // ---------------- PAN ----------------
     let pan = turf.bearing(ti_location, target_location);
@@ -911,19 +919,19 @@ export class SidebarComponent implements OnInit, OnDestroy {
     console.log("Pan:", pan);
     console.log("Tilt:", tilt);
     console.log("Zoom:", zoom);
-    
+
 
     let queryParams = "pan=" + pan + "&tilt=" + tilt;
     let url = "http://" + ti_camera_ip;
-  //  queryParams = queryParams + "&ip=" + ti_camera_ip;
-  console.log("track ID: ",target_info.alarm_id );
-  
-   let body = {
-    pan: pan ,
-    tilt: tilt,
-    zoom:zoom,
-    track_id:target_info.alarm_id             // Add the IP to the body
-  };
+    //  queryParams = queryParams + "&ip=" + ti_camera_ip;
+    console.log("track ID: ", target_info.alarm_id);
+
+    let body = {
+      pan: pan,
+      tilt: tilt,
+      zoom: zoom,
+      track_id: target_info.alarm_id             // Add the IP to the body
+    };
     this.dataService.postPTZControls(url, body).subscribe(
       (res: any) => {
         if (res && !res.error && !res.errorInfo) {

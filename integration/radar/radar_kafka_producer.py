@@ -26,7 +26,7 @@ TOPIC_RAW = 'radar_raw'
 TOPIC_PROCESSED = 'radar_processed'
 # STATIC_IP = "192.168.30.52"  # previous — loopback only, misses simulator on eth0/wlan0
 #STATIC_IP = "192.168.2.136"      # join multicast on all interfaces
-STATIC_IP = "127.0.0.1"
+STATIC_IP = "0.0.0.0"
 MCAST_GRP = '227.0.0.2'
 MCAST_PORT = 6061
 
@@ -139,29 +139,59 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(('', MCAST_PORT))
-
+    #try:
+    #     mreq = struct.pack("4s4s", socket.inet_aton(MCAST_GRP), socket.inet_aton(STATIC_IP))
+    #     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+    #     logger.info(f"Connected to Multicast {MCAST_GRP} on {STATIC_IP}:{MCAST_PORT}")
+    # except OSError as e:
+    #     logger.critical(f"Network Join Failed: {e}")
+    #     return
     try:
-        mreq = struct.pack("4s4s", socket.inet_aton(MCAST_GRP), socket.inet_aton(STATIC_IP))
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-        logger.info(f"Connected to Multicast {MCAST_GRP} on {STATIC_IP}:{MCAST_PORT}")
+        mreq = struct.pack(
+            "4sl",
+            socket.inet_aton(MCAST_GRP),
+            socket.INADDR_ANY
+        )
+
+        sock.setsockopt(
+            socket.IPPROTO_IP,
+            socket.IP_ADD_MEMBERSHIP,
+            mreq
+        )
+
+        logger.info(f"Connected to Multicast {MCAST_GRP}:{MCAST_PORT}")
+
+        # allows Ctrl+C to work and helps debugging
+        sock.settimeout(5)
+
     except OSError as e:
         logger.critical(f"Network Join Failed: {e}")
         return
-
     last_status_time = time.time()
     print("last_status", last_status_time)
     packets_received = 0
 
     try:
-        # print("first check point")
+        print("first check point")
         while True:
-            # print("second_Check_point")
-            raw_bytes, addr = sock.recvfrom(2048)
-            # print("raw_bytes", raw_bytes)
-            # print("len of dtaa received", len(raw_bytes))
+            try:
+                print("second_Check_point")
+                raw_bytes, addr = sock.recvfrom(2048)
+                print(
+                        f"\nReceived {len(raw_bytes)} bytes "
+                        f"from {addr[0]}:{addr[1]}"
+                    )
+                print("raw_bytes", raw_bytes)
+                print("len of data received", len(raw_bytes))
+
+            except socket.timeout:
+                print("No multicast packets received in 5 seconds")
+                continue
             
 
             if len(raw_bytes) >= 130 and raw_bytes[0:2] == b'\x11\x11':
+                print("Valid SIDD packet received")
+
                 try:
                     data = process_sidd_packet(raw_bytes)
                     if data:

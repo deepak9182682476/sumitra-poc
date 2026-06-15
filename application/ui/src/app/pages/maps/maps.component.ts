@@ -63,9 +63,11 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   enableUAVModal = false;
   enableVideo = false;
   enableUavVideo = false;
-  uavStreamUrl = 'http://192.168.2.146:8091/uav';
+  //uavStreamUrl = 'http://192.168.2.146:8091/uav';
+  uavStreamUrl = 'https://itms.gctp.in/stream?ip=10.0.207.190'
   isThermalFeed = false;
-  slewDayUrl = 'http://192.168.2.146:8091/';
+  //slewDayUrl = 'http://192.168.2.146:8091/';
+  slewDayUrl = 'https://itms.gctp.in/stream?ip=10.0.207.190';
   slewThermalUrl = 'http://192.168.2.146:8091/thermal';
   get slewFeedUrl(): string { return this.isThermalFeed ? this.slewThermalUrl : this.slewDayUrl; }
   isSlewPopupEnabled = true; // *** thermal
@@ -151,6 +153,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     camera: 2,
     track_id: null
   };
+  activeSlewAlarm: any = null;
   ti_camera_ip: any = "";
   ti_location: any = [];
   eoir_camera_ip: any = "";
@@ -1947,8 +1950,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         // url =
         //   this.dataService.config.LOCAL_MAP_URL +
         //   "/styles/dark-matter/{z}/{x}/{y}.png";
-        // url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-        url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png';
+         url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+        //url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png';
       } else if (this.mapParams.Theme === "light") {
         // url =
         //   this.dataService.config.LOCAL_MAP_URL +
@@ -1964,8 +1967,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       // url =
       // this.dataService.config.LOCAL_SAT_MAP_URL +
       // "/wmts/gm_layer/gm_grid/{z}/{x}/{y}.png";
-      // url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-      url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png';
+       url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+     // url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png';
       
       if (url != undefined) {
         this.mapParams.satelliteThemeChecked = false;
@@ -2233,6 +2236,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         //   });
         // } 
         else if (results && results.category === "radar_tracks") {
+          console.log("Received radar track update: ", results);
           const gJson = results.gJson;
           this.tracksList.push(gJson);
         
@@ -2700,9 +2704,25 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.slewTISubscription = this.alarmService.receiveSlewTIEvent.subscribe(
       (res) => {
-        if (res && !this.isSlewPopupEnabled) {
-          this.overlayElement.nativeElement.innerHTML = "";
-          this.olmap.removeOverlay(this.popup);
+        if (res) {
+          if (res.isSlewPopupEnabled === false) {
+            this.isSlewPopupEnabled = false;
+            this.enableUAVModal = false;
+            this.enableVideo = false;
+            if (this.popup) {
+              this.popup.setPosition(undefined);
+            }
+            this.updateOpacity(false, false);
+            this.activeSlewAlarm = null;
+            return;
+          }
+          console.log("Slew TI Event Received: ", res.data);
+
+          this.activeSlewAlarm = res.data;
+
+          if (!this.isSlewPopupEnabled) {
+            this.overlayElement.nativeElement.innerHTML = "";
+            this.olmap.removeOverlay(this.popup);
 
           const projWidth = getWidth(
             this.olmap.getView().getProjection().getExtent()
@@ -2747,7 +2767,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                   let popup = this.popup;
                   let closer = this.popupCloser.nativeElement;
                   if (closer.onclick === null) {
-                    closer.onclick = function () {
+                    closer.onclick = () => {
                       popup.setPosition(undefined);
                       closer.blur();
                       this.updateOpacity(false, feature);
@@ -2759,8 +2779,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             });
             // setting the camera ip as globally
             this.ti_camera_ip = camera_ip;
+            this.ti_location = coordinates;
             this.setPTZControls(camera_ip);
           }
+         }
         }
       }
     );
@@ -2794,21 +2816,122 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   cancelTrack(type): void {
     let body = {
-      mode: "cancel"          // Add the IP to the body
+      mode: "cancel"
     };
-      this.dataService.doAutoTrack(body).subscribe(
-        (res: any) => {
-          if (res && !res.error && !res.errorInfo) {
-            console.log(res);
-          } else {
-            console.log(res);
+    this.dataService.doAutoTrack(body).subscribe(
+      (res: any) => {
+        console.log("Visual tracker cancel response:", res);
+      },
+      (err) => {
+        console.log("Visual tracker cancel error:", err);
+      }
+    );
+
+    this.dataService.returnCameraHome().subscribe(
+      (res: any) => {
+        console.log("Return camera home response:", res);
+      },
+      (err) => {
+        console.log("Return camera home error:", err);
+      }
+    );
+
+    if (this.activeSlewAlarm) {
+      this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
+      this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
+        (res) => {
+          if (!res.error) {
+            this.activeSlewAlarm.event_type = 10;
+            this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
+            this.activeSlewAlarm = null;
           }
         },
         (err) => {
-          console.log(err);
+          console.log("Error updating cancel track event in DB:", err);
+        }
+      );
+    }
+  }
+
+  startTrack(type): void {
+    if (this.activeSlewAlarm) {
+      let body = {
+        track_id: this.activeSlewAlarm.alarm_id
+      };
+      this.dataService.startContinuousTrack(body).subscribe(
+        (res: any) => {
+          console.log("Start continuous tracking response:", res);
+        },
+        (err) => {
+          console.log("Start continuous tracking error:", err);
         }
       );
 
+      this.activeSlewAlarm.acknowledged_cleared = 9; // Slew TI Started
+      this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
+        (res) => {
+          if (!res.error) {
+            this.activeSlewAlarm.event_type = 9;
+            this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
+          }
+        },
+        (err) => {
+          console.log("Error starting slew TI event in DB:", err);
+        }
+      );
+    }
+  }
+
+  stopTrack(type): void {
+    if (this.activeSlewAlarm) {
+      this.dataService.stopContinuousTrack().subscribe(
+        (res: any) => {
+          console.log("Stop continuous tracking response:", res);
+        },
+        (err) => {
+          console.log("Stop continuous tracking error:", err);
+        }
+      );
+
+      this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
+      this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
+        (res) => {
+          if (!res.error) {
+            this.activeSlewAlarm.event_type = 10;
+            this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
+          }
+        },
+        (err) => {
+          console.log("Error stopping slew TI event in DB:", err);
+        }
+      );
+    }
+  }
+
+  returnHome(type): void {
+    if (this.activeSlewAlarm) {
+      this.dataService.returnCameraHome().subscribe(
+        (res: any) => {
+          console.log("Return camera home response:", res);
+        },
+        (err) => {
+          console.log("Return camera home error:", err);
+        }
+      );
+
+      this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
+      this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
+        (res) => {
+          if (!res.error) {
+            this.activeSlewAlarm.event_type = 10;
+            this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
+          }
+        },
+        (err) => {
+          console.log("Error returning camera home event in DB:", err);
+        }
+      );
+    }
   }
   displayRadarTrack: Boolean;
 

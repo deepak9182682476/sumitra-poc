@@ -13,11 +13,12 @@
                 <ul class="menu-items">
                     <li *ngIf="obj.key === 'Confirmatory_Alarm'">
                         <h6>{{getTranslationLang("alarms")}} ({{obj.value.length}})
-                            <a *ngIf='mccsUsers?.isOperator || mccsUsers?.isSuperUser' href="javascript:void(0)" class="clear-all float-right"
+                            <a *ngIf='mccsUsers?.isOperator || mccsUsers?.isSuperUser' href="javascript:void(0)"
+                                class="clear-all float-right"
                                 (click)="clearAll('ca')">{{getTranslationLang('clear_all')}}</a>
-                                <a href="javascript:void(0)" class="clear-all float-right"
+                            <a href="javascript:void(0)" class="clear-all float-right"
                                 (click)="clearAllTracks()">{{getTranslationLang('clear_tracks')}}</a>
-                            </h6>
+                        </h6>
 
                         <p class="text-center" *ngIf="!loadingInfo?.gettingAlarmData && !obj.value.length">
                             {{getTranslationLang("no_alarms_found")}}</p>
@@ -36,7 +37,7 @@
                             </p>
                             <p>{{getTranslationLang("sensors_triggered")}}:
                                 {{item?.sensors_triggered ? item?.sensors_triggered : '--'}}</p>
-                           <!-- <p>{{getTranslationLang("category")}}:
+                            <!-- <p>{{getTranslationLang("category")}}:
                                 {{item?.object_identified ? item?.object_identified : '--'}}</p>
                             <p>{{getTranslationLang("agu")}}:
                                 {{item?.pole_number ? item?.pole_number : '--'}}</p>-->
@@ -95,8 +96,7 @@
                             <ul class="navbar-nav flex-row justify-content-end action-info mt-2"
                                 *ngIf="alarmIndexes[getAlarmIndex(item.alarm_id)]?.event_type > 0 && (mccsUsers?.isOperator || mccsUsers?.isSuperUser) && (modeData === 'manual')">
                                 <li class="nav-item" *ngFor="let assignment of assignments; let assignmentIndex=index;">
-                                    <button class="btn nav-link"
-                                    [disabled]="((assignment.position && assignment.position.indexOf(caIndex) !== -1) && 
+                                    <button class="btn nav-link" [disabled]="((assignment.position && assignment.position.indexOf(caIndex) !== -1) && 
                                     assignment.isAssigned && item.isAssigned)">
                                         <!-- [disabled]="((assignment.position && assignment.position.indexOf(caIndex) !== -1) && 
                                           assignment.isAssigned && item.isAssigned) ||
@@ -105,7 +105,7 @@
                                         <img title="{{assignment.title}}" class="theme-icon" width="28" height="28"
                                             src="{{assignment.src}}"
                                             (click)="assignToResponse_map(item, item?.zone_id, assignment.type, assignmentIndex, caIndex,'ca');" />
-                                            
+
                                     </button>
                                 </li>
                             </ul>
@@ -114,7 +114,7 @@
                         </div>
                     </li>
 
-                   <!--<li *ngIf="obj.key === 'Early_Alarm'" (mouseleave)="enabeEarlyAlarmClearBtn = null;">
+                    <!--<li *ngIf="obj.key === 'Early_Alarm'" (mouseleave)="enabeEarlyAlarmClearBtn = null;">
                         <h6>{{getTranslationLang("early_alarm")}} ({{obj.value.length}})
                             <a *ngIf='mccsUsers?.isOperator || mccsUsers?.isSuperUser' href="javascript:void(0)" class="clear-all float-right"
                                 (click)="clearAll('ea')">{{getTranslationLang('clear_all')}}</a>

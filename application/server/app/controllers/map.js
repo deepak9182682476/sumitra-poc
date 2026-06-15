@@ -91,7 +91,7 @@ exports.ugvTrack = async (req, res, next) => {
     lat: req.body.y,
     lng: req.body.x,
     ip: req.body.ip,
-    properties:{ip:req.body.ip, id: req.body.ip, type:req.body.type}
+    properties: { ip: req.body.ip, id: req.body.ip, type: req.body.type }
   };
   geojson = GeoJSON.parse(alarmObject, { Point: ["lat", "lng"] });
   //console.log(geojson);
@@ -214,16 +214,16 @@ exports.track = async (req, res, next) => {
 
 //Send Track Data To response service.
 exports.receiveTrackDataFromMapService = async (req, res, next) => {//*** 
-  try{
+  try {
     //trackData(req, res, next);
-    console.log('Length() Of Radar_Track Data...',radarTrackData.length) 
-    if(radarTrackData.length){
+    console.log('Length() Of Radar_Track Data...', radarTrackData.length)
+    if (radarTrackData.length) {
 
-      res.send({track_data: radarTrackData});
+      res.send({ track_data: radarTrackData });
 
     }
     console.log('No Data Found...')
-  }catch(error){
+  } catch (error) {
     console.log(error);
   }
 };
@@ -231,102 +231,104 @@ exports.receiveTrackDataFromMapService = async (req, res, next) => {//***
 setInterval(() => {
   // Maintaining radar track data as global and send track to UI
   if (newRadarTrack) {
+    console.log('inside kkkkkkkkkkkkl radar track alarm will be created');
+
     newRadarTrack = false;
     // console.log(JSON.stringify(radarTrackData))
-    
+
     if (radarTrackData != undefined) {
       trackInfo = radarTrackData[0]
       let location = trackInfo.tail[0]
       if (location != undefined) {
         // isLatLngNearbyBoundary(env.boundaryPoints, location)
         //   .then((response) => {
-            const data = {
-              lat: location[1],
-              lng: location[0],
-              id: trackInfo.id,
-              type: 2,
-              category: "alarm",
-              track_to_db: true,
-              record_flag: 0,
-            };
-            let isEWPresent = checkEWPresense(trackInfo.id);
-            if (!isEWPresent) {
-              console.log("*********************************************************************************************************")
-              ewInfo = data;
-              earlyWarningsInfo.push(ewInfo);
-              sendAlarmDataToMapService(
-                location[1],
-                location[0],
-                trackInfo.id,
-                1
-              );
-              sendAlarmDataToAlarmService(
-                location[1],
-                location[0],
-                trackInfo.id,
-                1,
-                ["RADAR"],
-                trackInfo.ip
-              );
-            }
-          // })
-          // .catch((error) => {
-          //   log.createLog({
-          //     type: "error",
-          //     root_module: "MCCS",
-          //     sub_module: "Map Service",
-          //     method: new Error().stack.split("\n")[1].trim(),
-          //     log_message: error || "Track Failed",
-          //   });
-          //   console.log(error);
-          // });
+        const data = {
+          lat: location[1],
+          lng: location[0],
+          id: trackInfo.id,
+          type: 2,
+          category: "alarm",
+          track_to_db: true,
+          record_flag: 0,
+        };
+        let isEWPresent = checkEWPresense(trackInfo.id);
+        if (!isEWPresent) {
+          console.log("*********************************************************************************************************")
+          ewInfo = data;
+          earlyWarningsInfo.push(ewInfo);
+          sendAlarmDataToMapService(
+            location[1],
+            location[0],
+            trackInfo.id,
+            1
+          );
+          sendAlarmDataToAlarmService(
+            location[1],
+            location[0],
+            trackInfo.id,
+            1,
+            ["RADAR"],
+            trackInfo.ip
+          );
+        }
+        // })
+        // .catch((error) => {
+        //   log.createLog({
+        //     type: "error",
+        //     root_module: "MCCS",
+        //     sub_module: "Map Service",
+        //     method: new Error().stack.split("\n")[1].trim(),
+        //     log_message: error || "Track Failed",
+        //   });
+        //   console.log(error);
+        // });
       }
 
-            // radarTrackData.find((trackInfo) => {
-            //   let location = trackInfo.tail[trackInfo.tail.length-1]
-            //   if (location != undefined) {
-            //     // isLatLngNearbyBoundary(env.boundaryPoints, location)
-            //     //   .then((response) => {
-            //         const data = {
-            //           lat: location[1],
-            //           lng: location[0],
-            //           id: trackInfo.id,
-            //           type: 2,
-            //           category: "alarm",
-            //           track_to_db: false,
-            //           record_flag: 0,
-            //         };
-            //         let isEWPresent = checkEWPresense(trackInfo.id);
-            //         if (!isEWPresent) {
-            //           console.log("*********************************************************************************************************")
-            //           earlyWarningsInfo.push(data);
-            //           sendAlarmDataToMapService(
-            //             location[1],
-            //             location[0],
-            //             trackInfo.id,
-            //             2
-            //           );
-            //           sendAlarmDataToAlarmService(
-            //             location[1],
-            //             location[0],
-            //             trackInfo.id,
-            //             2,
-            //             ["RADAR"],
-            //             trackInfo.ip
-            //           );
-            //         }
-            //       // })
-            //       // .catch((error) => {
-            //       //   log.createLog({
-            //       //     type: "error",
-            //       //     root_module: "MCCS",
-            //       //     sub_module: "Map Service",
-            //       //     method: new Error().stack.split("\n")[1].trim(),
-            //       //     log_message: error || "Track Failed",
-            //       //   });
-            //       //   console.log(error);
-            //       // });
-            //   }
+      // radarTrackData.find((trackInfo) => {
+      //   let location = trackInfo.tail[trackInfo.tail.length-1]
+      //   if (location != undefined) {
+      //     // isLatLngNearbyBoundary(env.boundaryPoints, location)
+      //     //   .then((response) => {
+      //         const data = {
+      //           lat: location[1],
+      //           lng: location[0],
+      //           id: trackInfo.id,
+      //           type: 2,
+      //           category: "alarm",
+      //           track_to_db: false,
+      //           record_flag: 0,
+      //         };
+      //         let isEWPresent = checkEWPresense(trackInfo.id);
+      //         if (!isEWPresent) {
+      //           console.log("*********************************************************************************************************")
+      //           earlyWarningsInfo.push(data);
+      //           sendAlarmDataToMapService(
+      //             location[1],
+      //             location[0],
+      //             trackInfo.id,
+      //             2
+      //           );
+      //           sendAlarmDataToAlarmService(
+      //             location[1],
+      //             location[0],
+      //             trackInfo.id,
+      //             2,
+      //             ["RADAR"],
+      //             trackInfo.ip
+      //           );
+      //         }
+      //       // })
+      //       // .catch((error) => {
+      //       //   log.createLog({
+      //       //     type: "error",
+      //       //     root_module: "MCCS",
+      //       //     sub_module: "Map Service",
+      //       //     method: new Error().stack.split("\n")[1].trim(),
+      //       //     log_message: error || "Track Failed",
+      //       //   });
+      //       //   console.log(error);
+      //       // });
+      //   }
 
       earlyWarningsInfo.find((ewInfo) => {
         if (trackInfo.id == ewInfo.id) {
@@ -470,14 +472,14 @@ function isLatLngNearbyBoundary(boundaryPoints, location) {
 }
 
 function sendAlarmDataToMapService(lat, lon, id, type) {
-  console.log("sending the alarm to map",lat, lon, id, type)
+  console.log("sending the alarm to map", lat, lon, id, type)
   var options = { json: true };
   options.body = { lat: lat, lng: lon, id: id, type: type, category: "map" };
   processAlarmData(options);
 }
 
 function sendAlarmDataToAlarmService(lat, lon, id, type, st, ip) {
-  // console.log("sending the alarm to alarm ",lat, lon, id, type, st, ip)
+  console.log("sending the alarm to alarm (sendAlarmDataToAlarmService)", lat, lon, id, type, st, ip)
   var options = { json: true };
   options.url = env.base_url + "/alarm/create-update";
   options.body = {
@@ -522,7 +524,7 @@ function sendAlarmDataToAlarmService(lat, lon, id, type, st, ip) {
 //     body: data,
 //     json: true,
 //   };
-  
+
 //   await request(options, (err, res, body) => {
 //    // console.log("UI res",res);
 //     if (err) {
@@ -555,26 +557,26 @@ function sendAlarmDataToAlarmService(lat, lon, id, type, st, ip) {
 //       id: id,
 //       data: mulcor
 //     };
-  
+
 //     geojson = GeoJSON.parse(lineWrapper, { LineString: "data" });
-  
+
 //     var data = {};
 //     data.gJson = geojson;
 //     data.category = category;
-  
+
 //     var options = {
 //       url: `http://localhost:3058/api/communication/to-ui`,
 //       body: data,
 //       json: true,
 //     };
-  
+
 //     await request(options, (err, res, body) => {
 //       if (err) {
 //         console.log(err);
 //       }
 //     });
 //   }
-  
+
 // }
 
 // Store coordinates per id
@@ -1445,8 +1447,8 @@ exports.getAlarmWithZoneData = async (req, res, next) => {
   }
 };
 
-exports.getAwsData = async(req, res, next) => {
-  try{
+exports.getAwsData = async (req, res, next) => {
+  try {
 
   } catch (err) {
     res.errorCode = 500;

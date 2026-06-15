@@ -193,22 +193,43 @@ export class DataService {
     // const headers = {'Access-Control-Allow-Origin': '*','Access-Control-Allow-Methods': 'GET, POST, OPTIONS','Access-Control-Allow-Headers': 'Origin, Content-Type, X-Auth-Token',"content-type":"text/plain"}
     //return this.http.get(API_URL).pipe(catchError(this.handleError));
     const API_URL = `${this.config.serverApiUrl.sensorService}`;
-    return this.http.get("http://192.168.2.101:8000/ptz?" + queryParams).pipe(catchError(this.handleError));
+    return this.http.get("http://192.168.2.136:8000/ptz?" + queryParams).pipe(catchError(this.handleError));
   }
 
   public doAutoTrack(body: any) {
     console.log("TI track: ",body)
-    return this.http.post("http://192.168.2.101:8000/tracker", body).pipe(
+    return this.http.post("http://192.168.2.136:8000/tracker", body).pipe(
       catchError(this.handleError)
     );
   }
 
   public postPTZControls(url: string, body: any) {
-    // URL for the POST request (you can still keep your base API URL from config or hard-code it)
-   // const API_URL = `${this.config.serverApiUrl.sensorService}/ptz`;
-  
     // Sending a POST request with the body (PTZ controls) and headers
-    return this.http.post("http://192.168.2.101:8000/ptz?", body).pipe(
+    return this.http.post("http://192.168.2.136:8000/ptz", body).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  public startContinuousTrack(body: any) {
+    return this.http.post("http://192.168.2.136:8000/track/start", body).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  public stopContinuousTrack() {
+    return this.http.post("http://192.168.2.136:8000/track/stop", {}).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  public returnCameraHome() {
+    return this.http.post("http://192.168.2.136:8000/home", {}).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  public slewOnce(body: any) {
+    return this.http.post("http://192.168.2.136:8000/ptz", body).pipe(
       catchError(this.handleError)
     );
   }

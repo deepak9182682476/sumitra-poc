@@ -120,10 +120,13 @@
                           <div class="video-wrapper">
                             <img class="video-tag" id="slew-ti-video" [src]="slewFeedUrl" />
                             <span class="video-icons">
-                              <span><i (click)="manualTrack('ti');" class="fa fa-bullseye" aria-hidden="true"></i></span>
-                              <span><i (click)="cancelTrack('ti');" class="fa fa-eye-slash" aria-hidden="true"></i></span>
-                              <span><i (click)="openFullscreen('ti');" class="fa fa-arrows-alt" aria-hidden="true"></i></span>
-                              <span><i class="fa fa-remove" aria-hidden="true" (click)="enableVideo=false;" id="close-icon-slew-ti-popup"></i></span>
+                              <span><i (click)="startTrack('ti');" class="fa fa-play" title="Start Tracking" aria-hidden="true"></i></span>
+                              <span><i (click)="stopTrack('ti');" class="fa fa-stop" title="Stop Tracking" aria-hidden="true"></i></span>
+                              <span><i (click)="returnHome('ti');" class="fa fa-home" title="Return Home" aria-hidden="true"></i></span>
+                              <span><i (click)="manualTrack('ti');" class="fa fa-bullseye" title="Manual Lock" aria-hidden="true"></i></span>
+                              <span><i (click)="cancelTrack('ti');" class="fa fa-eye-slash" title="Cancel Track" aria-hidden="true"></i></span>
+                              <span><i (click)="openFullscreen('ti');" class="fa fa-arrows-alt" title="Fullscreen" aria-hidden="true"></i></span>
+                              <span><i class="fa fa-remove" aria-hidden="true" (click)="enableVideo=false;" title="Close Video Feed" id="close-icon-slew-ti-popup"></i></span>
                             </span>
                             <div class="feed-toggle">
                               <button [class.active]="!isThermalFeed" (click)="isThermalFeed=false">Day</button>
