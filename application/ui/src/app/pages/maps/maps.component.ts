@@ -530,7 +530,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.olmap.getViewport().addEventListener("contextmenu", (evt) => {
         evt.preventDefault();
         if (!this.isSlewPopupEnabled && !this.isCameraPopupEnabled) {
-          this.overlayElement.nativeElement.innerHTML = "";
+          if (this.overlayElement && this.overlayElement.nativeElement) {
+            this.overlayElement.nativeElement.innerHTML = "";
+          }
           this.olmap.removeOverlay(this.popup);
           let layername;
           let layers = this.olmap.getLayers().getArray();
@@ -554,9 +556,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                   this.popup.setPosition(this.olmap.getEventCoordinate(evt));
                   this.olmap.addOverlay(this.popup);
                   let popup = this.popup;
-                  let closer = this.popupCloser.nativeElement;
-                  if (closer.onclick === null) {
-                    closer.onclick = function () {
+                  let closer = this.popupCloser ? this.popupCloser.nativeElement : null;
+                  if (closer && closer.onclick === null) {
+                    closer.onclick = () => {
                       popup.setPosition(undefined);
                       closer.blur();
                       this.updateOpacity(false, feature);
@@ -584,9 +586,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                   this.popup.setPosition(this.olmap.getEventCoordinate(evt));
                   this.olmap.addOverlay(this.popup);
                   let popup = this.popup;
-                  let closer = this.popupCloser.nativeElement;
-                  if (closer.onclick === null) {
-                    closer.onclick = function () {
+                  let closer = this.popupCloser ? this.popupCloser.nativeElement : null;
+                  if (closer && closer.onclick === null) {
+                    closer.onclick = () => {
                       popup.setPosition(undefined);
                       closer.blur();
                       // this.updateOpacity(false, feature);
@@ -662,9 +664,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.popup.setPosition(evt.coordinate);
                 this.olmap.addOverlay(this.popup);
                 let popup = this.popup;
-                let closer = this.popupCloser.nativeElement;
-                if (closer.onclick === null) {
-                  closer.onclick = function () {
+                let closer = this.popupCloser ? this.popupCloser.nativeElement : null;
+                if (closer && closer.onclick === null) {
+                  closer.onclick = () => {
                     popup.setPosition(undefined);
                     self.removeCoverage();
                     closer.blur();
@@ -2104,7 +2106,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         tableHtml += "</tr>";
       }
       tableHtml += "</table>";
-      this.overlayElement.nativeElement.innerHTML = tableHtml;
+      if (this.overlayElement && this.overlayElement.nativeElement) {
+        this.overlayElement.nativeElement.innerHTML = tableHtml;
+      }
     }
   }
 
@@ -2631,44 +2635,46 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 that.popup.setPosition(getCordinates);
                 that.olmap.addOverlay(that.popup);
                 let popup = that.popup;
-                let closer = that.popupCloser.nativeElement;
-                if (closer.onclick === null) {
-                  closer.onclick = function () {
+                let closer = that.popupCloser ? that.popupCloser.nativeElement : null;
+                if (closer && closer.onclick === null) {
+                  closer.onclick = () => {
                     popup.setPosition(undefined);
                     closer.blur();
                     return false;
                   };
                 }
-                that.overlayElement.nativeElement.innerHTML = `
-                  <table class="table table-sm table-bordered">
-                    <tbody>
-                      <tr>
-                        <th>${self.getTranslationLang("latitude")}: </th>
-                        <td>${getCordinates[1]}</td>
-                      </tr>
-                      <tr>
-                        <th>${self.getTranslationLang("longitude")}: </th> 
-                        <td>${getCordinates[0]}</td>
-                      </tr>
-                      <tr>
-                        <th>${self.getTranslationLang("alarm_id")}: </th> 
-                        <td>${getAlarmId}</td>
-                      </tr>
-                      <tr>
-                        <th>${self.getTranslationLang("alarm_type")}: </th> 
-                        <td>${getTypeZoneID[0]}</td>
-                      </tr>
-                      <tr>
-                        <th>${self.getTranslationLang("zone_id")}: </th> 
-                        <td>${getTypeZoneID[1]}</td>
-                      </tr>
-                      <tr>
-                        <th>${self.getTranslationLang("category")}: </th> 
-                        <td>${getCategory}</td>
-                      </tr>
-                    </tbody>
-                  </table>                
-                `;
+                if (that.overlayElement && that.overlayElement.nativeElement) {
+                  that.overlayElement.nativeElement.innerHTML = `
+                    <table class="table table-sm table-bordered">
+                      <tbody>
+                        <tr>
+                          <th>${self.getTranslationLang("latitude")}: </th>
+                          <td>${getCordinates[1]}</td>
+                        </tr>
+                        <tr>
+                          <th>${self.getTranslationLang("longitude")}: </th> 
+                          <td>${getCordinates[0]}</td>
+                        </tr>
+                        <tr>
+                          <th>${self.getTranslationLang("alarm_id")}: </th> 
+                          <td>${getAlarmId}</td>
+                        </tr>
+                        <tr>
+                          <th>${self.getTranslationLang("alarm_type")}: </th> 
+                          <td>${getTypeZoneID[0]}</td>
+                        </tr>
+                        <tr>
+                          <th>${self.getTranslationLang("zone_id")}: </th> 
+                          <td>${getTypeZoneID[1]}</td>
+                        </tr>
+                        <tr>
+                          <th>${self.getTranslationLang("category")}: </th> 
+                          <td>${getCategory}</td>
+                        </tr>
+                      </tbody>
+                    </table>                
+                  `;
+                }
               }
             };
             this.olmap.addOverlay(marker);
@@ -2720,7 +2726,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           this.enableVideo = true;
 
           if (!this.isSlewPopupEnabled) {
-            this.overlayElement.nativeElement.innerHTML = "";
+            if (this.overlayElement && this.overlayElement.nativeElement) {
+              this.overlayElement.nativeElement.innerHTML = "";
+            }
             this.olmap.removeOverlay(this.popup);
 
             const projWidth = getWidth(
@@ -2763,14 +2771,16 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                     this.popup.setPosition(coordinates);
                     this.olmap.addOverlay(this.popup);
                     let popup = this.popup;
-                    let closer = this.popupCloser.nativeElement;
-                    if (closer.onclick === null) {
-                      closer.onclick = () => {
-                        popup.setPosition(undefined);
-                        closer.blur();
-                        this.updateOpacity(false, feature);
-                        return false;
-                      };
+                    let closer = this.popupCloser ? this.popupCloser.nativeElement : null;
+                    if (closer) {
+                      if (closer.onclick === null) {
+                        closer.onclick = () => {
+                          popup.setPosition(undefined);
+                          closer.blur();
+                          this.updateOpacity(false, feature);
+                          return false;
+                        };
+                      }
                     }
                   }
                 }
@@ -4282,10 +4292,12 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onLayerSwitchShown() {
     let popup = this.popup;
-    let closer = this.popupCloser.nativeElement;
+    let closer = this.popupCloser ? this.popupCloser.nativeElement : null;
     if (popup) {
       popup.setPosition(undefined);
-      closer.blur();
+      if (closer) {
+        closer.blur();
+      }
     }
     this.removeCoverage();
   }
