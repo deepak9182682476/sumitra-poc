@@ -59,7 +59,8 @@ def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
 
-    base_lat, base_lon = 21.9000, 88.9000
+    # base_lat, base_lon = 21.9000, 88.9000
+    base_lat, base_lon = 9.9555087, 76.238227
     
     print(f"[*] Aligned Simulator Streaming to {MCAST_GRP}:{MCAST_PORT}...")
     
@@ -76,6 +77,16 @@ def main():
             # Track 109
             p2 = create_sidd_packet(109, base_lat - offset, base_lon + 0.005, 180.0)
             sock.sendto(p2, (MCAST_GRP, MCAST_PORT))
+
+            # Track 119
+            if step >= 40:
+                p3 = create_sidd_packet(
+                    119,
+                    base_lat - offset,
+                    base_lon + 0.15,
+                    0.0
+                )
+                sock.sendto(p3, (MCAST_GRP, MCAST_PORT))
             
             print(f"Cycle {step} sent | T105: {base_lat+offset:.4f} | T109: {base_lat-offset:.4f}")
             step += 1

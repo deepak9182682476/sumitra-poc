@@ -80,10 +80,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   checkedLayers: any = [];
   isTrackReceived = false;
   uavTrack = []
-  olmap : Map;
-  mrolmap : Map;
-  view : View;
-  view1 : View;
+  olmap: Map;
+  mrolmap: Map;
+  view: View;
+  view1: View;
   mapParams;
   layerlist: Array<any> = [];
   layers = {
@@ -213,8 +213,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     /* the below code is not required as UGV layer cannot be removed any point of time */
 
     this.eventService.emitter.subscribe((response: any) => {
-      if (response.type == "manual_route") {      
-        let {selectedRobots, algo_type} = response.message;
+      if (response.type == "manual_route") {
+        let { selectedRobots, algo_type } = response.message;
         let uvg_robots = selectedRobots.length && selectedRobots.map((item) => {
           return {
             ugv_name: item.split("_")[0],
@@ -250,7 +250,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       // }
     });
   }
-  
+
   onSlewToggle(event: any) {
     this.enableVideo = event.target.checked;
   }
@@ -258,12 +258,12 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   onUavToggle(event: any) {
     this.enableUavVideo = event.target.checked;
   }
-  
+
   closeSlewPopup() {
     this.enableVideo = false;
     this.isSlewPopupEnabled = false;
   }
-  
+
   getSmrMapId(event) {
     this.mrolmap.setTarget("mr_map");
 
@@ -271,7 +271,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     const userInfo = getSignedInData ? JSON.parse(getSignedInData) : false;
     const theme = userInfo && userInfo.theme ? userInfo.theme : "dark";
     this.mapThemeSelection(theme);
-    
+
     this.getPerimeterCoordinates1();
     this.retriveRNDFFileData1();
   }
@@ -545,7 +545,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             const camera_ip = feature.get("features")[0].getProperties().ip;
             const ti_location = feature.getGeometry().getCoordinates();
             layers.forEach((layer, i) => {
-              if (i !== 0 && layer.values_.id !== "tileLayer") {
+              if (layer.get("id") !== 1 && layer.values_.id !== "tileLayer") {
                 if (layer.get("title") === layername) {
                   this.isSlewPopupEnabled = true;
                   // this.overlayElement.nativeElement.innerHTML =
@@ -575,7 +575,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             const camera_ip = feature.get("features")[0].getProperties().ip;
             const eoir_location = feature.getGeometry().getCoordinates();
             layers.forEach((layer, i) => {
-              if (i !== 0 && layer.values_.id !== "tileLayer") {
+              if (layer.get("id") !== 1 && layer.values_.id !== "tileLayer") {
                 if (layer.get("title") === layername) {
                   this.isCameraPopupEnabled = true;
                   // this.overlayElement.nativeElement.innerHTML =
@@ -773,7 +773,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           const layers = [...this.olmap.getLayers().getArray()];
           if (res.type === "refresh") {
             layers.forEach((layer, i) => {
-              if (layer.get("title") !== "Perimeter" && i !== 0) {
+              if (layer.get("title") !== "Perimeter" && layer.get("id") !== 1) {
                 this.olmap.removeLayer(layer);
               }
             });
@@ -781,7 +781,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           } else {
             let getLayerData: any = {};
             layers.forEach((layer, i) => {
-              if (layer.get("title") !== "Perimeter" && i !== 0 && layer.values_.id !== "tileLayer") {
+              if (layer.get("title") !== "Perimeter" && layer.get("id") !== 1 && layer.values_.id !== "tileLayer") {
                 const source = layer.getSource();
                 const features = source.getFeatures();
                 features.filter((feature) => {
@@ -968,9 +968,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   sendManualRoute(form: any) {
-    form = Object.assign(form, { 
+    form = Object.assign(form, {
       waypoints: this.selectedRoutePoints,
-      algo_type: this.selectedAlgoType 
+      algo_type: this.selectedAlgoType
     });
 
     let params = {
@@ -1254,7 +1254,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             for (let index = 0; index < layerlist.length; index++) {
               var layer = layerlist[index];
 
-              if (index !== 0 && layer.values_.id !== "tileLayer") {
+              if (layer.get("id") !== 1 && layer.values_.id !== "tileLayer") {
                 if (
                   layer.values_ &&
                   layer.values_.title == "radartrack-" + rec.alarm_id
@@ -1308,7 +1308,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getPerimeterCoordinates() {
-    this.dataService.getPerimeterCoordinates({type: "Perimeter"}).subscribe((result: any) => {
+    this.dataService.getPerimeterCoordinates({ type: "Perimeter" }).subscribe((result: any) => {
       // console.log(result)
       this.addLayerToMap(
         Object.assign({}, this.layers, {
@@ -1323,7 +1323,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       );
     });
 
-    this.dataService.getPerimeterCoordinates({type: "Road"}).subscribe((result: any) => {
+    this.dataService.getPerimeterCoordinates({ type: "Road" }).subscribe((result: any) => {
       this.addLayerToMap(
         Object.assign({}, this.layers, {
           LayerTitle: "Road",
@@ -1352,7 +1352,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getPerimeterCoordinates1() {
-    this.dataService.getPerimeterCoordinates({type: "Perimeter"}).subscribe((result: any) => {
+    this.dataService.getPerimeterCoordinates({ type: "Perimeter" }).subscribe((result: any) => {
       this.addLayerToMap1(
         Object.assign({}, this.layers, {
           LayerTitle: "Perimeter",
@@ -1509,7 +1509,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         .getLayers()
         .getArray()
         .filter((layer, i) => {
-          if (i !== 0 && layer.values_.id !== "tileLayer") {
+          if (layer.get("id") !== 1 && layer.values_.id !== "tileLayer") {
             if (
               layer.get("title") === "Unmasked Zones" ||
               layer.get("title") === "Masked Zones"
@@ -1600,8 +1600,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   drawpolygon;
   drawpolygonLayer;
 
-  
-  generateSector(lat, lon, azimuth, range){
+
+  generateSector(lat, lon, azimuth, range) {
     // Turf.js to create a sector polygon
     const startPoint = turf.point([lon, lat]);
     let circle = turf.circle(startPoint, range, {
@@ -1621,28 +1621,26 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     const endAngle = azimuth + 30;    // 30° to the right of the azimuth
     const points = circle.geometry.coordinates[0]
     let finalSec = []
-    finalSec.push([lon,lat])
+    finalSec.push([lon, lat])
     let point_found = 0
     for (let index = 0; index < points.length; index++) {
       const point = points[index];
       const angle = turf.bearing(startPoint, turf.point(point));
       console.log(angle, startAngle, endAngle, Math.abs(angle - startAngle))
-      if(Math.abs(angle - startAngle) < -2 && !point_found)
-      {
+      if (Math.abs(angle - startAngle) < -2 && !point_found) {
         console.log("matched")
         finalSec.push(point)
-        finalSec.push([lon,lat])
+        finalSec.push([lon, lat])
         point_found = 1
       }
-      
-      if (angle > startAngle && angle < endAngle)
-      {
+
+      if (angle > startAngle && angle < endAngle) {
         finalSec.push(point)
       }
     }
     // finalSec.pop()
     // finalSec.push([lon,lat])
-   
+
     // console.log(finalSec, [lat,lon])
     // Generate a polygon by clipping the circle into a sector
     const sector = turf.polygon(
@@ -1950,26 +1948,26 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         // url =
         //   this.dataService.config.LOCAL_MAP_URL +
         //   "/styles/dark-matter/{z}/{x}/{y}.png";
-         url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+        url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
         //url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png';
       } else if (this.mapParams.Theme === "light") {
         // url =
         //   this.dataService.config.LOCAL_MAP_URL +
         //   "/styles/osm-bright/{z}/{x}/{y}.png";
-          url = 'https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+        url = 'https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
       } if (this.mapParams.Theme === "satellite") {
         // url =
-          // this.dataService.config.LOCAL_SAT_MAP_URL +
-          // "/wmts/gm_layer/gm_grid/{z}/{x}/{y}.png";
-          url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        // this.dataService.config.LOCAL_SAT_MAP_URL +
+        // "/wmts/gm_layer/gm_grid/{z}/{x}/{y}.png";
+        url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       }
 
       // url =
       // this.dataService.config.LOCAL_SAT_MAP_URL +
       // "/wmts/gm_layer/gm_grid/{z}/{x}/{y}.png";
-       url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-     // url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png';
-      
+      url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+      // url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png';
+
       if (url != undefined) {
         this.mapParams.satelliteThemeChecked = false;
         this.olmap.addLayer(
@@ -2034,7 +2032,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         //   "/wmts/gm_layer/gm_grid/{z}/{x}/{y}.png";
         url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
       }
-      
+
       if (url != undefined) {
         // this.mapParams.satelliteThemeChecked = false;
         this.mrolmap.addLayer(
@@ -2111,7 +2109,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // Get Alarm Data
-   getServerData(): void {
+  getServerData(): void {
     // Subscribe Alarm Data
     // isTrackReceived = false
     this.alarmSubscription = this.alarmService
@@ -2199,7 +2197,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 }
               });
           }
-        } 
+        }
         // else if (results && results.category === "radar_tracks") {
         //   let gJson = results.gJson
         //   this.tracksList.push(gJson);
@@ -2239,13 +2237,13 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           console.log("Received radar track update: ", results);
           const gJson = results.gJson;
           this.tracksList.push(gJson);
-        
+
           const layer = this.findLayer("radar_tracks") as VectorLayer<any>;
-        
+
           if (layer && layer.get("options")) {
             const features = layer.getSource().getFeatures();
             let isFeaturePresent = false;
-        
+
             // Check if a feature with this id already exists and update it
             for (const feature of features) {
               if (feature.getId() == gJson.properties.id) {
@@ -2254,7 +2252,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 break;
               }
             }
-        
+
             // Only add a new feature if it doesn't exist yet
             if (!isFeaturePresent) {
               const featureObject = {
@@ -2277,7 +2275,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
               layer.getSource().addFeature(newFeature);
             }
           }
-        
+
           // Only move the overlay that matches this track's id
           // this.olmap.getOverlays().getArray().forEach(overlay => {
           //   if (overlay.id == gJson.properties.id) {
@@ -2290,10 +2288,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             if (overlay.id == gJson.properties.id) {
               const coords = gJson.geometry.coordinates;
               const lastCoord = coords[coords.length - 1];
-              console.log("gJson Properties: ",gJson.properties)
+              // console.log("gJson Properties: ", gJson.properties)
               // Update marker position
               overlay.setPosition(lastCoord);
-          
+
               // Live update the label values
               const el = overlay.getElement();
               if (el) {
@@ -2308,8 +2306,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
               }
             }
           });
-        }   
-         
+        }
+
         else if (results && results.category === "ugv_track") {
           let gJson = results.gJson
           this.tracksList.push(gJson);
@@ -2567,7 +2565,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             if (element.alarm_type === 2) {
               wrapper.innerHTML = this.alarmService.alarmDomContent(
                 "early_alarm_icon",
-                element.track_id ?? element.id, 
+                element.track_id ?? element.id,
                 element
               ).earlyAlarm;
             } else if (element.alarm_type === 1) {
@@ -2577,21 +2575,21 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 if (element.iff_data && element.iff_data.is_iff) {
                   wrapper.innerHTML = this.alarmService.alarmDomContent(
                     "IFF-26px",
-                    element.track_id ?? element.id, 
+                    element.track_id ?? element.id,
                     element
                   ).iff;
                 }
                 else {
                   wrapper.innerHTML = this.alarmService.alarmDomContent(
                     "Confirmatory-Alarm_42px",
-                    element.track_id ?? element.id, 
+                    element.track_id ?? element.id,
                     element
                   ).unAcknowledged;
                 }
               } else {
                 wrapper.innerHTML = this.alarmService.alarmDomContent(
                   "Confirmatory-Alarm_42px",
-                  element.track_id ?? element.id, 
+                  element.track_id ?? element.id,
                   element
                 ).acknowledged;
               }
@@ -2719,70 +2717,70 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           console.log("Slew TI Event Received: ", res.data);
 
           this.activeSlewAlarm = res.data;
+          this.enableVideo = true;
 
           if (!this.isSlewPopupEnabled) {
             this.overlayElement.nativeElement.innerHTML = "";
             this.olmap.removeOverlay(this.popup);
 
-          const projWidth = getWidth(
-            this.olmap.getView().getProjection().getExtent()
-          );
-          const lng = Math.round(res.ti_coordinates[0] / projWidth);
-          const lat = Math.round(res.ti_coordinates[1] / projWidth);
-          var coordinates = [
-            res.ti_coordinates[0] + lng * projWidth,
-            res.ti_coordinates[1] + lat * projWidth,
-          ];
+            const projWidth = getWidth(
+              this.olmap.getView().getProjection().getExtent()
+            );
+            const lng = Math.round(res.ti_coordinates[0] / projWidth);
+            const lat = Math.round(res.ti_coordinates[1] / projWidth);
+            var coordinates = [
+              res.ti_coordinates[0] + lng * projWidth,
+              res.ti_coordinates[1] + lat * projWidth,
+            ];
 
-          let layername;
-          let layers = this.olmap.getLayers().getArray();
-          let feature = this.olmap.forEachFeatureAtPixel(
-            this.olmap.getPixelFromCoordinate(coordinates),
-            function (feature, layer) {
-              layername = layer && layer.get("title") ? layer.get("title") : "";
-              return feature;
-            }
-          );
+            let layername;
+            let layers = this.olmap.getLayers().getArray();
+            let feature = this.olmap.forEachFeatureAtPixel(
+              this.olmap.getPixelFromCoordinate(coordinates),
+              function (feature, layer) {
+                layername = layer && layer.get("title") ? layer.get("title") : "";
+                return feature;
+              }
+            );
 
-          if (
-            feature &&
-            layername &&
-            layername.toLowerCase() !== "perimeter" &&
-            layername.toLowerCase() === "ti"
-          ) {
-            const camera_ip = feature.get("features")[0].getProperties().ip;
-            // console.log("layer has found");
-            layers.forEach((layer, i) => {
-              if (i !== 0 && layer.values_.id !== "tileLayer") {
-                if (layer.get("title") === layername) {
-                  // this.setPopupData(layer, feature);
-                  this.isSlewPopupEnabled = true;
-                  this.enableUAVModal = true;
+            if (
+              feature &&
+              layername &&
+              layername.toLowerCase() !== "perimeter" &&
+              layername.toLowerCase() === "ti"
+            ) {
+              const camera_ip = feature.get("features")[0].getProperties().ip;
+              // console.log("layer has found");
+              layers.forEach((layer, i) => {
+                if (layer.get("id") !== 1 && layer.values_.id !== "tileLayer") {
+                  if (layer.get("title") === layername) {
+                    this.isSlewPopupEnabled = true;
+                    this.enableUAVModal = true;
 
-                  // this.overlayElement.nativeElement.innerHTML =
-                  //   `<p>` + evt.coordinate + `</p>`;
-                  this.updateOpacity(true, feature);
-                  this.popup.setPosition(coordinates);
-                  this.olmap.addOverlay(this.popup);
-                  let popup = this.popup;
-                  let closer = this.popupCloser.nativeElement;
-                  if (closer.onclick === null) {
-                    closer.onclick = () => {
-                      popup.setPosition(undefined);
-                      closer.blur();
-                      this.updateOpacity(false, feature);
-                      return false;
-                    };
+                    // this.overlayElement.nativeElement.innerHTML =
+                    //   `<p>` + evt.coordinate + `</p>`;
+                    this.updateOpacity(true, feature);
+                    this.popup.setPosition(coordinates);
+                    this.olmap.addOverlay(this.popup);
+                    let popup = this.popup;
+                    let closer = this.popupCloser.nativeElement;
+                    if (closer.onclick === null) {
+                      closer.onclick = () => {
+                        popup.setPosition(undefined);
+                        closer.blur();
+                        this.updateOpacity(false, feature);
+                        return false;
+                      };
+                    }
                   }
                 }
-              }
-            });
-            // setting the camera ip as globally
-            this.ti_camera_ip = camera_ip;
-            this.ti_location = coordinates;
-            this.setPTZControls(camera_ip);
+              });
+              // setting the camera ip as globally
+              this.ti_camera_ip = camera_ip;
+              this.ti_location = coordinates;
+              this.setPTZControls(camera_ip);
+            }
           }
-         }
         }
       }
     );
@@ -2799,18 +2797,18 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     let body = {
       mode: "manual_lock"          // Add the IP to the body
     };
-      this.dataService.doAutoTrack(body).subscribe(
-        (res: any) => {
-          if (res && !res.error && !res.errorInfo) {
-            console.log(res);
-          } else {
-            console.log(res);
-          }
-        },
-        (err) => {
-          console.log(err);
+    this.dataService.doAutoTrack(body).subscribe(
+      (res: any) => {
+        if (res && !res.error && !res.errorInfo) {
+          console.log(res);
+        } else {
+          console.log(res);
         }
-      );
+      },
+      (err) => {
+        console.log(err);
+      }
+    );
 
   }
 
@@ -2867,18 +2865,18 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       );
 
-      this.activeSlewAlarm.acknowledged_cleared = 9; // Slew TI Started
-      this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
-        (res) => {
-          if (!res.error) {
-            this.activeSlewAlarm.event_type = 9;
-            this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
-          }
-        },
-        (err) => {
-          console.log("Error starting slew TI event in DB:", err);
-        }
-      );
+      // this.activeSlewAlarm.acknowledged_cleared = 9; // Slew TI Started
+      // this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
+      //   (res) => {
+      //     if (!res.error) {
+      //       this.activeSlewAlarm.event_type = 9;
+      //       this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
+      //     }
+      //   },
+      //   (err) => {
+      //     console.log("Error starting slew TI event in DB:", err);
+      //   }
+      // );
     }
   }
 
@@ -2893,18 +2891,18 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       );
 
-      this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
-      this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
-        (res) => {
-          if (!res.error) {
-            this.activeSlewAlarm.event_type = 10;
-            this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
-          }
-        },
-        (err) => {
-          console.log("Error stopping slew TI event in DB:", err);
-        }
-      );
+      // this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
+      // this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
+      //   (res) => {
+      //     if (!res.error) {
+      //       this.activeSlewAlarm.event_type = 10;
+      //       this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
+      //     }
+      //   },
+      //   (err) => {
+      //     console.log("Error stopping slew TI event in DB:", err);
+      //   }
+      // );
     }
   }
 
@@ -2919,18 +2917,18 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       );
 
-      this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
-      this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
-        (res) => {
-          if (!res.error) {
-            this.activeSlewAlarm.event_type = 10;
-            this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
-          }
-        },
-        (err) => {
-          console.log("Error returning camera home event in DB:", err);
-        }
-      );
+      // this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
+      // this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
+      //   (res) => {
+      //     if (!res.error) {
+      //       this.activeSlewAlarm.event_type = 10;
+      //       this.alarmService.publishUpdatedAlarmData([this.activeSlewAlarm]);
+      //     }
+      //   },
+      //   (err) => {
+      //     console.log("Error returning camera home event in DB:", err);
+      //   }
+      // );
     }
   }
   displayRadarTrack: Boolean;
@@ -3060,7 +3058,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         .getLayers()
         .getArray()
         .filter((olLayer, i) => {
-          if (i !== 0 && olLayer.values_.id !== "tileLayer") {
+          if (olLayer.get("id") !== 1 && olLayer.values_.id !== "tileLayer") {
             if (olLayer.get("title") === layer.LayerTitle) {
               layer.checked = true;
               olLayer.setOpacity(1);
@@ -3072,7 +3070,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         .getLayers()
         .getArray()
         .filter((olLayer, i) => {
-          if (i !== 0 && olLayer.values_.id !== "tileLayer") {
+          if (olLayer.get("id") !== 1 && olLayer.values_.id !== "tileLayer") {
             if (olLayer.get("title") === layer.LayerTitle) {
               layer.checked = false;
               olLayer.setOpacity(0);
@@ -3245,7 +3243,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       .getLayers()
       .getArray()
       .filter((layer, i) => {
-        if (i !== 0 && layer.values_.id !== "tileLayer") {
+        if (layer.get("id") !== 1 && layer.values_.id !== "tileLayer") {
           if (
             layer.get("title") !== "LF" &&
             layer.get("title") !== "RNDF" &&
@@ -3598,11 +3596,11 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // openVideoPopup() {
   //   this.showVideoPopup = true;
-  
+
   //   // hide map popups to avoid white block
   //   this.isSlewPopupEnabled = false;
   //   this.isCameraPopupEnabled = false;
-  
+
   //   if (this.popup) {
   //     this.popup.setPosition(undefined);
   //   }
@@ -3613,7 +3611,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   //   let queryParams = `${Object.keys(this.ptzControls)
   //     .map((key) => `${key}` + "=" + `${this.ptzControls[key]}`)
   //     .join("&")}`;
-    
+
   //   let url = "http://localhost";
   //   queryParams = queryParams + "&ip=" + camera_ip;
   //   // console.log(queryParams)
@@ -3632,18 +3630,18 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   // }
   // setPTZControls(camera_ip?: string) {
   //   const ip = camera_ip || '192.168.30.71';
-  
+
   //   // Build query string
   //   let queryParams = Object.keys(this.ptzControls)
   //     .map((key) => `${key}=${this.ptzControls[key]}`)
   //     .join("&");
-  
+
   //   // Append IP
   //   queryParams = `${queryParams}&ip=${ip}`;
-  
+
   //   let url = `http://192.168.30.52:8000`;
   // console.log("queryParams",queryParams);
-  
+
   //   this.dataService.getPTZControls(url, queryParams).subscribe(
   //     (res: any) => {
   //       if (res && !res.error && !res.errorInfo) {
@@ -3659,20 +3657,20 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   // }
   setPTZControls(camera_ip?: string) {
     const ip = camera_ip || '192.168.30.71';
-  
+
     // Build the body object
     let body = {
       ...this.ptzControls, // Include the current PTZ control data
       ip: ip              // Add the IP to the body
     };
     console.log("*** body",);
-    
-  
+
+
     // Define the URL
     let url = `http://192.168.2.100:8000`;
-  
-     console.log("Body:", body);
-  
+
+    console.log("Body:", body);
+
     // Use POST method to send the body as a request payload
     this.dataService.postPTZControls(url, body).subscribe(
       (res: any) => {
@@ -3687,7 +3685,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     );
   }
-  
+
 
   applyPTZControls(type, event) {
     this.ptzControls[type] = event.target.value;
@@ -3722,9 +3720,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       }),
       LineString: new Style({
         stroke: new Stroke({
-          color: 'white',
-          width: 5,
-          lineDash:[1, 7],
+          color: layeroptions.Style.color || '#ffffffff',
+          width: layeroptions.Style.width || 5,
+          lineDash: layeroptions.Style.linedash || [1, 7],
         }),
       }),
       MultiLineString: new Style({
@@ -3994,7 +3992,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         stroke: new Stroke({
           color: 'white',
           width: 5,
-          lineDash:[1, 7],
+          lineDash: [1, 7],
         }),
       }),
       // LineString: new Style({ //*** track_color

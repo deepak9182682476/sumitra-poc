@@ -52,10 +52,10 @@ export class AlarmService {
     return new Observable<string>((observer) => {
       const that = this;
       ws.asObservable().subscribe((data: string) => {
-      console.log("getServerPushData",data);
-      //  console.log("new getServerPushData", data);
-       
-        
+        //console.log("getServerPushData",data);
+        //  console.log("new getServerPushData", data);
+
+
         that._zone.run(() => {
           observer.next(data);
         });
@@ -155,7 +155,7 @@ export class AlarmService {
 
   // Dom Content for Alarm
   // alarmDomContent(icon, alarmId, element): any {
- 
+
   //   return {
   //     unAcknowledged: `
   //         <div>
@@ -196,7 +196,7 @@ export class AlarmService {
     const lon = element.location?.coordinates?.[0] ?? 'N/A';
     const range = element.range ?? 'N/A';
     const trackId = element.id ?? 'N/A';
-  
+
     const label = (cssClass: string) => `
       <span class="${cssClass}">
         Track ID: ${trackId}<br/>
@@ -204,7 +204,7 @@ export class AlarmService {
         Lon: ${lon}
       </span>
     `;
-  
+
     return {
       unAcknowledged: `
         <div>
@@ -277,7 +277,7 @@ export class AlarmService {
   postSensorDetails(data): Observable<any> {
     const API_URL = `${this.apiConfig.serverApiUrl.sensorService}/create`;
     console.log("*************/create");
-    
+
     return this.http.post(API_URL, data).pipe(catchError(this.handleError));
   }
 

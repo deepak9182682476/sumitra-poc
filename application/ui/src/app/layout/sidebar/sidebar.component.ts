@@ -815,6 +815,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     var ti_coordinates = item.location.coordinates;
     console.log("testdata....", ti_coordinates)
 
+    /* commented by kkl to check if its needed
     let body = {
       track_id: item.alarm_id
     };
@@ -826,37 +827,19 @@ export class SidebarComponent implements OnInit, OnDestroy {
         console.log("Start continuous track error:", err);
       }
     );
+    */
 
-    // Update the alarm's event_type to 9 (Slew TI Started) in the database and local state
-    item.acknowledged_cleared = 9; // Slew TI Started
-    this.alarmService.acknowledgeClearAlarms(item).subscribe(
-      (res) => {
-        if (!res.error) {
-          const alarmIndex = this.alarmIndexes.findIndex(
-            (ele) => ele.alarm_id === item.alarm_id
-          );
-          if (alarmIndex !== -1) {
-            this.alarmIndexes[alarmIndex].event_type = 9;
-          }
-          item.event_type = 9;
-          this.alarmService.publishUpdatedAlarmData([item]);
-
-          var data = {
-            isSlewPopupEnabled: true,
-            data: item,
-            ti_coordinates: ti_coordinates,
-          };
-          console.log("slew data: ", data)
-          this.alarmService.publishSlewTIData(data);
-        }
-      },
-      (err) => {
-        console.log("Error starting slew TI event in DB:", err);
-      }
-    );
+    // Directly trigger Slew TI Event on the map without marking the alarm as acknowledged in DB
+    var data = {
+      isSlewPopupEnabled: true,
+      data: item,
+      ti_coordinates: ti_coordinates,
+    };
+    console.log("slew data: ", data);
+    this.alarmService.publishSlewTIData(data);
 
     // sensor_id ip_address target_id target_type distance  speed altitude
-    let coordinates = item.location.coordinates;
+    /*let coordinates = item.location.coordinates;
     var slew_data = {
       origin: "slew",
       ip: "localhost",
@@ -870,7 +853,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     };
     this.alarmService.sendSlewTIToAGU(slew_data).subscribe((results) => {
       console.log(results);
-    });
+    });*/
   }
 
 
