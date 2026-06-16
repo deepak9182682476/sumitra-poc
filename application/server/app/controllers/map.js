@@ -190,17 +190,57 @@ var newRadarTrack = false;
 
 // Retrieve Alarm from the ROS-Web Adapter.
 exports.track = async (req, res, next) => {
+  res.send("received");
   newRadarTrack = true;
   radarTrackData = req.body.track;
-  // console.log('Track Data', req.body.track);
-  // log.createLog({
-  //   type: "info",
-  //   root_module: "MCCS",
-  //   sub_module: "Map Service",
-  //   method: new Error().stack.split("\n")[1].trim(),
-  //   log_message: "Track Received ",
-  // });
-  res.send("received");
+
+  if (radarTrackData && radarTrackData.length > 0) {
+    const trackInfo = radarTrackData[0];
+    const location = trackInfo.tail[0];
+    if (location != undefined) {
+      let isEWPresent = checkEWPresense(trackInfo.id);
+      if (!isEWPresent) {
+        console.log("*********************************************************************************************************")
+        const ewInfo = {
+          lat: location[1],
+          lng: location[0],
+          id: trackInfo.id,
+          type: 2,
+          category: "alarm",
+          track_to_db: true,
+          record_flag: 0,
+        };
+        earlyWarningsInfo.push(ewInfo);
+        sendAlarmDataToMapService(
+          location[1],
+          location[0],
+          trackInfo.id,
+          1
+        );
+        sendAlarmDataToAlarmService(
+          location[1],
+          location[0],
+          trackInfo.id,
+          1,
+          ["RADAR"],
+          trackInfo.ip
+        );
+      }
+
+      const matchedEW = earlyWarningsInfo.find((ewInfo) => ewInfo.id == trackInfo.id);
+      if (matchedEW) {
+        isLatLngExistsInzone(location).then((response) => {
+          sendZoneInfoToResponseService({
+            location: location,
+            zone_id: response.zone_id,
+          });
+        }).catch((err) => {
+          console.log("isLatLngExistsInzone error:", err);
+        });
+        sendTracktoUI("radar_tracks", 1, trackInfo.id, trackInfo.tail);
+      }
+    }
+  }
 };
 
 
@@ -227,142 +267,6 @@ exports.receiveTrackDataFromMapService = async (req, res, next) => {//***
     console.log(error);
   }
 };
-
-setInterval(() => {
-  // Maintaining radar track data as global and send track to UI
-  if (newRadarTrack) {
-    console.log('inside kkkkkkkkkkkkl radar track alarm will be created');
-
-    newRadarTrack = false;
-    // console.log(JSON.stringify(radarTrackData))
-
-    if (radarTrackData != undefined) {
-      trackInfo = radarTrackData[0]
-      let location = trackInfo.tail[0]
-      if (location != undefined) {
-        // isLatLngNearbyBoundary(env.boundaryPoints, location)
-        //   .then((response) => {
-        const data = {
-          lat: location[1],
-          lng: location[0],
-          id: trackInfo.id,
-          type: 2,
-          category: "alarm",
-          track_to_db: true,
-          record_flag: 0,
-        };
-        let isEWPresent = checkEWPresense(trackInfo.id);
-        if (!isEWPresent) {
-          console.log("*********************************************************************************************************")
-          ewInfo = data;
-          earlyWarningsInfo.push(ewInfo);
-          sendAlarmDataToMapService(
-            location[1],
-            location[0],
-            trackInfo.id,
-            1
-          );
-          sendAlarmDataToAlarmService(
-            location[1],
-            location[0],
-            trackInfo.id,
-            1,
-            ["RADAR"],
-            trackInfo.ip
-          );
-        }
-        // })
-        // .catch((error) => {
-        //   log.createLog({
-        //     type: "error",
-        //     root_module: "MCCS",
-        //     sub_module: "Map Service",
-        //     method: new Error().stack.split("\n")[1].trim(),
-        //     log_message: error || "Track Failed",
-        //   });
-        //   console.log(error);
-        // });
-      }
-
-      // radarTrackData.find((trackInfo) => {
-      //   let location = trackInfo.tail[trackInfo.tail.length-1]
-      //   if (location != undefined) {
-      //     // isLatLngNearbyBoundary(env.boundaryPoints, location)
-      //     //   .then((response) => {
-      //         const data = {
-      //           lat: location[1],
-      //           lng: location[0],
-      //           id: trackInfo.id,
-      //           type: 2,
-      //           category: "alarm",
-      //           track_to_db: false,
-      //           record_flag: 0,
-      //         };
-      //         let isEWPresent = checkEWPresense(trackInfo.id);
-      //         if (!isEWPresent) {
-      //           console.log("*********************************************************************************************************")
-      //           earlyWarningsInfo.push(data);
-      //           sendAlarmDataToMapService(
-      //             location[1],
-      //             location[0],
-      //             trackInfo.id,
-      //             2
-      //           );
-      //           sendAlarmDataToAlarmService(
-      //             location[1],
-      //             location[0],
-      //             trackInfo.id,
-      //             2,
-      //             ["RADAR"],
-      //             trackInfo.ip
-      //           );
-      //         }
-      //       // })
-      //       // .catch((error) => {
-      //       //   log.createLog({
-      //       //     type: "error",
-      //       //     root_module: "MCCS",
-      //       //     sub_module: "Map Service",
-      //       //     method: new Error().stack.split("\n")[1].trim(),
-      //       //     log_message: error || "Track Failed",
-      //       //   });
-      //       //   console.log(error);
-      //       // });
-      //   }
-
-      earlyWarningsInfo.find((ewInfo) => {
-        if (trackInfo.id == ewInfo.id) {
-          isLatLngExistsInzone(location).then((response) => {
-            // console.log("----Matched Zone ID-----", response);any
-            sendZoneInfoToResponseService({
-              location: location,
-              zone_id: response.zone_id,
-            });
-          });
-          // sendTracktoUI("radar_tracks", 2, trackInfo.id, trackInfo.tail);
-          sendTracktoUI("radar_tracks", 1, trackInfo.id, trackInfo.tail);
-          // var finalTrackCoords = trackInfo.tai
-          //   .map((position) => {
-          //     return `${position[0]} ${position[1]}`;
-          //   })
-          //   .join(", ");
-          // if (!ewInfo.track_to_db) {
-          //   // inserting the data into the DB
-          //   const customQuery = `insert into alarm_tail(alarm_id, uid, tail) values('${ewInfo.id}', '${ewInfo.id}', ST_GeomFromText('LINESTRING(${finalTrackCoords})'))`;
-          //   db.createWithQuery(customQuery).then((result) => { });
-          //   ewInfo.track_to_db = true;
-          // } else {
-          //   // updating the data into the DB
-          //   const customQuery = `update alarm_tail set tail = ST_GeomFromText('LINESTRING(${finalTrackCoords})') where uid = '${ewInfo.id}'`;
-          //   db.updateWithQuery(customQuery).then((result) => { });
-          //   // console.log("updated the alarm trail");
-          // }
-          return true;
-        }
-      });
-    };
-  }
-}, 300);
 
 function checkEWPresense(id) {
   for (let index = 0; index < earlyWarningsInfo.length; index++) {
@@ -1468,4 +1372,12 @@ exports.getAwsData = async (req, res, next) => {
   }
 };
 
+exports.clearEarlyWarning = (id) => {
+  console.log("Clearing early warning for ID:", id);
+  earlyWarningsInfo = earlyWarningsInfo.filter(ew => ew.id != id);
+};
 
+exports.clearAllEarlyWarnings = () => {
+  console.log("Clearing all early warnings");
+  earlyWarningsInfo = [];
+};

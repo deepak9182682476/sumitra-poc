@@ -116,7 +116,7 @@
 
                       <!-- Video column: panels stack independently to the right of labels -->
                       <div class="video-panels-stack">
-                        <div class="video-sec" *ngIf="enableVideo">
+                        <div class="video-sec slew-ti-sec" [class.ptz-expanded]="isPtzExpanded" *ngIf="enableVideo">
                           <div class="video-wrapper">
                             <img class="video-tag" id="slew-ti-video" [src]="slewFeedUrl" />
                             <span class="video-icons">
@@ -133,7 +133,13 @@
                               <button [class.active]="isThermalFeed" (click)="isThermalFeed=true">Thermal</button>
                             </div>
                           </div>
-                          <div class="ptz-controls">
+                          
+                          <div class="ptz-toggle" (click)="isPtzExpanded = !isPtzExpanded">
+                            <span class="ptz-toggle-text">PTZ CONTROLS</span>
+                            <i class="fa" [ngClass]="isPtzExpanded ? 'fa-angle-up' : 'fa-angle-down'"></i>
+                          </div>
+
+                          <div class="ptz-controls" *ngIf="isPtzExpanded">
                             <label>Pan
                               <input type="range" min="0" max="360" [(ngModel)]="ptzControls.pan" (change)="applyPTZControls('pan',$event)" />
                               <span>{{ptzControls.pan}}</span>

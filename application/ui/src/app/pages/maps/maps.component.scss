@@ -74,6 +74,52 @@
   pointer-events: all;
 }
 
+/* Slew TI video panel - expandable height */
+.slew-ti-sec {
+  height: 160px; /* Collapsed height by default */
+  transition: height 0.3s ease;
+
+  &.ptz-expanded {
+    height: 270px; /* Expanded height to accommodate PTZ controls */
+  }
+
+  .ptz-controls {
+    margin-top: 4px; /* Tiny spacing when controls are visible */
+  }
+}
+
+/* Expandable PTZ Toggle bar */
+.ptz-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  background: rgba(40, 40, 40, 0.85);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  user-select: none;
+  margin-top: 4px;
+  border-radius: 2px;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(60, 60, 60, 0.95);
+  }
+
+  .ptz-toggle-text {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    color: #ccc;
+  }
+
+  i {
+    font-size: 11px;
+    color: #aaa;
+  }
+}
+
 /* Video fills all space above PTZ controls */
 .video-wrapper {
   flex: 1 1 0;

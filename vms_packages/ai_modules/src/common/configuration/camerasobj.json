@@ -1,0 +1,213 @@
+{
+  "camera": [
+    {
+      "type": "checkbox",
+      "label": "Check RTA Mismatch From This Camera",
+      "name": "check_rta_mismatch",
+      "id": "check_rta_mismatch_id"
+    },
+    {
+      "type": "text",
+      "label": "Camera Name",
+      "name": "camera_name",
+      "id": "cam_name_id",
+      "validated": true
+    },
+    {
+      "type": "text",
+      "label": "Camera IP",
+      "name": "camera_ip",
+      "id": "cam_ip_id",
+      "validated": true
+    },
+    {
+      "type": "text",
+      "label": "Camera Rtsp",
+      "name": "rtsp",
+      "id": "rtsp_id",
+      "validated": true
+    },
+    {
+      "type": "text",
+      "label": "Latitude",
+      "name": "latitude",
+      "id": "lat_id",
+      "validated": true
+    },
+    {
+      "type": "text",
+      "label": "Longtitude",
+      "name": "longtitude",
+      "id": "lon_id",
+      "validated": true
+    },
+    {
+      "type": "select",
+      "label": "Commisionerate",
+      "name": "commisionerate",
+      "id": "commisionerate_id",
+      "options": []
+    },
+    {
+      "type": "select",
+      "label": "Zone",
+      "name": "zone",
+      "id": "zone_id",
+      "options": []
+    },
+    {
+      "type": "select",
+      "label": "Police Station",
+      "name": "police_station",
+      "id": "ps_id",
+      "options": []
+    },
+    {
+      "type": "text",
+      "label": "Junction Name",
+      "name": "junction_name",
+      "id": "junction_id",
+      "validated": true
+    }
+  ],
+  "model_selections": [
+    {
+      "type": "radio_group",
+      "id": "select_one_id",
+      "is_form_control": "true",
+      "radio_options": [
+        {
+          "type": "radio",
+          "name": "model_name",
+          "value": "model_name",
+          "label": "Violation",
+          "id": "model_id"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "label": "Model",
+      "name": "model_name",
+      "key": "model_id",
+      "id": "model_select_id",
+      "options": []
+    }
+  ],
+  "camera_settings": [
+    {
+      "day_time_options": [
+        {
+          "day_time_checkboxes": [
+            {
+              "type": "checkbox",
+              "id": "day_time_id",
+              "name": "day_time",
+              "label": "Day Time"
+            },
+            {
+              "type": "checkbox",
+              "id": "day_default_id",
+              "name": "default",
+              "label": "Default"
+            }
+          ]
+        },
+        {
+          "type": "select",
+          "id": "resize_factor_day_id",
+          "name": "resize_factor",
+          "label": "Resize Factor",
+          "options": []
+        },
+        {
+          "type": "slider",
+          "id": "day_contrast_id",
+          "name": "contrast",
+          "label": "Contrast"
+        },
+        {
+          "type": "slider",
+          "id": "day_brightness_id",
+          "name": "brightness",
+          "label": "Brightness"
+        },
+        {
+          "type": "slider",
+          "id": "day_gamma_correction_id",
+          "name": "gamma_correction",
+          "label": "Gamma Correction"
+        },
+        {
+          "type": "slider",
+          "id": "day_histogram_equalizer_id",
+          "name": "histogram_equalizer",
+          "label": "Histogram Equalizer"
+        }
+      ]
+    },
+    {
+      "night_time_options": [
+        {
+          "night_time_checkboxes": [
+            {
+              "type": "checkbox",
+              "id": "night_time_id",
+              "name": "night_time",
+              "label": "Night Time"
+            },
+            {
+              "type": "checkbox",
+              "id": "night_default_id",
+              "name": "default",
+              "label": "Default"
+            }
+          ]
+        },
+        {
+          "type": "select",
+          "id": "resize_factor_night_id",
+          "name": "resize_factor",
+          "label": "Resize Factor",
+          "options": []
+        },
+        {
+          "type": "slider",
+          "id": "night_contrast_id",
+          "name": "contrast",
+          "label": "Contrast"
+        },
+        {
+          "type": "slider",
+          "id": "night_brightness_id",
+          "name": "brightness",
+          "label": "Brightness"
+        },
+        {
+          "type": "slider",
+          "id": "night_gamma_correction_id",
+          "name": "gamma_correction",
+          "label": "Gamma Correction"
+        },
+        {
+          "type": "slider",
+          "id": "night_histogram_equalizer_id",
+          "name": "histogram_equalizer",
+          "label": "Histogram Equalizer"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "angle",
+      "id": "angle_id",
+      "label": "Direction",
+      "model": [
+        "Wrong Movement Detection"
+      ]
+    }
+  ],
+  "rule_settings": {
+    "rules": []
+  }
+}

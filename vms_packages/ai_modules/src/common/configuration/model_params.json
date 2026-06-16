@@ -1,0 +1,41 @@
+{
+    "params" : [
+        {
+            "type": "text",
+            "label": "Name",
+            "name": "name",
+            "id": "param_name_id",
+            "validated": true
+          },
+          {
+            "type": "text",
+            "label": "Label",
+            "name": "label",
+            "id": "param_label_id",
+            "validated": true
+          },
+          {
+            "type": "select",
+            "label": "Type",
+            "name": "type",
+            "id": "param_type_id",
+            "options": [],
+            "validated": true
+          },
+          {
+            "type": "select",
+            "label": "Options",
+            "name": "options",
+            "id": "param_options_id",
+            "options": [],
+            "validated": true
+          },
+          {
+            "type": "date",
+            "label": "Created On",
+            "name": "created_on",
+            "id": "param_created_on_id",
+            "validated": true
+          }
+    ]
+}

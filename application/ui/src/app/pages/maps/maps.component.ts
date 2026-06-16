@@ -62,6 +62,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   modeSubscription: Subscription;
   enableUAVModal = false;
   enableVideo = false;
+  isPtzExpanded = false;
   enableUavVideo = false;
   //uavStreamUrl = 'http://192.168.2.146:8091/uav';
   uavStreamUrl = 'https://itms.gctp.in/stream?ip=10.0.207.190'
@@ -2179,14 +2180,22 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         } else if (results && results.category === "alarm") {
           if (results) {
+            console.log("[MAPS] WebSocket Alarm Received:", JSON.stringify(results));
             this.modeSubscription = this.commonService.publishModeData(
               results.mode
             );
             this.commonService.storeInLocalStorage("mode", results.mode, false);
-            this.alarmService.publishAlarmSocketData({
+            if (results.alarmData) {
+              if ((!results.alarmData.location || !results.alarmData.location.coordinates || results.alarmData.location.coordinates.length === 0) && results.location) {
+                results.alarmData.location = results.location;
+              }
+            }
+            const mergedAlarm = {
               ...results,
               ...results.alarmData,
-            });
+            };
+            console.log("[MAPS] Publishing Alarm Socket Data (merged):", JSON.stringify(mergedAlarm));
+            this.alarmService.publishAlarmSocketData(mergedAlarm);
             this.olmap
               .getOverlays()
               .getArray()
@@ -2301,8 +2310,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
               if (el) {
                 const span = el.querySelector('.ca-alarm-id, .ca-ack-alarm-id, .ea-alarm-id');
                 if (span) {
+                  console.log("kkkl", gJson)
                   span.innerHTML = `
                     Track ID: ${gJson.properties.track_id ?? gJson.properties.id}<br/>
+                    Range: ${gJson.properties.range} m<br/>
                     Lat: ${lastCoord[1]}<br/>
                     Lon: ${lastCoord[0]}
                   `;
@@ -2341,6 +2352,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.alarmDataSubscription = this.alarmService.updatedAlarmData.subscribe(
       (results) => {
         if (results) {
+          console.log("[MAPS] receive updatedAlarmData:", JSON.stringify(results));
           if (results && results[0] && results[0].isAssigmentEnabled) {
             this.getAssignedData = results;
           } else {
@@ -2362,7 +2374,11 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.removeOverlay(results, false);
               }
             } else {
-              if (this.olmap.getOverlays().getArray().length) {
+              let hasOverlay = false;
+              if (results && results[0]) {
+                hasOverlay = this.olmap.getOverlays().getArray().some(overlay => overlay.id === results[0].alarm_id);
+              }
+              if (hasOverlay) {
                 this.removeOverlay(results, true);
               } else {
                 this.addSensors(results);
@@ -2384,9 +2400,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
               let overlays = this.olmap.getOverlays().getArray();
               for (let index = 0; index < overlays.length; index++) {
                 const overlay = overlays[index];
-                if (results.type == "ea" && overlay.options.type === 2) {
+                const overlayType = overlay.get ? overlay.get('type') : (overlay.type || (overlay as any).options?.type);
+                if (results.type == "ea" && overlayType === 2) {
                   overlayIndexes.push(overlay); // push the early alarms
-                } else if (results.type == "ca" && overlay.options.type === 1) {
+                } else if (results.type == "ca" && overlayType === 1) {
                   overlayIndexes.push(overlay); // push the confirmatory alarms
                 }
               }
@@ -2396,24 +2413,26 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             }
           }
           if (results.type !== "ca") {
-            let layer = this.findLayer("radar_tracks")
-            let source = layer.getSource()
-            let features = source.getFeatures().map((feature, key) => {
-              return {
-                alarm_id: feature.getProperties().alarm_id,
-                track_length: feature.getGeometry().getCoordinates().length,
-              };
-            });
-            this.alarmService
-              .clearAlarmTracks({ intrusion_tracks: features })
-              .subscribe(
-                (res) => {
-                  source.clear()
-                },
-                (err) => {
-                  console.log("--- err --- ", err);
-                }
-              );
+            let layer = this.findLayer("radar_tracks");
+            if (layer) {
+              let source = layer.getSource();
+              let features = source.getFeatures().map((feature, key) => {
+                return {
+                  alarm_id: feature.getProperties().id ?? feature.getId(),
+                  track_length: feature.getGeometry().getCoordinates().length,
+                };
+              });
+              this.alarmService
+                .clearAlarmTracks({ intrusion_tracks: features })
+                .subscribe(
+                  (res) => {
+                    source.clear();
+                  },
+                  (err) => {
+                    console.log("--- err --- ", err);
+                  }
+                );
+            }
           }
         }
       });
@@ -2543,7 +2562,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Add Sensors
   addSensors(results, acknowledged?: Boolean): void {
-    // console.log("adding again")
+    console.log("[MAPS] addSensors results:", JSON.stringify(results));
     var self = this;
     if (results) {
       if (results.data) {
@@ -2556,6 +2575,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             .getArray()
             .some(({ id: id2 }) => id2 === id1)
       );
+      console.log("[MAPS] addSensors getNonExistingData:", JSON.stringify(getNonExistingData));
       if (getNonExistingData.length) {
         getNonExistingData.forEach((element) => {
           element.id = element.id ? element.id : element.alarm_id;
@@ -2593,7 +2613,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
               } else {
                 wrapper.innerHTML = this.alarmService.alarmDomContent(
                   "Confirmatory-Alarm_42px",
-                  element.track_id ?? element.id,
+                  element.track_id,
                   element
                 ).acknowledged;
               }
@@ -2614,6 +2634,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
               element: wrapper,
               stopEvent: false,
             });
+            marker.set('id', element.alarm_id);
+            marker.set('type', element.alarm_type);
+            (marker as any).id = element.alarm_id;
+            (marker as any).type = element.alarm_type;
             let that = this;
             wrapper.onclick = function (eRef) {
               const e: any = eRef;
@@ -2835,16 +2859,17 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     );
 
-    this.dataService.returnCameraHome().subscribe(
-      (res: any) => {
-        console.log("Return camera home response:", res);
-      },
-      (err) => {
-        console.log("Return camera home error:", err);
-      }
-    );
+    //kkl documented
+    // this.dataService.returnCameraHome().subscribe(
+    //   (res: any) => {
+    //     console.log("Return camera home response:", res);
+    //   },
+    //   (err) => {
+    //     console.log("Return camera home error:", err);
+    //   }
+    // );
 
-    if (this.activeSlewAlarm) {
+   /* if (this.activeSlewAlarm) {
       this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
       this.alarmService.acknowledgeClearAlarms(this.activeSlewAlarm).subscribe(
         (res) => {
@@ -2858,7 +2883,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           console.log("Error updating cancel track event in DB:", err);
         }
       );
-    }
+    } */
   }
 
   startTrack(type): void {
@@ -3730,9 +3755,12 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       }),
       LineString: new Style({
         stroke: new Stroke({
-          color: layeroptions.Style.color || '#ffffffff',
-          width: layeroptions.Style.width || 5,
-          lineDash: layeroptions.Style.linedash || [1, 7],
+          // color: layeroptions.Style.color || '#ffffffff',
+          // width: layeroptions.Style.width || 5,
+          // lineDash: layeroptions.Style.linedash || [1, 7],
+          color: '#ffffffff',
+          width: 5,
+          lineDash: [1, 7],
         }),
       }),
       MultiLineString: new Style({

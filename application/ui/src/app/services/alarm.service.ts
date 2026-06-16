@@ -195,11 +195,12 @@ export class AlarmService {
     const lat = element.location?.coordinates?.[1] ?? 'N/A';
     const lon = element.location?.coordinates?.[0] ?? 'N/A';
     const range = element.range ?? 'N/A';
-    const trackId = element.id ?? 'N/A';
+    const trackId = element.alarm_id ?? 'N/A';
 
     const label = (cssClass: string) => `
       <span class="${cssClass}">
         Track ID: ${trackId}<br/>
+        Range: ${range} m<br/>
         Lat: ${lat}<br/>
         Lon: ${lon}
       </span>

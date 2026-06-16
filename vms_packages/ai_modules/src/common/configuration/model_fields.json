@@ -1,0 +1,47 @@
+{
+  "model_fields": [
+    {
+      "type": "text",
+      "name": "model_name",
+      "id": "model_name_id",
+      "label": "Analytics Name",
+      "validate": false
+    },
+    {
+      "type": "text",
+      "name": "description",
+      "id": "description_id",
+      "label": "Description",
+      "validate": false
+    },
+    {
+      "type": "text",
+      "name": "server_ip",
+      "id": "server_ip_id",
+      "label": "Server IP",
+      "validate": false
+    },
+    {
+      "type": "text",
+      "name": "gpu_id",
+      "id": "gpu_id_id",
+      "label": "GPU ID",
+      "validate": false
+    },
+    {
+      "type": "text",
+      "name": "output_url",
+      "id": "output_url_id",
+      "label": "Output URL",
+      "validate": false
+    },
+    {
+      "type": "select",
+      "name": "violation_type",
+      "id": "violation_type_id",
+      "label": "Violations Type",
+      "options": [],
+      "validate": false
+    }
+  ]
+}

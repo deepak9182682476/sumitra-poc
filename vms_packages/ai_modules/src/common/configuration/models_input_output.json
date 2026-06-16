@@ -1,0 +1,225 @@
+{
+  "models": {
+    "Social_Distancing": {
+      "outputs": [
+        "camera_id",
+        "camera_name",
+        "commisionerate",
+        "info",
+        "number_of_group",
+        "number_of_person_in_group",
+        "police_station",
+        "time",
+        "total_person",
+        "violation_index",
+        "zone"
+      ],
+      "inputs": []
+    },
+    "crowd_count": {
+      "outputs": [
+        "model_name",
+        "id",
+        "camera_id",
+        "timestamp",
+        "count",
+        "camera_name",
+        "commisionerate",
+        "created_on",
+        "geolocation",
+        "ip_address",
+        "is_active",
+        "police_station",
+        "priority",
+        "rtsp",
+        "zone",
+        "time",
+        "lat",
+        "lon"
+      ],
+      "inputs": []
+    },
+    "Lone_woman_detection": {
+      "outputs": [
+        "model_name",
+        "id",
+        "camera_id",
+        "timestamp",
+        "lone_woman_detection_count",
+        "bbox",
+        "camera_name",
+        "commisionerate",
+        "created_on",
+        "geolocation",
+        "ip_address",
+        "is_active",
+        "police_station",
+        "priority",
+        "rtsp",
+        "zone",
+        "time",
+        "lat",
+        "lon"
+      ],
+      "inputs": []
+    },
+    "Camera_tampering": {
+      "outputs": [
+        "model_name",
+        "id",
+        "camera_id",
+        "timestamp",
+        "tampering_type",
+        "camera_name",
+        "commisionerate",
+        "created_on",
+        "geolocation",
+        "ip_address",
+        "is_active",
+        "police_station",
+        "priority",
+        "rtsp",
+        "zone",
+        "time",
+        "lat",
+        "lon"
+      ],
+      "inputs": []
+    },
+    "Wrong_movement": {
+      "outputs": [
+        "model_name",
+        "id",
+        "camera_id",
+        "timestamp",
+        "bbox",
+        "camera_name",
+        "commisionerate",
+        "created_on",
+        "geolocation",
+        "ip_address",
+        "is_active",
+        "police_station",
+        "priority",
+        "rtsp",
+        "zone",
+        "time",
+        "lat",
+        "lon"
+      ],
+      "inputs": []
+    },
+    "Change_in_scene_in_case_of_theft": {
+      "outputs": [
+        "model_name",
+        "id",
+        "camera_id",
+        "timestamp",
+        "alert_type",
+        "bbox",
+        "camera_name",
+        "commisionerate",
+        "created_on",
+        "geolocation",
+        "ip_address",
+        "is_active",
+        "police_station",
+        "priority",
+        "rtsp",
+        "zone",
+        "time",
+        "lat",
+        "lon"
+      ],
+      "inputs": []
+    },
+    "Suspicious/unidentified_object_detection": {
+      "outputs": [
+        "model_name",
+        "id",
+        "camera_id",
+        "timestamp",
+        "alert_type",
+        "bbox",
+        "camera_name",
+        "commisionerate",
+        "created_on",
+        "geolocation",
+        "ip_address",
+        "is_active",
+        "police_station",
+        "priority",
+        "rtsp",
+        "zone",
+        "time",
+        "lat",
+        "lon"
+      ],
+      "inputs": []
+    },
+    "person_moving_in_restricted_area": {
+      "outputs": [
+        "model_name",
+        "id",
+        "camera_id",
+        "timestamp",
+        "numberofpersoninrestrictedarea",
+        "bbox",
+        "camera_name",
+        "commisionerate",
+        "created_on",
+        "geolocation",
+        "ip_address",
+        "is_active",
+        "police_station",
+        "priority",
+        "rtsp",
+        "zone",
+        "time",
+        "lat",
+        "lon"
+      ],
+      "inputs": []
+    },
+    "Men_in_woman_area": {
+      "outputs": [
+        "model_name",
+        "id",
+        "camera_id",
+        "timestamp",
+        "manwomanareadetectioncount",
+        "bbox",
+        "camera_name",
+        "commisionerate",
+        "created_on",
+        "geolocation",
+        "ip_address",
+        "is_active",
+        "police_station",
+        "priority",
+        "rtsp",
+        "zone",
+        "time",
+        "lat",
+        "lon"
+      ],
+      "inputs": []
+    },
+    "anpr": {
+      "outputs": [
+        "camera_id",
+        "camera_name",
+        "commisionerate",
+        "info",
+        "number_of_group",
+        "number_of_person_in_group",
+        "police_station",
+        "time",
+        "total_person",
+        "violation_index",
+        "zone"
+      ],
+      "inputs": []
+    }
+  }
+}

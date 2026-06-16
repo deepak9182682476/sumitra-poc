@@ -375,12 +375,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         }
       });
       clearedAlarms = JSON.parse(JSON.stringify(removedAlarmsData));
-      this.alarmIndexes.filter((element, alarmIndex) => {
-        if (element.alarm_type === 2) {
-          // Remove Early Alarm
-          this.alarmIndexes.splice(alarmIndex, 1);
-        }
-      });
+      this.alarmIndexes = this.alarmIndexes.filter((element) => element.alarm_type !== 2);
       this.alarms_list["Early_Alarm"] = [];
     } else if (type === "ca") {
       // for confirmatory alarm
@@ -390,12 +385,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         }
       });
       clearedAlarms = JSON.parse(JSON.stringify(removedAlarmsData));
-      this.alarmIndexes.filter((element, alarmIndex) => {
-        if (element.alarm_type === 1) {
-          // Remove Confirmatory Alarm
-          this.alarmIndexes.splice(alarmIndex, 1);
-        }
-      });
+      this.alarmIndexes = this.alarmIndexes.filter((element) => element.alarm_type !== 1);
       this.alarms_list["Confirmatory_Alarm"] = [];
     }
 
@@ -454,24 +444,27 @@ export class SidebarComponent implements OnInit, OnDestroy {
             res.alarmData.id = res.alarmData.id
               ? res.alarmData.id
               : res.alarmData.alarm_id;
+            if ((!res.alarmData.location || !res.alarmData.location.coordinates || res.alarmData.location.coordinates.length === 0) && res.location) {
+              res.alarmData.location = res.location;
+            }
             const results = [res.alarmData]; // JSON.parse(res.alarmData);
-            // console.log("results", results);
+            const alarmType = res.alarmData.alarm_type;
+            const targetList = alarmType === 2 ? "Early_Alarm" : "Confirmatory_Alarm";
             const getNonExistingData = results.filter(
               ({ alarm_id: id1 }) =>
-                !this.alarms_list["Confirmatory_Alarm"].some(
+                !this.alarms_list[targetList].some(
                   ({ alarm_id: id2 }) => id2 === id1
                 )
             );
 
             if (getNonExistingData.length) {
-              this.alarms_list["Confirmatory_Alarm"] = [
-                ...this.alarms_list["Confirmatory_Alarm"],
+              this.alarms_list[targetList] = [
+                ...this.alarms_list[targetList],
                 ...results,
               ];
-              if (this.alarms_list["Confirmatory_Alarm"].length) {
+              if (this.alarms_list[targetList].length) {
                 this.loadingInfo.gettingAlarmData = false;
               }
-              // console.log( getNonExistingData.length ? getNonExistingData : null)
               this.alarmService.publishUpdatedAlarmData(
                 getNonExistingData.length ? getNonExistingData : null
               );
@@ -493,6 +486,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         res.alarm_id = res.gJson.properties.id;
       }
       res.id = res.alarmData.id ? res.alarmData.id : res.alarmData.alarm_id;
+      res.alarm_id = res.alarm_id ? res.alarm_id : res.alarmData.alarm_id;
       const checkAlarmID = (obj) => obj.alarm_id === res.alarm_id;
       const alarms = [
         ...this.alarms_list["Confirmatory_Alarm"],
@@ -506,6 +500,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
           alarm_id: res.alarm_id,
           alarm_type: res.alarm_type,
         });
+        this.alarmService.publishUpdatedAlarmData([res]);
       } else {
         this.updateAlarms(res);
       }
@@ -519,6 +514,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         res.alarm_id = res.alarmData.alarm_id;
       }
       res.id = res.alarmData.id ? res.alarmData.id : res.alarmData.alarm_id;
+      res.alarm_id = res.alarm_id ? res.alarm_id : res.alarmData.alarm_id;
       const checkAlarmID = (obj) => obj.alarm_id === res.alarm_id;
       const alarms = [
         ...this.alarms_list["Confirmatory_Alarm"],
@@ -532,6 +528,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
           alarm_id: res.alarm_id,
           alarm_type: res.alarm_type,
         });
+        this.alarmService.publishUpdatedAlarmData([res]);
       } else {
         this.updateAlarms(res);
       }
@@ -564,11 +561,21 @@ export class SidebarComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.alarmIndexes.push({
-      event_type: res.event_type,
-      alarm_id: res.alarm_id,
-      alarm_type: res.alarm_type,
-    });
+    const idx = this.alarmIndexes.findIndex((ele) => ele.alarm_id === res.alarm_id);
+    if (idx !== -1) {
+      this.alarmIndexes[idx] = {
+        event_type: res.event_type,
+        alarm_id: res.alarm_id,
+        alarm_type: res.alarm_type,
+      };
+    } else {
+      this.alarmIndexes.push({
+        event_type: res.event_type,
+        alarm_id: res.alarm_id,
+        alarm_type: res.alarm_type,
+      });
+    }
+    this.alarmService.publishUpdatedAlarmData([res]);
   }
 
   assignToResponse_map(items, zone_id, type, index, alarmPosition, alarmtype) {
@@ -812,8 +819,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
     // let params = { column: "ti_id", ip: "195.67.6.3" };
 
     console.log("showSlewTI item", item);
+    var ti_camera_ip = "192.168.30.71";
     var ti_coordinates = item.location.coordinates;
     console.log("testdata....", ti_coordinates)
+     this.setAutoPTZControl(item, ti_camera_ip, ti_coordinates);
 
     /* commented by kkl to check if its needed
     let body = {
@@ -890,7 +899,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     let heightDiff = z2 - z1;
     let tilt = -(Math.atan2(heightDiff, distMeters) * 180 / Math.PI);
 
-    tilt = Math.max(-25, Math.min(25, tilt));
+    tilt = Math.max(-45, Math.min(45, tilt));
 
     // ---------------- ZOOM ----------------
     // Simple distance based zoom (stable method)

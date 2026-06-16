@@ -55,8 +55,8 @@ function callingRadarKafka() {
   const kafka = new Kafka({
     clientId: 'radar-app',
     //brokers: ['127.0.0.1:9092'],
-    brokers: ['192.168.31.1:9092']
-    // brokers: ['192.168.0.108:9092']
+    //brokers: ['192.168.31.1:9092']
+    brokers: ['10.91.245.227:9092']
   });
 
   const consumer = kafka.consumer({
@@ -154,10 +154,16 @@ async function processAlarmInfo(data, type, url, ip) {
     }
   }
   else if (type == 'mass/targets') {
-    curr_radar = []
-    curr_radar.push(data.raw_data)
-    targets = curr_radar
-    isNewDataReceived = true;
+    const target = data.raw_data;
+    if (target && target.track) {
+      const radar_target = {
+        id: target.track.id,
+        radarId: 223,
+        ip: "195.67.6.3",
+        tail: [[target.track.longitude, target.track.latitude]]
+      };
+      sendRadarTrackDataToMapService([radar_target]);
+    }
   }
 }
 
@@ -276,44 +282,7 @@ function sendRequest(ip, alarm_id, event) {
 //     }
 // }, 100);
 
-setInterval(function () {
 
-  if (targets.length > 0 && isNewDataReceived) {
-    //console.log(targets)
-    var radar_targets = [];
-    for (let i = 0; i < targets.length; i++) {
-      let target = targets[i];
-      let radar_target = {}
-      radar_target.id = target.track.id;
-      radar_target.radarId = 223
-      radar_target.ip = "195.67.6.3";
-      radar_target.tail = [];
-
-      // for (let index = 0; index < target.tail.length; index++) {
-      //     const point = target.tail[index];
-      //     radar_target.tail.push([point.longitude, point.latitude]);
-      // }
-
-      radar_target.tail.push([target.track.longitude, target.track.latitude]);
-
-      let isPresent = false;
-      for (let index = 0; index < radar_targets.length; index++) {
-        const tar = radar_targets[index];
-        if (tar.id == radar_target.id) {
-          isPresent = true;
-          tar.tail = radar_target.tail;
-          break;
-        }
-      }
-
-      if (!isPresent) {
-        radar_targets.push(radar_target);
-      }
-    }
-    sendRadarTrackDataToMapService(radar_targets)
-    isNewDataReceived = false;
-  }
-}, 100);
 
 
 var options = {

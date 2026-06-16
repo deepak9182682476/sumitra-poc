@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <g id="CameraInactive-40px" transform="translate(-1318 -385.063)">
+    <path id="Path_6995" data-name="Path 6995" d="M20,0A20,20,0,1,1,0,20,20,20,0,0,1,20,0Z" transform="translate(1318 385.063)" fill="#ffa3a3"/>
+    <g id="Group_7061" data-name="Group 7061" transform="translate(1327 396.063)">
+      <path id="Path_6985" data-name="Path 6985" d="M0,0H11.317V2.16a1.074,1.074,0,0,1-1.074,1.074H1.074A1.074,1.074,0,0,1,0,2.16Z" transform="translate(3.355 9.256) rotate(18)"/>
+      <path id="Path_6975" data-name="Path 6975" d="M0,0,19.853.246c-1.125,6.582-2.469,7.622-2.959,7.622H1.617C.724,7.866,0,6.105,0,3.933Z" transform="translate(3.17 0) rotate(18)"/>
+      <path id="Path_6984" data-name="Path 6984" d="M0,0H4.85V2.02H.376A.376.376,0,0,1,0,1.645Z" transform="translate(4.519 16.146) rotate(-48)"/>
+      <path id="Path_6983" data-name="Path 6983" d="M0,0H6.467V1.457a.483.483,0,0,1-.483.483H0Z" transform="translate(0 15.557)"/>
+      <path id="Path_6976" data-name="Path 6976" d="M0,.061,6.786,0,4.573,3.2,0,3.295Z" transform="translate(18.946 5.279) rotate(18.725)"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,77 @@
+﻿.ol-zoom-extent button {
+    background-image: url(../../../../extent.svg);
+    background-size: 100%;
+}
+
+
+.ol-popup {
+    position: absolute;
+    min-width: 190px;
+    background-color: white;
+    -webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    bottom: 12px;
+    left: -50px;
+}
+
+    .ol-popup:after, .ol-popup:before {
+        top: 100%;
+        border: solid transparent;
+        content: " ";
+        height: 0;
+        width: 0;
+        position: absolute;
+        pointer-events: none;
+    }
+
+    .ol-popup:after {
+        border-top-color: white;
+        border-width: 10px;
+        left: 48px;
+        margin-left: -10px;
+    }
+
+    .ol-popup:before {
+        border-top-color: #cccccc;
+        border-width: 11px;
+        left: 48px;
+        margin-left: -11px;
+    }
+
+.ol-popup-closer {
+    text-decoration: none;
+    position: absolute;
+    top: 2px;
+    right: 8px;
+}
+
+    .ol-popup-closer:after {
+        content: "✖";
+    }
+
+#popup {
+    font-size: 11px;
+    color: black;
+}
+
+.circle {
+    width: 80px;
+    height: 80px;
+    /*border: 1px solid #088;*/
+    border-radius: 40px;
+    /*background-color: #0FF;*/
+    background-color: rgb(228, 239, 76);
+    opacity: 0.25;
+    z-index: -1; /* Watch out for this!!! */
+}
+td {
+    width: 25%;
+    float: left;
+}
+th {
+    width: 74%;
+   
+}

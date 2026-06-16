@@ -1,0 +1,7 @@
+node_modules/
+
+vms_packages/ai_modules/node_modules/
+
+vms_packages/ai_server/node_modules/
+
+vms_packages/ai_server/

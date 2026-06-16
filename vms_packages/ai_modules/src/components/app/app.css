@@ -1,0 +1,52 @@
+@import "../../fonts/Montserrat.css";
+
+:root {
+  --bg: rgb(32, 32, 32);
+  --border: rgb(133, 133, 133);
+  --main-bg: #3c3d40;
+  --color: #fff;
+  --vmsHeaderBg: "#0e0e0e";
+  --vms-invert: invert(0);
+  --invert: invert(1);
+}
+
+[data-theme="dark"] {
+  --bg: rgb(32, 32, 32);
+  --border: rgb(133, 133, 133);
+  --main-bg: #3c3d40;
+  --color: #fff;
+  --vmsHeaderBg: "#0e0e0e";
+  --vms-invert: invert(0);
+  --invert: invert(1);
+}
+
+[data-theme="light"] {
+  --bg: #ccdcc1;
+  --border: rgb(222, 225, 255);
+  --main-bg: #ffff;
+  --color: #000;
+  --vmsHeaderBg: #0c3858;
+  --vms-invert: invert(0);
+  --invert: invert(0);
+}
+
+[data-theme="lightgreen"] {
+  --bg: #ccdcc1;
+  --border: #ccdcc1;
+  --main-bg: #ffffff;
+  --color: #000;
+  --vmsHeaderBg: #ccdcc1;
+  --vms-invert: invert(0);
+  --invert: invert(0);
+}
+body {
+  font-family: "Montserrat", sans-serif;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.app-main {
+  background-color: var(--main-bg);
+  color: var(--color);
+  min-height: 100vh;
+}

@@ -1,0 +1,14 @@
+{
+  "models": [
+    "social_distance",
+    "mask_detection",
+    "pothole",
+    "image_enrichment",
+    "anpr",
+    "wrong_movement",
+    "speed_detection",
+    "face_similarity",
+    "crowd_detection",
+    "face_recognition"
+  ]
+}

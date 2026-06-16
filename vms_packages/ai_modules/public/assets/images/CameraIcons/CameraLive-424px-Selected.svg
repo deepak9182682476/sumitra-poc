@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="38.5" height="34.5" viewBox="0 0 38.5 34.5">
+  <defs>
+    <filter id="Path_6995" x="0" y="1.5" width="35.5" height="33" filterUnits="userSpaceOnUse">
+      <feOffset dx="-7" dy="3" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feFlood flood-opacity="0.302"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="CameraLive-424px" transform="translate(-1306.5 -382.063)">
+    <path id="Path_6995-2" data-name="Path 6995" d="M15,0A15,15,0,1,1,0,15,15,15,0,0,1,15,0Z" transform="translate(1315 382.063)" fill="#1976d2"/>
+    <g transform="matrix(1, 0, 0, 1, 1306.5, 382.06)" filter="url(#Path_6995)">
+      <path id="Path_6995-3" data-name="Path 6995" d="M12,0A12,12,0,1,1,0,12,12,12,0,0,1,12,0Z" transform="translate(11.5 3)" fill="#b4f7bf"/>
+    </g>
+    <g id="Group_7061" data-name="Group 7061" transform="translate(1323.208 391.62)">
+      <path id="Path_6985" data-name="Path 6985" d="M0,0H6.885V1.314a.653.653,0,0,1-.653.653H.653A.653.653,0,0,1,0,1.314Z" transform="translate(2.041 5.631) rotate(18)"/>
+      <path id="Path_6975" data-name="Path 6975" d="M0,0,12.077.15c-.684,4-1.5,4.637-1.8,4.637H.984C.44,4.785,0,3.714,0,2.393Z" transform="translate(1.928) rotate(18)"/>
+      <path id="Path_6984" data-name="Path 6984" d="M0,0H2.951V1.229H.229A.229.229,0,0,1,0,1Z" transform="translate(2.749 9.822) rotate(-48)"/>
+      <path id="Path_6983" data-name="Path 6983" d="M0,0H3.934V.886a.294.294,0,0,1-.294.294H0Z" transform="translate(0 9.464)"/>
+      <path id="Path_6976" data-name="Path 6976" d="M0,.037,4.128,0,2.782,1.947,0,2Z" transform="translate(11.525 3.211) rotate(18.725)"/>
+    </g>
+  </g>
+</svg>

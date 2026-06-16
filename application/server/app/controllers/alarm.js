@@ -4,6 +4,7 @@ const env = require("../config/env");
 const db = require("../controllers/db");
 const log = require("./../utils/log");
 const response = require("../controllers/response");
+const mapsContr = require("./map");
 let isAutoManualMode = "";
 const alarms_queue = [];
 
@@ -208,6 +209,7 @@ exports.acknowledgeClearAlarm = async (req, res, next) => {
       db.createWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
+            mapsContr.clearAllEarlyWarnings();
             const alarm_tail_query = `update alarm_tail set status = false where alarm_id in (${alarm_ids})`;
             db.updateWithQuery(alarm_tail_query).then((result) => { });
             log.createLog({
@@ -252,6 +254,9 @@ exports.acknowledgeClearAlarm = async (req, res, next) => {
       await db.createWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
+            if (req.body.acknowledged_cleared === 2) {
+              mapsContr.clearEarlyWarning(req.body.alarm_id);
+            }
             log.createLog({
               type: "info",
               root_module: "MCCS",
