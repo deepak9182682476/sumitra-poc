@@ -149,11 +149,30 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild("daPopupCloser") daPopupCloser: ElementRef;
   @ViewChild("daOverlayElement") daOverlayElement: ElementRef;
 
-  ptzControls = {
+  ptzControls: any = {
     query: "position",
     camera: 2,
     track_id: null
   };
+  ptzSelected = {
+    pan: false,
+    tilt: false,
+    zoom: false
+  };
+  slewTiWidth = 220;
+  slewTiHeightOffset = 0;
+  isResizing = false;
+  private startX = 0;
+  private startY = 0;
+  private startWidth = 220;
+  private startHeightOffset = 0;
+  uavWidth = 220;
+  uavHeight = 220;
+  isUavResizing = false;
+  private startUavX = 0;
+  private startUavY = 0;
+  private startUavWidth = 220;
+  private startUavHeight = 220;
   activeSlewAlarm: any = null;
   ti_camera_ip: any = "";
   ti_location: any = [];
@@ -3721,10 +3740,134 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     );
   }
 
-
   applyPTZControls(type, event) {
     this.ptzControls[type] = event.target.value;
-    this.setPTZControls(this.ti_camera_ip);
+  }
+
+  submitPTZControls() {
+    const ip = this.ti_camera_ip || '192.168.30.71';
+
+    let trackId = null;
+    if (this.ptzControls && this.ptzControls.track_id) {
+      trackId = this.ptzControls.track_id;
+    } else if (this.activeSlewAlarm) {
+      trackId = this.activeSlewAlarm.alarm_id || this.activeSlewAlarm.id || null;
+    }
+
+    let body: any = {
+      query: this.ptzControls.query || "position",
+      camera: this.ptzControls.camera || 2,
+      track_id: trackId,
+      ip: ip
+    };
+
+    let hasSelection = false;
+    if (this.ptzSelected.pan) {
+      if (this.ptzControls.pan === undefined || this.ptzControls.pan === null) {
+        this.ptzControls.pan = 0;
+      }
+      body.pan = Number(this.ptzControls.pan);
+      hasSelection = true;
+    }
+    if (this.ptzSelected.tilt) {
+      if (this.ptzControls.tilt === undefined || this.ptzControls.tilt === null) {
+        this.ptzControls.tilt = 0;
+      }
+      body.tilt = Number(this.ptzControls.tilt);
+      hasSelection = true;
+    }
+    if (this.ptzSelected.zoom) {
+      if (this.ptzControls.zoom === undefined || this.ptzControls.zoom === null) {
+        this.ptzControls.zoom = 0;
+      }
+      body.zoom = Number(this.ptzControls.zoom);
+      hasSelection = true;
+    }
+
+    if (!hasSelection) {
+      this.toastr.warning("Please select at least one control (Pan, Tilt, or Zoom) to submit.");
+      return;
+    }
+
+    let url = `http://192.168.2.100:8000`;
+
+    console.log("Submitting PTZ Controls Body:", body);
+
+    this.dataService.postPTZControls(url, body).subscribe(
+      (res: any) => {
+        if (res && !res.error && !res.errorInfo) {
+          this.ptzControls = { ...this.ptzControls, ...res };
+          this.toastr.success("PTZ controls submitted successfully.");
+        } else {
+          console.log(res);
+          this.toastr.error("Failed to submit PTZ controls.");
+        }
+      },
+      (err) => {
+        console.log(err);
+        this.toastr.error("Error submitting PTZ controls.");
+      }
+    );
+  }
+
+  onResizeStart(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isResizing = true;
+    this.startX = event.clientX;
+    this.startY = event.clientY;
+    this.startWidth = this.slewTiWidth;
+    this.startHeightOffset = this.slewTiHeightOffset;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (!this.isResizing) return;
+      const dx = moveEvent.clientX - this.startX;
+      const dy = moveEvent.clientY - this.startY;
+      
+      this.slewTiWidth = Math.max(220, Math.min(450, this.startWidth + dx));
+      this.slewTiHeightOffset = Math.max(0, Math.min(300, this.startHeightOffset + dy));
+      
+      this.cdr.detectChanges();
+    };
+
+    const onMouseUp = () => {
+      this.isResizing = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+
+  onUavResizeStart(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isUavResizing = true;
+    this.startUavX = event.clientX;
+    this.startUavY = event.clientY;
+    this.startUavWidth = this.uavWidth;
+    this.startUavHeight = this.uavHeight;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      if (!this.isUavResizing) return;
+      const dx = moveEvent.clientX - this.startUavX;
+      const dy = moveEvent.clientY - this.startUavY;
+      
+      this.uavWidth = Math.max(220, Math.min(450, this.startUavWidth + dx));
+      this.uavHeight = Math.max(220, Math.min(450, this.startUavHeight + dy));
+      
+      this.cdr.detectChanges();
+    };
+
+    const onMouseUp = () => {
+      this.isUavResizing = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   }
 
   uavLayerInfo: any = {};

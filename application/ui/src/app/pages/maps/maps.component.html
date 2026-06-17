@@ -116,7 +116,12 @@
 
                       <!-- Video column: panels stack independently to the right of labels -->
                       <div class="video-panels-stack">
-                        <div class="video-sec slew-ti-sec" [class.ptz-expanded]="isPtzExpanded" *ngIf="enableVideo">
+                         <div class="video-sec slew-ti-sec" 
+                              [class.ptz-expanded]="isPtzExpanded" 
+                              [class.resizing]="isResizing"
+                              *ngIf="enableVideo"
+                              [style.width.px]="slewTiWidth"
+                              [style.height.px]="(isPtzExpanded ? 300 : 160) + slewTiHeightOffset">
                           <div class="video-wrapper">
                             <img class="video-tag" id="slew-ti-video" [src]="slewFeedUrl" />
                             <span class="video-icons">
@@ -140,22 +145,38 @@
                           </div>
 
                           <div class="ptz-controls" *ngIf="isPtzExpanded">
-                            <label>Pan
+                            <div class="ptz-row">
+                              <input type="checkbox" [(ngModel)]="ptzSelected.pan" class="ptz-checkbox" id="ptz-pan-check" />
+                              <label for="ptz-pan-check" class="ptz-label">Pan</label>
                               <input type="range" min="0" max="360" [(ngModel)]="ptzControls.pan" (change)="applyPTZControls('pan',$event)" />
-                              <span>{{ptzControls.pan}}</span>
-                            </label>
-                            <label>Tilt
+                              <span class="ptz-value">{{ptzControls.pan}}</span>
+                            </div>
+                            <div class="ptz-row">
+                              <input type="checkbox" [(ngModel)]="ptzSelected.tilt" class="ptz-checkbox" id="ptz-tilt-check" />
+                              <label for="ptz-tilt-check" class="ptz-label">Tilt</label>
                               <input type="range" min="-25" max="25" [(ngModel)]="ptzControls.tilt" (change)="applyPTZControls('tilt',$event)" />
-                              <span>{{ptzControls.tilt}}</span>
-                            </label>
-                            <label>Zoom
+                              <span class="ptz-value">{{ptzControls.tilt}}</span>
+                            </div>
+                            <div class="ptz-row">
+                              <input type="checkbox" [(ngModel)]="ptzSelected.zoom" class="ptz-checkbox" id="ptz-zoom-check" />
+                              <label for="ptz-zoom-check" class="ptz-label">Zoom</label>
                               <input type="range" min="0" max="17" [(ngModel)]="ptzControls.zoom" (change)="applyPTZControls('zoom',$event)" />
-                              <span>{{ptzControls.zoom}}</span>
-                            </label>
+                              <span class="ptz-value">{{ptzControls.zoom}}</span>
+                            </div>
+                            <div class="ptz-submit-row">
+                              <button type="button" class="ptz-submit-btn" (click)="submitPTZControls()" title="Submit Selected PTZ Controls">
+                                <i class="fa fa-paper-plane" aria-hidden="true"></i> Submit
+                              </button>
+                            </div>
                           </div>
+                          <div class="resize-handle" (mousedown)="onResizeStart($event)" title="Drag to Resize"></div>
                         </div>
 
-                        <div class="video-sec" *ngIf="enableUavVideo">
+                        <div class="video-sec" 
+                             *ngIf="enableUavVideo"
+                             [class.resizing]="isUavResizing"
+                             [style.width.px]="uavWidth"
+                             [style.height.px]="uavHeight">
                           <div class="video-wrapper">
                             <video class="video-tag" id="uav-video" autoplay muted>
                               <source [src]="uavStreamUrl" type="video/mp4" />
@@ -165,6 +186,7 @@
                               <span><i class="fa fa-remove" aria-hidden="true" (click)="enableUavVideo=false;"></i></span>
                             </span>
                           </div>
+                          <div class="resize-handle" (mousedown)="onUavResizeStart($event)" title="Drag to Resize"></div>
                         </div>
                       </div>
                     </div>

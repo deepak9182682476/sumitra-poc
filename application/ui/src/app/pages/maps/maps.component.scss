@@ -19,8 +19,9 @@
   left: -25px;   /* 5px margin + 90px label + 5px gap */
   z-index: 1000;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
   pointer-events: none;
 }
 
@@ -62,6 +63,7 @@
 
 /* Video panel — compact fixed size */
 .video-sec {
+  position: relative;
   width: 220px;
   height: 220px;
   background: rgba(20, 20, 20, 0.92);
@@ -72,6 +74,28 @@
   flex-direction: column;
   overflow: hidden;
   pointer-events: all;
+
+  &.resizing {
+    transition: none !important;
+  }
+
+  .resize-handle {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    cursor: se-resize;
+    z-index: 1002;
+    border-right: 2px solid rgba(255, 255, 255, 0.45);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.45);
+    border-bottom-right-radius: 1px;
+    pointer-events: auto;
+
+    &:hover {
+      border-color: #03a9f4;
+    }
+  }
 }
 
 /* Slew TI video panel - expandable height */
@@ -80,7 +104,7 @@
   transition: height 0.3s ease;
 
   &.ptz-expanded {
-    height: 270px; /* Expanded height to accommodate PTZ controls */
+    height: 300px; /* Expanded height to accommodate PTZ controls, checkboxes, and submit button */
   }
 
   .ptz-controls {
@@ -194,29 +218,73 @@
   margin-top: 0px;
   display: flex;
   flex-direction: column;
-  gap: 0px;
+  gap: 4px;
 
-  label {
+  .ptz-row {
     display: flex;
     align-items: center;
-    gap: 1px;
+    gap: 6px;
+    height: 20px;
+  }
+
+  .ptz-checkbox {
+    cursor: pointer;
+    width: 12px;
+    height: 12px;
+    margin: 0;
+    accent-color: #03a9f4;
+  }
+
+  .ptz-label {
     font-size: 10px;
     color: #bbb;
-    white-space: nowrap;
+    width: 30px;
     margin: 0;
+    user-select: none;
+    cursor: pointer;
+  }
 
-    input[type="range"] {
-      flex: 1;
-      min-width: 0;
-      height: 0px;
-      cursor: pointer;
+  input[type="range"] {
+    flex: 1;
+    min-width: 0;
+    height: 4px;
+    cursor: pointer;
+  }
+
+  .ptz-value {
+    width: 22px;
+    text-align: right;
+    font-size: 9px;
+    color: #999;
+  }
+
+  .ptz-submit-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+    padding-right: 2px;
+  }
+
+  .ptz-submit-btn {
+    background: rgba(30, 120, 200, 0.85);
+    color: #fff;
+    border: 1px solid #4af;
+    border-radius: 3px;
+    font-size: 9px;
+    padding: 3px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(40, 140, 220, 0.95);
+      border-color: #6cf;
     }
 
-    span {
-      width: 22px;
-      text-align: right;
+    i {
       font-size: 9px;
-      color: #999;
     }
   }
 }
