@@ -134,7 +134,7 @@ const Main = (props) => {
                             path="/home"
                             component={EventDashboard}
                           /> */}
-                          <ProtectedRoute
+                          {/* <ProtectedRoute
                             path="/event_dashboard"
                             component={EventDashboard}
                           />
@@ -149,7 +149,7 @@ const Main = (props) => {
                           <ProtectedRoute
                             path="/journalDetails"
                             component={EventJounalDetailView}
-                          />
+                          /> */}
                           <ProtectedRoute
                             path="/configuration"
                             component={Configurations}
@@ -163,19 +163,19 @@ const Main = (props) => {
                             component={Informations}
                           />
                           {/* <ProtectedRoute path="/home" component={HomePageWrapper} /> */}
-                          <ProtectedRoute
+                          {/* <ProtectedRoute
                             path="/360Alerts"
                             component={AlertsPageComponent}
-                          />
+                          /> */}
                           <ProtectedRoute
                             path="/cameras"
                             component={CamerasConfig}
                           />
-                          <ProtectedRoute
+                          {/* <ProtectedRoute
                             path="/violations"
                             component={ModelsConfig}
-                          />
-                          <ProtectedRoute
+                          /> */}
+                          {/* <ProtectedRoute
                             path="/violationParams"
                             component={ModelsParamsConfig}
                           />
@@ -186,7 +186,7 @@ const Main = (props) => {
                           <ProtectedRoute
                             path="/violation"
                             component={Violations_main}
-                          />
+                          /> */}
                           <ProtectedRoute
                             path="/user-management"
                             component={RbacManagement}
@@ -195,10 +195,10 @@ const Main = (props) => {
                             path="/myaccount"
                             component={Myaccount}
                           />
-                          <ProtectedRoute
+                          {/* <ProtectedRoute
                             path="/session-logs"
                             component={Logs_main}
-                          />
+                          /> */}
                         </main>
                       </Switch>
                     </Suspense>

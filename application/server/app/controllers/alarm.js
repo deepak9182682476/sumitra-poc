@@ -670,7 +670,18 @@ exports.createUpdateAlarms = (req, res, next) => {
 
     console.log("----alarmInfo----", alarmInfo);
 
-    let customQuery = `select * from alarms where alarm_id = '${alarmInfo.alarm_id}'`;
+//    let customQuery = `select * from alarms where alarm_id = '${alarmInfo.alarm_id}'`;
+
+    let customQuery = `
+      SELECT a.*, ae.event_type 
+      FROM alarms a 
+      LEFT JOIN (
+        SELECT DISTINCT ON (alarm_id) alarm_id, event_type, timeofevent 
+        FROM alarm_events 
+        ORDER BY alarm_id, timeofevent DESC
+      ) ae ON a.alarm_id = ae.alarm_id 
+      WHERE a.alarm_id = '${alarmInfo.alarm_id}'
+    `;
     db.selectWithQuery(customQuery).then(
       (results) => {
         console.log(results);
@@ -683,9 +694,9 @@ exports.createUpdateAlarms = (req, res, next) => {
             let query = `UPDATE alarms SET record_flag=${alarmInfo.record_flag},alarm_type=${alarmInfo.alarm_type} WHERE alarm_id='${alarmInfo.alarm_id}'`;
             db.updateWithQuery(query).then(
               (update_response) => {
-                if (results[0].alarm_type != alarmInfo.alarm_type) {
+                if (results[0].alarm_type != alarmInfo.alarm_type || results[0].event_type == 2 || results[0].event_type == null) {
                   alarmInfo.id = results[0].id; // pushing id of alarm into alarmInfo
-                  // means confirmatory
+                  // means confirmatory or reactivating cleared alarm
                   updateAlarmEvents(alarmInfo, results[0].zone_id);
                 }
                 if (alarmInfo.alarm_type == 1 && alarmInfo.record_flag == 1) {
@@ -710,6 +721,13 @@ exports.createUpdateAlarms = (req, res, next) => {
                 });
               }
             );
+            //there is no else added for new alarm after clear all on map
+          } else {
+            // For early warning (alarm_type === 2), reactivate if cleared or if type changed
+            if (results[0].alarm_type != alarmInfo.alarm_type || results[0].event_type == 2 || results[0].event_type == null) {
+              alarmInfo.id = results[0].id;
+              updateAlarmEvents(alarmInfo, results[0].zone_id);
+            }
           }
         }
       },

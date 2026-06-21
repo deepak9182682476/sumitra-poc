@@ -130,14 +130,14 @@ export class SidebarComponent implements OnInit, OnDestroy {
                 getAlarmsData.forEach((elem, i) => {
                   if (elem.event_type != 2 && element.event_type != 2) {
                     if (
-                      elem.alarm_id === element.alarm_id &&
+                      String(elem.alarm_id) === String(element.alarm_id) &&
                       (elem.event_type < element.event_type ||
                         elem.event_type === element.event_type)
                     ) {
                       getAlarmsData[i].event_type = element.event_type;
                       isExists = true;
                     }
-                    if (elem.alarm_id === element.alarm_id) {
+                    if (String(elem.alarm_id) === String(element.alarm_id)) {
                       isExists = true;
                     }
                   }
@@ -201,9 +201,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
               // if (val.alarm_type === 0 || val.alarm_type === 2) {
               if (val.alarm_type === 2) {
                 const alarmExists = this.alarms_list["Early_Alarm"].map(
-                  (ele) => ele.alarm_id
+                  (ele) => String(ele.alarm_id)
                 );
-                if (alarmExists.indexOf(val.alarm_id) === -1) {
+                if (alarmExists.indexOf(String(val.alarm_id)) === -1) {
                   this.alarms_list["Early_Alarm"].push(val);
                 }
                 this.alarmIndexes.push({
@@ -222,10 +222,10 @@ export class SidebarComponent implements OnInit, OnDestroy {
                 ) {
                   const elem = this.alarms_list["Confirmatory_Alarm"][j];
 
-                  if (elem.alarm_id === val.alarm_id) {
+                  if (String(elem.alarm_id) === String(val.alarm_id)) {
                     const isCleared = [];
                     res.forEach((element) => {
-                      if (element.alarm_id === val.alarm_id) {
+                      if (String(element.alarm_id) === String(val.alarm_id)) {
                         isCleared.push(element.event_type);
                       }
                     });
@@ -257,8 +257,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
                   });
                   const alarmExists = this.alarms_list[
                     "Confirmatory_Alarm"
-                  ].map((ele) => ele.alarm_id);
-                  if (alarmExists.indexOf(val.alarm_id) === -1) {
+                  ].map((ele) => String(ele.alarm_id));
+                  if (alarmExists.indexOf(String(val.alarm_id)) === -1) {
                     this.alarms_list["Confirmatory_Alarm"].push(val);
                   }
                 }
@@ -268,7 +268,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
           // Check Exists/Not
           getEaCaList.forEach((elem) => {
-            if (getEaCaList.some((ele) => ele.alarm_id === elem.alarm_id)) {
+            if (getEaCaList.some((ele) => String(ele.alarm_id) === String(elem.alarm_id))) {
               elem.formatted_zone_id = "zone-" + elem.zone_id;
               getAlarmData.push(elem);
             }
@@ -299,7 +299,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   }
 
   getAlarmIndex(alarmId) {
-    return this.alarmIndexes.findIndex((ele) => ele.alarm_id === alarmId);
+    return this.alarmIndexes.findIndex((ele) => String(ele.alarm_id) === String(alarmId));
   }
 
   // Update Alarm Status
@@ -307,7 +307,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
     param.acknowledged_cleared = isAcknowledged ? 1 : 2;
     const alarmId = param.alarm_id;
     const alarmIndex = this.alarmIndexes.findIndex(
-      (ele) => ele.alarm_id === alarmId
+      (ele) => String(ele.alarm_id) === String(alarmId)
     );
     this.isLoading = param.alarm_id;
 
@@ -336,7 +336,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
             // Remove Confirmatory Alarm
             const removedData = [];
             this.alarms_list["Confirmatory_Alarm"].forEach((elem, i) => {
-              if (elem.alarm_id !== alarmId) {
+              if (String(elem.alarm_id) !== String(alarmId)) {
                 removedData.push(elem);
               }
             });
@@ -345,7 +345,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
             // Remove Early Alarm
             const removedEarlyAlarmData = [];
             this.alarms_list["Early_Alarm"].forEach((elem, i) => {
-              if (elem.alarm_id !== alarmId) {
+              if (String(elem.alarm_id) !== String(alarmId)) {
                 removedEarlyAlarmData.push(elem);
               }
             });
@@ -453,7 +453,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
             const getNonExistingData = results.filter(
               ({ alarm_id: id1 }) =>
                 !this.alarms_list[targetList].some(
-                  ({ alarm_id: id2 }) => id2 === id1
+                  ({ alarm_id: id2 }) => String(id2) === String(id1)
                 )
             );
 
@@ -487,7 +487,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       }
       res.id = res.alarmData.id ? res.alarmData.id : res.alarmData.alarm_id;
       res.alarm_id = res.alarm_id ? res.alarm_id : res.alarmData.alarm_id;
-      const checkAlarmID = (obj) => obj.alarm_id === res.alarm_id;
+      const checkAlarmID = (obj) => String(obj.alarm_id) === String(res.alarm_id);
       const alarms = [
         ...this.alarms_list["Confirmatory_Alarm"],
         ...this.alarms_list["Early_Alarm"],
@@ -515,7 +515,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       }
       res.id = res.alarmData.id ? res.alarmData.id : res.alarmData.alarm_id;
       res.alarm_id = res.alarm_id ? res.alarm_id : res.alarmData.alarm_id;
-      const checkAlarmID = (obj) => obj.alarm_id === res.alarm_id;
+      const checkAlarmID = (obj) => String(obj.alarm_id) === String(res.alarm_id);
       const alarms = [
         ...this.alarms_list["Confirmatory_Alarm"],
         ...this.alarms_list["Early_Alarm"],
@@ -539,7 +539,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   updateAlarms(res) {
     let getEAIndex = null;
     this.alarms_list["Early_Alarm"].forEach((elem, i) => {
-      if (res.alarm_id === elem.alarm_id) {
+      if (String(res.alarm_id) === String(elem.alarm_id)) {
         this.alarms_list["Early_Alarm"].splice(i, 1);
         if (res.alarm_type === 2) {
           this.alarms_list["Early_Alarm"].push(res);
@@ -551,7 +551,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
     let getCAIndex = null;
     this.alarms_list["Confirmatory_Alarm"].forEach((elem, i) => {
-      if (res.alarm_id === elem.alarm_id) {
+      if (String(res.alarm_id) === String(elem.alarm_id)) {
         this.alarms_list["Confirmatory_Alarm"].splice(i, 1);
         if (res.alarm_type === 2) {
           this.alarms_list["Early_Alarm"].push(res);
@@ -561,7 +561,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
       }
     });
 
-    const idx = this.alarmIndexes.findIndex((ele) => ele.alarm_id === res.alarm_id);
+    const idx = this.alarmIndexes.findIndex((ele) => String(ele.alarm_id) === String(res.alarm_id));
     if (idx !== -1) {
       this.alarmIndexes[idx] = {
         event_type: res.event_type,

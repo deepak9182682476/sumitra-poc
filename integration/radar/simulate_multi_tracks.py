@@ -79,20 +79,20 @@ def main():
             sock.sendto(p2, (MCAST_GRP, MCAST_PORT))
 
               # Track 109
-            p11 = create_sidd_packet(111, base_lat - offset, base_lon + 0.005, 180.0)
-            sock.sendto(p11, (MCAST_GRP, MCAST_PORT))
+            #p11 = create_sidd_packet(111, base_lat - offset, base_lon + 0.005, 180.0)
+            # sock.sendto(p11, (MCAST_GRP, MCAST_PORT))
 
               # Track 109
-            p5 = create_sidd_packet(106, base_lat - offset, base_lon + 0.005, 180.0)
-            sock.sendto(p5, (MCAST_GRP, MCAST_PORT))
+            #p5 = create_sidd_packet(106, base_lat - offset, base_lon + 0.005, 180.0)
+            # sock.sendto(p5, (MCAST_GRP, MCAST_PORT))
 
               # Track 109
-            p6   = create_sidd_packet(107, base_lat - offset, base_lon + 0.005, 180.0)
-            sock.sendto(p6, (MCAST_GRP, MCAST_PORT))
+            #p6   = create_sidd_packet(107, base_lat - offset, base_lon + 0.005, 180.0)
+            # sock.sendto(p6, (MCAST_GRP, MCAST_PORT))
 
               # Track 109
-            p7 = create_sidd_packet(108, base_lat - offset, base_lon + 0.005, 180.0)
-            sock.sendto(p7, (MCAST_GRP, MCAST_PORT))
+            #p7 = create_sidd_packet(108, base_lat - offset, base_lon + 0.005, 180.0)
+            # sock.sendto(p7, (MCAST_GRP, MCAST_PORT))
 
               # Track 109
             p8 = create_sidd_packet(139, base_lat - offset, base_lon + 0.005, 180.0)
@@ -113,7 +113,7 @@ def main():
 
 
             # Track 119
-            if step >= 40:
+            if step >= 10000:
                 print("Sending Track 119")
                 p3 = create_sidd_packet(
                     119,

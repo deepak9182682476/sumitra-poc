@@ -2220,7 +2220,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
               .getArray()
               .forEach((overlay) => {
 
-                if (overlay.id === results.alarmData.alarm_id) {
+                if (String(overlay.id) === String(results.alarmData.alarm_id)) {
                   try {
                     overlay.setPosition(results.alarmData.location.coordinates)
                   } catch {
@@ -2317,7 +2317,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           // });
 
           this.olmap.getOverlays().getArray().forEach(overlay => {
-            if (overlay.id == gJson.properties.id) {
+            if (String(overlay.id) === String(gJson.properties.id)) {
               const coords = gJson.geometry.coordinates;
               const lastCoord = coords[coords.length - 1];
               // console.log("gJson Properties: ", gJson.properties)
@@ -2395,7 +2395,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             } else {
               let hasOverlay = false;
               if (results && results[0]) {
-                hasOverlay = this.olmap.getOverlays().getArray().some(overlay => overlay.id === results[0].alarm_id);
+                hasOverlay = this.olmap.getOverlays().getArray().some(overlay => String(overlay.id) === String(results[0].alarm_id));
               }
               if (hasOverlay) {
                 this.removeOverlay(results, true);
@@ -2500,20 +2500,31 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   removeOverlay(results, acknowledged) {
+    if (!results || !results[0]) {
+      return;
+    }
+    const targetAlarmId = results[0].alarm_id;
+    const overlaysToRemove = [];
     this.olmap
       .getOverlays()
       .getArray()
       .forEach((overlay) => {
-        if (overlay.id === results[0].alarm_id) {
-          // Remove Acknowledged Alarm
-          this.olmap.removeOverlay(overlay);
-          if (acknowledged) {
-            this.addSensors(results);
-          } else {
-            this.removeTrack(overlay.id);
-          }
+        if (String(overlay.id) === String(targetAlarmId)) {
+          overlaysToRemove.push(overlay);
         }
       });
+
+    overlaysToRemove.forEach((overlay) => {
+      this.olmap.removeOverlay(overlay);
+    });
+
+    if (acknowledged) {
+      this.addSensors(results);
+    } else {
+      overlaysToRemove.forEach((overlay) => {
+        this.removeTrack(overlay.id);
+      });
+    }
   }
 
   removeTrack(id) {
@@ -2541,7 +2552,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             .getArray()
             .forEach((overlay) => {
               for (let i = 0; i < res.data.disabledAlarm.length; i++) {
-                if (res.data.disabledAlarm[i].alarm_id === overlay.id) {
+                if (String(res.data.disabledAlarm[i].alarm_id) === String(overlay.id)) {
                   // this.olmap.removeOverlay([overlay]);
                   this.olmap.removeOverlay(overlay);
                   // this.removeOverlay([overlay], false);
@@ -2592,7 +2603,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           !this.olmap
             .getOverlays()
             .getArray()
-            .some(({ id: id2 }) => id2 === id1)
+            .some(({ id: id2 }) => String(id2) === String(id1))
       );
       console.log("[MAPS] addSensors getNonExistingData:", JSON.stringify(getNonExistingData));
       if (getNonExistingData.length) {
