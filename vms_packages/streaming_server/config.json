@@ -1,0 +1,20 @@
+{
+    "cameras": {
+        "connection_details": {
+            "10.35.122.4": "input_videos/stopped.mp4",
+            "10.35.122.5": "input_videos/loitering.mp4",
+            "10.10.10.1": "input_videos/crowd.mp4",
+            "10.32.62.178": "input_videos/traffic_congestion.mp4",
+            "192.168.1.202" : "input_videos/ANPR_Cam1.mp4",
+            "12.12.5.5" : "input_videos/line.mp4"
+        }
+    },
+    "video_stream": {
+        "sleep_interval_after_each_frame_of_recorded_videos": 0.075,
+        "connection_retry": true
+    },
+    "application": {
+        "app_host": "192.168.2.15",
+        "app_port": "5004"
+    }
+}

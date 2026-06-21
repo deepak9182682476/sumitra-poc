@@ -1,0 +1,8 @@
+{
+    "application": {
+        "app_host": "10.66.39.12",
+        "app_port": "6001",
+        "pm2_service_name": "PIU-SG-TEST-NEW",
+        "different_config_file_path": "/home/piu/streaming-gateway-2/config.json"
+    }
+}
