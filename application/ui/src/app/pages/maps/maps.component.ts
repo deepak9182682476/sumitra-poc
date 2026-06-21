@@ -1970,8 +1970,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         // url =
         //   this.dataService.config.LOCAL_MAP_URL +
         //   "/styles/dark-matter/{z}/{x}/{y}.png";
-        url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-        //url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png';
+       // url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+        url = 'http://localhost:6090/tile/{z}/{x}/{y}.png';
       } else if (this.mapParams.Theme === "light") {
         // url =
         //   this.dataService.config.LOCAL_MAP_URL +
@@ -1987,8 +1987,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       // url =
       // this.dataService.config.LOCAL_SAT_MAP_URL +
       // "/wmts/gm_layer/gm_grid/{z}/{x}/{y}.png";
-      url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-      // url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png';
+      //url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+      url = 'http://localhost:6090/tile/{z}/{x}/{y}.png';
 
       if (url != undefined) {
         this.mapParams.satelliteThemeChecked = false;
@@ -2035,7 +2035,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       //     this.dataService.config.LOCAL_SAT_MAP_URL +
       //     "/wmts/gm_layer/gm_grid/{z}/{x}/{y}.png";
       // let url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-      let url = 'http://192.168.2.146:6090/tile/{z}/{x}/{y}.png'
+      let url = 'http://localhost:6090/tile/{z}/{x}/{y}.png'
       if (this.mapParams.Theme === "dark") {
         url =
           this.dataService.config.LOCAL_MAP_URL +

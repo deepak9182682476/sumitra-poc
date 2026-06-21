@@ -1,3 +1,4 @@
+//import { fromLonLat } from 'ol/proj';  // correct - named import
 export const server_info = {
     SERVER_IP: 'localhost',
     LOCAL_MAP_SERVER_IP: 'localhost',
@@ -17,15 +18,18 @@ export const config = {
     TRANSLATION_KEY: 'English',
     WS_URL: 'ws://' + server_info.SERVER_IP + ':' + server_info.SERVER_WS_PORT,
     MapConfig: {
-       // DefaultCenter: [ 68.759318 , 24.043732], // [76.5628308, 14.3876045] //23.960845, 68.765710  23.969964, 68.754771
+        // DefaultCenter: [ 68.759318 , 24.043732], // [76.5628308, 14.3876045] //23.960845, 68.765710  23.969964, 68.754771
         // DefaultCenter: [78.9629, 20.5937] , // [longitude, latitude],
-        DefaultCenter: [76.238227, 9.9555087], //23.960845, 68.765710  23.969964, 68.754771
-        DefaultZoom: 11,
+        // DefaultCenter: [76.238227, 9.9555087], //23.960845, 68.765710  23.969964, 68.754771 //kochi
+        //DefaultCenter: fromLonLat([68.3736264, 24.1381791]), //bhuj
+        DefaultCenter: [68.3736264, 24.1381791],
+        DefaultZoom: 9,
         MinZoom: 3,
         MaxZoom: 19,
+        //Projection: 'EPSG:3857',
         Projection: 'EPSG:4326',
         Theme: 'dark',
-    //    DefaultExtent: [76.02285004, 13.56902027, 77.02001953, 15.03013134]
+        //    DefaultExtent: [76.02285004, 13.56902027, 77.02001953, 15.03013134]
         // DefaultExtent:  [68.123078, 24.53203, 69.423551, 23.431743] 
     },
     serverApiUrl: {
@@ -164,7 +168,7 @@ export const config = {
         },
     ],
     event_types: { "uav": 6, "ugv": 12 },
-    border_layer : {
+    border_layer: {
         "type": "FeatureCollection",
         "features": [
             {

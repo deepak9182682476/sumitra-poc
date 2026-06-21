@@ -1,6 +1,6 @@
 export const server_info = {
   //SERVER_IP: "10.66.167.32",
-  SERVER_IP: "192.168.2.15",
+  SERVER_IP: "localhost",
   SERVER_PORT: "3016",
   //VMS_SERVER_HOST: "172.20.1.141",
   VMS_SERVER_HOST: "192.168.2.15",

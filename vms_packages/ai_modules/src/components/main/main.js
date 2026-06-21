@@ -91,7 +91,7 @@ const Main = (props) => {
                       flexGrow: 1,
                       bgcolor: "#ffffff",
                       p: 1,
-                      ml: -14,
+                      ml: -5,
                     }}
                   >
                     <Suspense fallback={<div>Loading...</div>}>
