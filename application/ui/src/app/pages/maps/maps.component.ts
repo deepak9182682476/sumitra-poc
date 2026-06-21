@@ -2332,7 +2332,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                   console.log("kkkl", gJson)
                   span.innerHTML = `
                     Track ID: ${gJson.properties.track_id ?? gJson.properties.id}<br/>
-                    Range: ${gJson.properties.range} m<br/>
+                    Range: ${gJson.properties.range !== undefined && gJson.properties.range !== null && !isNaN(Number(gJson.properties.range)) ? Math.round(Number(gJson.properties.range) * 1000) : 'N/A'} m<br/>
                     Lat: ${lastCoord[1]}<br/>
                     Lon: ${lastCoord[0]}
                   `;
@@ -2670,7 +2670,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 const getTypeZoneID = e.srcElement.alt.split("-");
                 const getAlarmId = e.srcElement.id.split("-")[1];
                 const getId = e.srcElement.id.split("-")[0].split(",");
-                const getCategory = e.srcElement.cat;
+                const getCategory = e.srcElement.getAttribute ? e.srcElement.getAttribute("cat") : e.srcElement.cat;
                 const getCordinates = [
                   parseFloat(getId[0]),
                   parseFloat(getId[1]),
@@ -2706,10 +2706,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                           <th>${self.getTranslationLang("alarm_type")}: </th> 
                           <td>${getTypeZoneID[0]}</td>
                         </tr>
-                        <tr>
+                        <!-- <tr>
                           <th>${self.getTranslationLang("zone_id")}: </th> 
                           <td>${getTypeZoneID[1]}</td>
-                        </tr>
+                        </tr> -->
                         <tr>
                           <th>${self.getTranslationLang("category")}: </th> 
                           <td>${getCategory}</td>

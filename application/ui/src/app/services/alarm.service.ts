@@ -194,7 +194,10 @@ export class AlarmService {
   alarmDomContent(icon, alarmId, element): any {
     const lat = element.location?.coordinates?.[1] ?? 'N/A';
     const lon = element.location?.coordinates?.[0] ?? 'N/A';
-    const range = element.range ?? 'N/A';
+    let range = element.range ?? 'N/A';
+    if (range !== 'N/A' && !isNaN(Number(range))) {
+      range = Math.round(Number(range) * 1000).toString();
+    }
     const trackId = element.alarm_id ?? 'N/A';
 
     const label = (cssClass: string) => `
@@ -230,7 +233,8 @@ export class AlarmService {
           ${label('ea-alarm-id')}
           <img class="acknowledgedAlarm" style="height: 25px" src="./assets/sensor-icons/${icon}.svg"
             id="${element.location.coordinates.toString()}-${alarmId}"
-            alt="Early Alarm-${element.zone_id}"/>
+            alt="Early Alarm-${element.zone_id}"
+            cat="${element.object_identified}"/>
         </div>
       `,
       iff: `
@@ -238,7 +242,8 @@ export class AlarmService {
           ${label('ea-alarm-id')}
           <img class="acknowledgedAlarm" style="height: 25px" src="./assets/sensor-icons/${icon}.svg"
             id="${element.location.coordinates.toString()}-${alarmId}"
-            alt="Early Alarm-${element.zone_id}"/>
+            alt="Early Alarm-${element.zone_id}"
+            cat="${element.object_identified}"/>
         </div>
       `,
     };

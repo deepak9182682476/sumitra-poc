@@ -223,7 +223,8 @@ exports.track = async (req, res, next) => {
           trackInfo.id,
           1,
           ["RADAR"],
-          trackInfo.ip
+          trackInfo.ip,
+          trackInfo.range
         );
       }
 
@@ -237,7 +238,7 @@ exports.track = async (req, res, next) => {
         }).catch((err) => {
           console.log("isLatLngExistsInzone error:", err);
         });
-        sendTracktoUI("radar_tracks", 1, trackInfo.id, trackInfo.tail);
+        sendTracktoUI("radar_tracks", 1, trackInfo.id, trackInfo.tail, trackInfo.range);
       }
     }
   }
@@ -382,8 +383,8 @@ function sendAlarmDataToMapService(lat, lon, id, type) {
   processAlarmData(options);
 }
 
-function sendAlarmDataToAlarmService(lat, lon, id, type, st, ip) {
-  console.log("sending the alarm to alarm (sendAlarmDataToAlarmService)", lat, lon, id, type, st, ip)
+function sendAlarmDataToAlarmService(lat, lon, id, type, st, ip, range) {
+  console.log("sending the alarm to alarm (sendAlarmDataToAlarmService)", lat, lon, id, type, st, ip, range)
   var options = { json: true };
   options.url = env.base_url + "/alarm/create-update";
   options.body = {
@@ -393,6 +394,7 @@ function sendAlarmDataToAlarmService(lat, lon, id, type, st, ip) {
     camera_id: "192.168.1.10",
     alarm_type: type,
     sensors_triggered: st,
+    range: range
   };
   options.method = "POST";
   options.json = true;
@@ -486,7 +488,7 @@ function sendAlarmDataToAlarmService(lat, lon, id, type, st, ip) {
 // Store coordinates per id
 let tracksById = {};
 
-async function sendTracktoUI(category, type, id, track) {
+async function sendTracktoUI(category, type, id, track, range) {
 
   // Ensure we have an array for this id
   if (!tracksById[id]) {
@@ -503,6 +505,7 @@ async function sendTracktoUI(category, type, id, track) {
       category: category,
       type: type,
       id: id,
+      range: range,
       data: tracksById[id]
     };
 

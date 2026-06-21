@@ -56,7 +56,7 @@ function callingRadarKafka() {
     clientId: 'radar-app',
     //brokers: ['127.0.0.1:9092'],
     //brokers: ['192.168.31.1:9092']
-    brokers: ['10.91.245.227:9092']
+    brokers: ['localhost:9092']
   });
 
   const consumer = kafka.consumer({
@@ -160,7 +160,8 @@ async function processAlarmInfo(data, type, url, ip) {
         id: target.track.id,
         radarId: 223,
         ip: "195.67.6.3",
-        tail: [[target.track.longitude, target.track.latitude]]
+        tail: [[target.track.longitude, target.track.latitude]],
+        range: target.track.range
       };
       sendRadarTrackDataToMapService([radar_target]);
     }
