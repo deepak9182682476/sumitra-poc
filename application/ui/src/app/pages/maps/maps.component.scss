@@ -1577,3 +1577,380 @@ ng-scrollbar.lc-list-items {
   border-radius: 8px;
   pointer-events: none;
 }
+
+/* ---- UAV video in full screen (the whole video box goes full screen, overlays included) ---- */
+.uav-pick-hint a { color: #fff; text-decoration: underline; pointer-events: auto; cursor: pointer; }
+.uav-pick-status {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.uav-fs-tools { display: none; }
+.video-wrapper:fullscreen {
+  border: none;
+  border-radius: 0;
+  img.video-tag, canvas.video-tag { object-fit: contain; }   /* whole frame, no cropping */
+  .uav-fs-tools {
+    display: flex;
+    gap: 16px;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 8px 12px;
+    font-size: 18px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 6px;
+    span { cursor: pointer; }
+    span:hover { color: #03a9f4; }
+    .on { color: #4cd964; }
+    .off, .busy { opacity: .45; }
+    .picking { color: #03a9f4; }
+  }
+  .uav-pick-hint { top: 14px; font-size: 14px; padding: 4px 12px; }
+  .uav-pick-status { bottom: 14px; font-size: 14px; padding: 4px 12px; }
+  .uav-detect-badge { bottom: 14px; left: 14px; font-size: 12px; }
+  .uav-pick-marker { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
+}
+
+/* ---- Video panels in full screen (approved layout B): video on the left, the panel's controls on the right ---- */
+.video-sec:fullscreen {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none;
+  background: #0d1117;
+  max-height: none;
+  overflow: hidden !important;
+
+  > .panel-header {
+    grid-column: 2;
+    grid-row: 1;
+    height: auto;
+    min-height: 0;
+    padding: 14px 16px 12px;
+    background: #161b21;
+    border-left: 1px solid #2f3842;
+    .panel-title { font-size: 15px; color: #e6edf3; }
+    .video-icons { gap: 12px; span { font-size: 17px; } }
+  }
+  > .video-wrapper {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    height: 100%;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+    img.video-tag, canvas.video-tag { object-fit: contain; }   /* whole frame, no cropping */
+  }
+  > .ptz-toggle, > .resize-handle { display: none !important; }
+  > .uav-ctl, > .ptz-controls {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 0;
+    overflow-y: auto;
+    margin: 0;
+    padding: 6px 16px 16px;
+    gap: 12px;
+    background: #161b21;
+    border-left: 1px solid #2f3842;
+    font-size: 13px;
+  }
+
+  /* UAV controls, larger in full screen */
+  .uav-ctl {
+    .uav-telemetry { font-size: 12px; padding: 6px 0; }
+    .uav-row { gap: 6px; }
+    .uav-btn, .uav-btn.wide { height: 34px; font-size: 13px; border-radius: 6px; }
+    .uav-btn.sq { width: 34px; height: 34px; }
+    input[type="number"] { height: 32px; font-size: 13px; border-radius: 6px; }
+    .uav-label { width: 60px; font-size: 12px; }
+    .uav-target { font-size: 12px; margin-top: 0; }
+  }
+  /* Slew TI PTZ controls, larger in full screen */
+  .ptz-controls {
+    .ptz-row { height: auto; min-height: 32px; gap: 8px; font-size: 13px; }
+    .ptz-label { font-size: 13px; }
+    .ptz-step button { width: 28px; height: 28px; font-size: 15px; }
+    .ptz-step span { font-size: 13px; }
+    .ptz-select { height: 32px; font-size: 13px; }
+    .ptz-mini-btn { height: 30px; padding: 0 14px; font-size: 13px; }
+    .ptz-submit-btn { height: 36px; font-size: 14px; padding: 0 18px; }
+  }
+
+  /* overlays on the video, larger in full screen */
+  .uav-pick-hint { top: 14px; font-size: 14px; padding: 4px 12px; }
+  .uav-pick-status { bottom: 14px; font-size: 14px; padding: 4px 12px; }
+  .uav-detect-badge { bottom: 14px; left: 14px; font-size: 12px; }
+  .uav-pick-marker { width: 28px; height: 28px; margin: -14px 0 0 -14px; }
+  .feed-toggle button { font-size: 13px; padding: 4px 14px; }
+}
+
+/* ---- section labels: only shown in full screen ---- */
+.uav-fs-label { display: none; }
+
+/* DETECTION ON sits above the video's bottom read-out line, so it never covers it */
+.uav-detect-badge { bottom: 26px; }
+
+/* ---- full screen: the right column uses its full height ---- */
+.video-sec:fullscreen > .uav-ctl {
+  gap: 10px;
+  .uav-fs-label {
+    display: block;
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #9aa7b3;
+  }
+  .uav-telemetry { font-size: 14px; line-height: 1.6; padding: 12px 14px; background: #11161c; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .uav-btn, .uav-btn.wide { height: 46px; font-size: 15px; }
+  .uav-target { font-size: 13px; }
+  input[type="number"] { height: 42px; font-size: 15px; }
+
+  /* remote pads: large, outlined buttons, at the bottom of the column */
+  .uav-remotes {
+    margin-top: auto;
+    padding-top: 16px;
+    gap: 8px;
+    justify-content: space-around;
+  }
+  .remote-box { gap: 10px; }
+  .remote-title { font-size: 11px; letter-spacing: 1.4px; }
+  .remote {
+    width: 126px;
+    height: 126px;
+    .r-btn {
+      width: 40px;
+      height: 40px;
+      font-size: 24px;
+      border-radius: 8px;
+      border: 1px solid #3a4652;
+      background: #1b222a;
+      &.zoom { font-size: 22px; }
+      &:hover { background: rgba(3, 169, 244, 0.2); border-color: #03a9f4; }
+    }
+    .r-up    { top: 0;    left: 43px; }
+    .r-down  { bottom: 0; left: 43px; }
+    .r-left  { left: 0;   top: 43px; }
+    .r-right { right: 0;  top: 43px; }
+    .r-center { left: 43px; top: 43px; width: 40px; height: 40px; font-size: 20px; svg { width: 24px; height: 24px; } }
+  }
+  .turn-row { height: auto; gap: 6px; }
+  .turn-btn {
+    height: 30px;
+    padding: 0 6px;
+    font-size: 11px;
+    border: 1px solid #5c4a24;
+    border-radius: 6px;
+    background: #1b222a;
+  }
+}
+.video-sec:fullscreen .uav-detect-badge { bottom: 40px; }
+
+/* ---- full screen: Slew TI column uses its full height ---- */
+.video-sec:fullscreen > .ptz-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  .ptz-row { min-height: 44px; gap: 10px; font-size: 15px; }
+  .ptz-label { font-size: 15px; min-width: 48px; }
+  .ptz-label.wide { min-width: 84px; }
+  .ptz-checkbox { width: 18px; height: 18px; }
+  input[type="range"] { height: 6px; }
+  .ptz-step { flex: 0 0 136px; height: 38px; border-radius: 6px; }
+  .ptz-step button { width: 38px; height: 100%; font-size: 20px; }
+  .ptz-step span { font-size: 15px; }
+  .ptz-select { height: 42px; font-size: 15px; flex: 1; }
+  .ptz-mini-btn { height: 40px; padding: 0 20px; font-size: 14px; flex: 1; }
+  .ptz-submit-row { margin-top: auto; display: flex; }
+  .ptz-submit-btn { height: 48px; font-size: 16px; flex: 1; justify-content: center; }
+}
+
+/* ---- full screen only: large labelled action buttons in the side column ---- */
+.fs-only { display: none !important; }
+.video-sec:fullscreen {
+  .fs-only { display: grid !important; }
+  .ptz-fs-label.fs-only, .uav-fs-label { display: block !important; }
+  .ptz-fs-label {
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #9aa7b3;
+  }
+  .fs-big-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    &.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  .fs-big-btn {
+    height: 62px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 6px;
+    border-radius: 8px;
+    border: 1px solid #3a4652;
+    background: #252d36;
+    color: #e6edf3;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    i { font-size: 19px; }
+    &:hover:not(:disabled) { border-color: #03a9f4; background: #2b3540; }
+    &:disabled { opacity: .45; cursor: default; }
+    &:focus-visible { outline: 2px solid #03a9f4; outline-offset: 2px; }
+    &.go { background: #1e5f9e; border-color: #3b8fdc; }
+    &.on { background: #1f5a2c; border-color: #4cd964; color: #d6ffe0; }
+    &.picking { background: #0b5f86; border-color: #03a9f4; color: #fff; }
+  }
+  .ptz-row.fs-big-row { display: grid !important; }
+}
+
+/* =====================================================================
+   Full screen side column: final look (matches the approved design B)
+   ===================================================================== */
+.video-sec:fullscreen {
+  font-family: Roboto, Arial, sans-serif;
+
+  > .panel-header {
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid #2a323b;
+    .panel-title { font-size: 16px; font-weight: 700; letter-spacing: .06em; color: #e6edf3; text-transform: uppercase; }
+    .video-icons span { color: #c9d1d9; }
+    .video-icons span:hover { color: #03a9f4; }
+  }
+  > .uav-ctl, > .ptz-controls { padding: 4px 18px 18px; gap: 10px; }
+
+  /* section headings with a divider line above (not above the first one) */
+  .uav-fs-label, .ptz-fs-label {
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid #2a323b;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    color: #8b98a5;
+  }
+  .uav-telemetry + .uav-fs-label { border-top: none; padding-top: 4px; }
+  .ptz-controls > .ptz-fs-label:first-child { border-top: none; padding-top: 10px; }
+
+  /* read-out */
+  .uav-telemetry {
+    font-family: 'Roboto Mono', 'Courier New', monospace;
+    font-size: 13px;
+    color: #9be7a1;
+    background: #0f1419;
+    border: 1px solid #23303b;
+    border-radius: 8px;
+    padding: 11px 14px;
+    margin-top: 10px;
+  }
+
+  /* one button style */
+  .uav-btn, .uav-btn.wide, .ptz-mini-btn, .fs-big-btn {
+    border-radius: 8px;
+    border: 1px solid #3a4652;
+    background: #232b34;
+    color: #e6edf3;
+    font-family: Roboto, Arial, sans-serif;
+    font-weight: 500;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .uav-btn, .uav-btn.wide, .ptz-mini-btn { height: 42px; font-size: 14px; }
+  .uav-btn:hover, .ptz-mini-btn:hover { border-color: #03a9f4; background: #2a3540; }
+  .uav-btn.go { background: #1a63a8; border-color: #3b8fdc; }
+  .uav-btn.go:hover { background: #1f72c0; }
+  .uav-btn.warn { background: #8f5a06; border-color: #d18a1c; }
+  .uav-btn.warn:hover { background: #a66a0a; }
+  .fs-big-btn { height: 64px; font-size: 13px; i { font-size: 20px; } }
+
+  .uav-target { font-size: 12.5px; line-height: 1.4; color: #e0a84a; }
+  .uav-target:not(.none) { color: #9be7a1; }
+
+  /* inputs, dropdown, sliders */
+  input[type="number"], .ptz-select {
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid #3a4652;
+    border-radius: 8px;
+    background: #0f1419;
+    color: #e6edf3;
+    font: 14px 'Roboto Mono', 'Courier New', monospace;
+    outline: none;
+    &:focus { border-color: #03a9f4; }
+  }
+  .ptz-select { font-family: Roboto, Arial, sans-serif; }
+  input[type="range"] { accent-color: #03a9f4; height: 4px; cursor: pointer; }
+  input[type="checkbox"] { accent-color: #03a9f4; }
+  .uav-label { font-size: 13px; color: #8b98a5; }
+
+  /* Slew TI rows */
+  .ptz-row { min-height: 46px; }
+  .ptz-label { color: #c9d1d9; font-size: 14px; }
+  .ptz-label.wide { color: #8b98a5; font-size: 13px; }
+  .ptz-step {
+    border: 1px solid #3a4652;
+    background: #0f1419;
+    button { background: #232b34; color: #8fd4ff; &:hover { background: #03a9f4; color: #fff; } }
+    span { color: #e6edf3; font-family: 'Roboto Mono', 'Courier New', monospace; }
+  }
+  .ptz-submit-btn {
+    border-radius: 8px;
+    border: 1px solid #3b8fdc;
+    background: #1a63a8;
+    color: #fff;
+    font: 500 16px Roboto, Arial, sans-serif;
+    &:hover { background: #1f72c0; }
+  }
+
+  /* remote pads */
+  .uav-remotes { border-top: 1px solid #2a323b; }
+  .remote-title { color: #8b98a5; }
+
+  /* Day / Thermal: a proper switch over the video */
+  .feed-toggle {
+    top: 16px;
+    left: 16px;
+    display: flex;
+    border: 1px solid #3a4652;
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(13, 17, 23, 0.85);
+    button {
+      height: 34px;
+      padding: 0 20px;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      color: #e6edf3;
+      font: 500 13px Roboto, Arial, sans-serif;
+      cursor: pointer;
+      &.active { background: #03a9f4; color: #06121b; font-weight: 600; }
+    }
+  }
+}
+.video-sec:fullscreen {
+  .uav-telemetry { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.7; }
+  .ptz-submit-row { padding-top: 16px; border-top: 1px solid #2a323b; }
+}
+.video-sec:fullscreen .uav-telemetry span { display: block; }

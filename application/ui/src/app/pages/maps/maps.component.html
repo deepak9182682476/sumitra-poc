@@ -116,7 +116,7 @@
 
                       <!-- Video column: panels stack independently to the right of labels -->
                       <div class="video-panels-stack">
-                         <div class="video-sec slew-ti-sec" 
+                         <div class="video-sec slew-ti-sec" id="slew-ti-panel"
                               [class.ptz-expanded]="isPtzExpanded" 
                               [class.resizing]="isResizing"
                               *ngIf="enableVideo"
@@ -130,7 +130,7 @@
                               <span><i (click)="returnHome('ti');" class="fa fa-home" title="Return Home" aria-hidden="true"></i></span>
                               <span><i (click)="manualTrack('ti');" class="fa fa-bullseye" title="Manual Lock" aria-hidden="true"></i></span>
                               <span><i (click)="cancelTrack('ti');" class="fa fa-eye-slash" title="Cancel Track" aria-hidden="true"></i></span>
-                              <span><i (click)="openFullscreen('ti');" class="fa fa-arrows-alt" title="Fullscreen" aria-hidden="true"></i></span>
+                              <span><i (click)="openFullscreen('ti');" class="fa" [ngClass]="fsPanel === 'slew-ti-panel' ? 'fa-compress' : 'fa-arrows-alt'" [title]="fsPanel === 'slew-ti-panel' ? 'Exit full screen' : 'Fullscreen'" aria-hidden="true"></i></span>
                               <span><i class="fa fa-remove" aria-hidden="true" (click)="enableVideo=false;" title="Close Video Feed" id="close-icon-slew-ti-popup"></i></span>
                             </span>
                           </div>
@@ -150,6 +150,18 @@
                           </div>
 
                           <div class="ptz-controls" *ngIf="isPtzExpanded">
+                            <!-- full screen only: large tracking buttons (same actions as the header icons) -->
+                            <div class="ptz-fs-label fs-only">Tracking</div>
+                            <div class="fs-big-row fs-only">
+                              <button type="button" class="fs-big-btn go" (click)="startTrack('ti')" title="Start tracking"><i class="fa fa-play" aria-hidden="true"></i><span>Start</span></button>
+                              <button type="button" class="fs-big-btn" (click)="stopTrack('ti')" title="Stop tracking"><i class="fa fa-stop" aria-hidden="true"></i><span>Stop</span></button>
+                              <button type="button" class="fs-big-btn" (click)="returnHome('ti')" title="Return home"><i class="fa fa-home" aria-hidden="true"></i><span>Home</span></button>
+                            </div>
+                            <div class="fs-big-row two fs-only">
+                              <button type="button" class="fs-big-btn" (click)="manualTrack('ti')" title="Manual lock"><i class="fa fa-bullseye" aria-hidden="true"></i><span>Manual lock</span></button>
+                              <button type="button" class="fs-big-btn" (click)="cancelTrack('ti')" title="Cancel track"><i class="fa fa-eye-slash" aria-hidden="true"></i><span>Cancel track</span></button>
+                            </div>
+                            <div class="ptz-fs-label fs-only">PTZ controls</div>
                             <div class="ptz-row">
                               <input type="checkbox" [(ngModel)]="ptzSelected.pan" class="ptz-checkbox" id="ptz-pan-check" />
                               <label for="ptz-pan-check" class="ptz-label">Pan</label>
@@ -203,7 +215,7 @@
                           <div class="resize-handle" (mousedown)="onResizeStart($event)" title="Drag to Resize"></div>
                         </div>
 
-                        <div class="video-sec" 
+                        <div class="video-sec" id="uav-panel"
                              *ngIf="enableUavVideo"
                              [class.uav-only]="!enableVideo"
                              [class.resizing]="isUavResizing"
@@ -216,17 +228,25 @@
                               <span class="uav-hdr-btn" [class.on]="uavDetectionOn" [class.busy]="uavDetectionBusy"><i (click)="setUavDetection(true);" class="fa fa-binoculars" [title]="uavDetectionOn ? 'Detection is on' : 'Start Detection'" aria-hidden="true"></i></span>
                               <span class="uav-hdr-btn" [class.off]="!uavDetectionOn" [class.busy]="uavDetectionBusy"><i (click)="setUavDetection(false);" class="fa fa-stop-circle" title="Stop Detection" aria-hidden="true"></i></span>
                               <span class="uav-hdr-btn" [class.picking]="uavPickMode"><i (click)="toggleUavPickMode();" class="fa fa-bullseye" [title]="uavPickMode ? 'Click a point on the video (Esc to cancel)' : 'Track: click a point on the video'" aria-hidden="true"></i></span>
-                              <span><i (click)="openFullscreen('uav');" class="fa fa-arrows-alt" title="Fullscreen" aria-hidden="true"></i></span>
+                              <span><i (click)="openFullscreen('uav');" class="fa" [ngClass]="fsPanel === 'uav-panel' ? 'fa-compress' : 'fa-arrows-alt'" [title]="fsPanel === 'uav-panel' ? 'Exit full screen' : 'Fullscreen'" aria-hidden="true"></i></span>
                               <span><i class="fa fa-remove" aria-hidden="true" (click)="enableUavVideo=false;"></i></span>
                             </span>
                           </div>
-                          <div class="video-wrapper" [class.uav-pick]="uavPickMode" (click)="onUavVideoClick($event)">
+                          <div class="video-wrapper" id="uav-video-wrapper" [class.uav-pick]="uavPickMode" (click)="onUavVideoClick($event)">
                             <img *ngIf="!useDemoFeed('uav')" class="video-tag" id="uav-video" [src]="uavStreamUrl" (error)="onFeedError('uav')" />
                             <canvas *ngIf="useDemoFeed('uav')" class="video-tag demo-feed" id="uav-demo-canvas"></canvas>
                             <!-- Tracking mode: hint while waiting for the click, and a marker where the user clicked -->
                             <div class="uav-detect-badge" *ngIf="uavDetectionOn">DETECTION ON</div>
-                            <div class="uav-pick-hint" *ngIf="uavPickMode">Click a point to track &middot; Esc to cancel</div>
+                            <div class="uav-pick-hint" *ngIf="uavPickMode">Click a point to track &middot; <a href="javascript:void(0)" (click)="$event.stopPropagation(); uavPickMode = false;">Cancel</a></div>
                             <div class="uav-pick-marker" *ngIf="uavPickMarker" [style.left.px]="uavPickMarker.left" [style.top.px]="uavPickMarker.top"></div>
+                            <div class="uav-pick-status" *ngIf="uavPickStatus">{{ uavPickStatus }}</div>
+                            <!-- shown only in full screen, where the panel header is hidden -->
+                            <div class="uav-fs-tools" (click)="$event.stopPropagation()">
+                              <span [class.on]="uavDetectionOn" [class.busy]="uavDetectionBusy" (click)="setUavDetection(true)" [title]="uavDetectionOn ? 'Detection is on' : 'Start Detection'"><i class="fa fa-binoculars" aria-hidden="true"></i></span>
+                              <span [class.off]="!uavDetectionOn" [class.busy]="uavDetectionBusy" (click)="setUavDetection(false)" title="Stop Detection"><i class="fa fa-stop-circle" aria-hidden="true"></i></span>
+                              <span [class.picking]="uavPickMode" (click)="toggleUavPickMode()" [title]="uavPickMode ? 'Click a point on the video' : 'Track: click a point on the video'"><i class="fa fa-bullseye" aria-hidden="true"></i></span>
+                              <span (click)="exitUavFullscreen()" title="Exit full screen"><i class="fa fa-compress" aria-hidden="true"></i></span>
+                            </div>
                           </div>
 
                           <div class="ptz-toggle" (click)="isUavCtlExpanded = !isUavCtlExpanded">
@@ -242,6 +262,20 @@
                               <span *ngIf="uavHealth?.active_track_id"> &nbsp; TRK {{ uavHealth.active_track_id }}</span>
                             </div>
 
+                            <!-- full screen only: large detection / track buttons (same actions as the header icons) -->
+                            <div class="uav-fs-label">Detection and tracking</div>
+                            <div class="fs-big-row fs-only">
+                              <button type="button" class="fs-big-btn" [class.on]="uavDetectionOn" [disabled]="uavDetectionBusy" (click)="setUavDetection(true)" title="Start detection">
+                                <i class="fa fa-binoculars" aria-hidden="true"></i><span>{{ uavDetectionOn ? 'Detecting' : 'Detect on' }}</span>
+                              </button>
+                              <button type="button" class="fs-big-btn" [disabled]="uavDetectionBusy || !uavDetectionOn" (click)="setUavDetection(false)" title="Stop detection">
+                                <i class="fa fa-stop-circle" aria-hidden="true"></i><span>Detect off</span>
+                              </button>
+                              <button type="button" class="fs-big-btn" [class.picking]="uavPickMode" (click)="toggleUavPickMode()" [title]="uavPickMode ? 'Click a point on the video, or click here to cancel' : 'Click, then click a point on the video'">
+                                <i class="fa fa-bullseye" aria-hidden="true"></i><span>{{ uavPickMode ? 'Click video' : 'Track point' }}</span>
+                              </button>
+                            </div>
+                            <div class="uav-fs-label">Mission</div>
                             <!-- Chase / stop / return. Pursue chases the alarm selected with the camera icon on its alarm card. -->
                             <div class="uav-row">
                               <button class="uav-btn go wide" (click)="uavPursue()" title="Chase the alarm selected with the camera icon on its alarm card"><i class="fa fa-crosshairs"></i> Pursue</button>
@@ -254,6 +288,7 @@
                             </div>
 
 
+                            <div class="uav-fs-label">Fly to</div>
                             <div class="uav-row">
                               <input type="number" step="0.0001" [(ngModel)]="uavCtl.lat" placeholder="Lat" title="Latitude" />
                               <input type="number" step="0.0001" [(ngModel)]="uavCtl.lon" placeholder="Lon" title="Longitude" />

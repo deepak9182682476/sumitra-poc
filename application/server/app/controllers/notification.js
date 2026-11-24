@@ -1,4 +1,5 @@
 const { response } = require("express");
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const request = require("request");
 const env = require("../config/env");
 const db = require("../controllers/db");
@@ -10,13 +11,13 @@ exports.persist = async (req, res, next) => {
   try {
     let notify_data = req.body;
     let customQuery = `insert into notification (type, origin, sensor_key, data, time) values 
-    ('notification', '${notify_data.origin}', '${notify_data.data.hardware_id}', '${JSON.stringify(notify_data.data)}', now()) returning id`;
+    ('notification', ${str(notify_data.origin)}, ${str(notify_data.data.hardware_id)}, ${str(JSON.stringify(notify_data.data))}, now()) returning id`;
     db.createWithQuery(customQuery)
       .then((result) => {
         notify_data.id = result[0][0].id;
         
         // set current status in sensor table as sensor got error
-        let sensorQuery = `update sensors set current_status=false where ip = '${notify_data.data.hardware_id}'`;
+        let sensorQuery = `update sensors set current_status=false where ip = ${str(notify_data.data.hardware_id)}`;
         db.updateWithQuery(sensorQuery).then((results) => {});
 
         //sending the notification to UI
@@ -177,9 +178,9 @@ exports.changeStatus = async (req, res, next) => {
   try {
     let customQuery;
     if (req && req.body && req.body.status === 1) {
-      customQuery = `update notification set read_by = array_append(read_by,${req.body.user_id}) where id = ${req.params.id}`;
+      customQuery = `update notification set read_by = array_append(read_by,${num(req.body.user_id)}) where id = ${num(req.params.id)}`;
     } else {
-      customQuery = `update notification set cleared_by = array_append(cleared_by,${req.body.user_id}) where id = ${req.params.id}`;
+      customQuery = `update notification set cleared_by = array_append(cleared_by,${num(req.body.user_id)}) where id = ${num(req.params.id)}`;
     }
     await db.updateWithQuery(customQuery).then(
       (results) => {

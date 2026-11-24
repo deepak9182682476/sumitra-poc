@@ -1163,9 +1163,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
 
       wrapper.innerHTML = `<div>
-        <div class="post-analysis-alarm-id" id="alarm_id-${elem.alarm_id} style='width:20vw;hight:10vh'">
-          <span style="float: right;cursor: pointer;" class="${elem.alarm_id}" id="close-popup">X</span>
-          <span>Alarm ID: ${elem.alarm_id}</span>
+        <div class="post-analysis-alarm-id" id="alarm_id-${this.escapeHtml(elem.alarm_id)} style='width:20vw;hight:10vh'">
+          <span style="float: right;cursor: pointer;" class="${this.escapeHtml(elem.alarm_id)}" id="close-popup">X</span>
+          <span>Alarm ID: ${this.escapeHtml(elem.alarm_id)}</span>
         </div>
         <img class='acknowledgedAlarm' src="./assets/sensor-icons/${alarmIcon}" />
         </div>`;
@@ -1203,15 +1203,15 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.paOverlayElement.nativeElement.innerHTML = `<table>
       <tr>
         <td>Detected By: </td>
-        <td>${data.sensors_triggered[0] ? data.sensors_triggered[0] : "NA"}</td>
+        <td>${this.escapeHtml(data.sensors_triggered[0] ? data.sensors_triggered[0] : "NA")}</td>
       </tr>
       <tr>
         <td>Latitude: </td>
-        <td>${data.location.coordinates[1]}</td>
+        <td>${this.escapeHtml(data.location.coordinates[1])}</td>
       </tr>
       <tr>
         <td>Longtitude: </td>
-        <td>${data.location.coordinates[0]}</td>
+        <td>${this.escapeHtml(data.location.coordinates[0])}</td>
       </tr>
       <tr>
         <td>Time: </td>
@@ -1223,7 +1223,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       </tr>
       <tr>
         <td>Zone ID: </td>
-        <td>${data.zone_id ? data.zone_id : "NA"}</td>
+        <td>${this.escapeHtml(data.zone_id ? data.zone_id : "NA")}</td>
       </tr>
       </table>
       `;
@@ -2400,12 +2400,12 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             var coordinates = cfeatures[0].getGeometry().getCoordinates();
             var tdData =
               data[i] === "latitude" ? coordinates[1] : coordinates[0];
-            tableHtml += "<td>" + tdData + "</td>";
+            tableHtml += "<td>" + this.escapeHtml(tdData) + "</td>";
           } else {
             var tdData = cfeatures[0].get(data[i])
               ? cfeatures[0].get(data[i])
               : "--";
-            tableHtml += "<td>" + tdData + "</td>";
+            tableHtml += "<td>" + this.escapeHtml(tdData) + "</td>";
           }
         }
         tableHtml += "</tr>";
@@ -2624,10 +2624,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 if (span) {
                   console.log("kkkl", gJson)
                   span.innerHTML = `
-                    Track ID: ${gJson.properties.track_id ?? gJson.properties.id}<br/>
+                    Track ID: ${this.escapeHtml(gJson.properties.track_id ?? gJson.properties.id)}<br/>
                     Range: ${gJson.properties.range !== undefined && gJson.properties.range !== null && !isNaN(Number(gJson.properties.range)) ? Math.round(Number(gJson.properties.range) * 1000) : 'N/A'} m<br/>
-                    Lat: ${lastCoord[1]}<br/>
-                    Lon: ${lastCoord[0]}
+                    Lat: ${this.escapeHtml(lastCoord[1])}<br/>
+                    Lon: ${this.escapeHtml(lastCoord[0])}
                   `;
                 }
               }
@@ -2981,7 +2981,6 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.droneDemo) {
       this.uavDetectionOn = turnOn;
       console.log("DEMO: detection mode " + (turnOn ? "on" : "off"));
-      this.toastr.info("DEMO: detection mode " + (turnOn ? "on" : "off"));
       return;
     }
     this.uavDetectionBusy = true;
@@ -3010,6 +3009,43 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.uavPickMode = !this.uavPickMode;
   }
 
+  // message shown inside the video box (visible in full screen too, where pop-up toasts are hidden)
+  uavPickStatus: string | null = null;
+  private uavPickStatusTimer: any = null;
+  showUavPickStatus(msg: string) {
+    this.uavPickStatus = msg;
+    if (this.uavPickStatusTimer) clearTimeout(this.uavPickStatusTimer);
+    this.uavPickStatusTimer = setTimeout(() => (this.uavPickStatus = null), 3000);
+  }
+
+  // Full screen of a whole video panel: open its controls while in full screen, put them back after
+  fsPanel: string | null = null;
+  private fsRestore: { uav: boolean; ptz: boolean } | null = null;
+
+  @HostListener("document:fullscreenchange")
+  @HostListener("document:webkitfullscreenchange")
+  onPanelFullscreenChange() {
+    const d: any = document;
+    const el: any = d.fullscreenElement || d.webkitFullscreenElement;
+    const id = el && (el.id === "uav-panel" || el.id === "slew-ti-panel") ? el.id : null;
+    if (id) {
+      if (!this.fsRestore) this.fsRestore = { uav: this.isUavCtlExpanded, ptz: this.isPtzExpanded };
+      if (id === "uav-panel") this.isUavCtlExpanded = true;
+      if (id === "slew-ti-panel") this.isPtzExpanded = true;
+    } else if (this.fsRestore) {
+      this.isUavCtlExpanded = this.fsRestore.uav;
+      this.isPtzExpanded = this.fsRestore.ptz;
+      this.fsRestore = null;
+    }
+    this.fsPanel = id;
+  }
+
+  exitUavFullscreen() {
+    const d: any = document;
+    if (d.fullscreenElement && d.exitFullscreen) d.exitFullscreen();
+    else if (d.webkitFullscreenElement && d.webkitExitFullscreen) d.webkitExitFullscreen();
+  }
+
   @HostListener("document:keydown.escape")
   cancelUavPickMode() {
     if (this.uavPickMode) this.uavPickMode = false;
@@ -3027,6 +3063,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     const frameH = media.naturalHeight || media.height || 0;
     if (!frameW || !frameH || !rect.width || !rect.height) {
       this.toastr.warning("No video picture yet - try again when the video is showing.");
+      this.showUavPickStatus("No video picture yet");
       return; // stay in tracking mode
     }
 
@@ -3044,6 +3081,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     const y = Math.floor((event.clientY - rect.top - offY) / sy);
     if (x < 0 || y < 0 || x >= frameW || y >= frameH) {
       this.toastr.warning("Click inside the video picture.");
+      this.showUavPickStatus("Click inside the picture");
       return; // stay in tracking mode
     }
 
@@ -3058,12 +3096,26 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (this.droneDemo) {
       console.log("DEMO: tracking point x=" + x + ", y=" + y + " (frame " + frameW + "x" + frameH + ")");
-      this.toastr.info("DEMO: tracking point x " + x + ", y " + y);
+      this.showUavPickStatus("Tracking point x " + x + ", y " + y);
       return;
     }
-    this.droneCall(
-      this.dataService.droneTrackPixel(x, y, frameW, frameH),
-      "Tracking point sent: x " + x + ", y " + y
+    const okMsg = "Tracking point sent: x " + x + ", y " + y;
+    this.showUavPickStatus("Sending x " + x + ", y " + y + "...");
+    this.dataService.droneTrackPixel(x, y, frameW, frameH).subscribe(
+      (res: any) => {
+        if (res && res.status === "error") {
+          const m = res.message || "Drone server returned an error";
+          this.toastr.error(m);
+          this.showUavPickStatus("Not sent: " + m);
+          return;
+        }
+        this.droneOk(okMsg);
+        this.showUavPickStatus(okMsg);
+      },
+      (err: any) => {
+        this.droneFail(err);
+        this.showUavPickStatus("Not sent: drone server error");
+      }
     );
   }
 
@@ -4110,6 +4162,17 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+
+  // Show data as text inside HTML built by hand (stops script injection through alarm / track data)
+  escapeHtml(value: any): string {
+    return String(value) // same text as before for normal values (null stays "null")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   removeOverlay(results, acknowledged) {
     if (!results || !results[0]) {
       return;
@@ -4318,19 +4381,19 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                       <tbody>
                         <tr>
                           <th>${self.getTranslationLang("latitude")}: </th>
-                          <td>${getCordinates[1]}</td>
+                          <td>${self.escapeHtml(getCordinates[1])}</td>
                         </tr>
                         <tr>
                           <th>${self.getTranslationLang("longitude")}: </th> 
-                          <td>${getCordinates[0]}</td>
+                          <td>${self.escapeHtml(getCordinates[0])}</td>
                         </tr>
                         <tr>
                           <th>${self.getTranslationLang("alarm_id")}: </th> 
-                          <td>${getAlarmId}</td>
+                          <td>${self.escapeHtml(getAlarmId)}</td>
                         </tr>
                         <tr>
                           <th>${self.getTranslationLang("alarm_type")}: </th> 
-                          <td>${getTypeZoneID[0]}</td>
+                          <td>${self.escapeHtml(getTypeZoneID[0])}</td>
                         </tr>
                         <!-- <tr>
                           <th>${self.getTranslationLang("zone_id")}: </th> 
@@ -4479,9 +4542,13 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   isFullScreen = false;
   // Allow video in full screen mode
   openFullscreen(type): void {
+    // already full screen: the same button takes the panel back to normal size
+    const d: any = document;
+    if (d.fullscreenElement || d.webkitFullscreenElement) { this.exitUavFullscreen(); return; }
+    // the whole panel goes full screen: video on the left, its own controls on the right (see .video-sec:fullscreen)
     const elem: any = (type === 'ti')
-      ? (document.getElementById("slew-ti-video") || document.getElementById("slew-demo-canvas"))
-      : (document.getElementById("camera-video") || document.getElementById("uav-demo-canvas"));
+      ? (document.getElementById("slew-ti-panel") || document.getElementById("slew-ti-video") || document.getElementById("slew-demo-canvas"))
+      : (document.getElementById("uav-panel") || document.getElementById("uav-video-wrapper") || document.getElementById("camera-video") || document.getElementById("uav-demo-canvas"));
     if (!elem) return;
     this.isFullScreen = true;
     this.commonService.enableFullScreen(elem);

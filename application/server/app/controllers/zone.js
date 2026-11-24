@@ -1,4 +1,5 @@
 const env = require("../config/env");
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const db = require("../controllers/db");
 const request = require("request");
 const log = require("../utils/log");
@@ -74,10 +75,10 @@ exports.create = async (req, res, next) => {
   try {
     const zone_area = req.body.zone_area[0]
       .map((position) => {
-        return `${position[0]} ${position[1]}`;
+        return `${num(position[0])} ${num(position[1])}`;
       })
       .join(", ");
-    const customQuery = `INSERT INTO ZONE (Zone_Type, Zone_Area, Zone_Priority, Current_Status, Zone_Shape, radius) VALUES ('${req.body.zone_type}', ST_AsText(ST_Multi(ST_GeomFromText('POLYGON((${zone_area}))'))), ${req.body.zone_priority}, '${req.body.current_status}', '${req.body.zone_shape}', ${req.body.zone_radius})`;
+    const customQuery = `INSERT INTO ZONE (Zone_Type, Zone_Area, Zone_Priority, Current_Status, Zone_Shape, radius) VALUES (${str(req.body.zone_type)}, ST_AsText(ST_Multi(ST_GeomFromText('POLYGON((${zone_area}))'))), ${num(req.body.zone_priority)}, ${str(req.body.current_status)}, ${str(req.body.zone_shape)}, ${num(req.body.zone_radius)})`;
     await db.createWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
@@ -136,7 +137,7 @@ exports.create = async (req, res, next) => {
 // Enable or disable of zone into the database.
 exports.enableDisableZone = (req, response, next) => {
   const sensorsPromise = new Promise((resolve, reject) => {
-    const customQuery = `update sensors set current_status = ${req.body.status} where zone_id = '${req.body.zone_id}'`;
+    const customQuery = `update sensors set current_status = ${num(req.body.status)} where zone_id = ${str(req.body.zone_id)}`;
     db.updateWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
@@ -173,7 +174,7 @@ exports.enableDisableZone = (req, response, next) => {
   });
 
   const ugvsPromise = new Promise((resolve, reject) => {
-    const customQuery = `update ugv set current_status = ${req.body.status} where zone_id = '${req.body.zone_id}'`;
+    const customQuery = `update ugv set current_status = ${num(req.body.status)} where zone_id = ${str(req.body.zone_id)}`;
     db.updateWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
@@ -210,7 +211,7 @@ exports.enableDisableZone = (req, response, next) => {
   });
 
   const uavsPromise = new Promise((resolve, reject) => {
-    const customQuery = `update uav set current_status = ${req.body.status} where zone_id = '${req.body.zone_id}'`;
+    const customQuery = `update uav set current_status = ${num(req.body.status)} where zone_id = ${str(req.body.zone_id)}`;
     db.updateWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
@@ -247,7 +248,7 @@ exports.enableDisableZone = (req, response, next) => {
   });
 
   const zonesPromise = new Promise((resolve, reject) => {
-    const customQuery = `update zone set current_status = ${req.body.status} where zone_id = '${req.body.zone_id}'`;
+    const customQuery = `update zone set current_status = ${num(req.body.status)} where zone_id = ${str(req.body.zone_id)}`;
     db.updateWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {

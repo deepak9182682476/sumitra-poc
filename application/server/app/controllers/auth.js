@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../controllers/db");
 const env = require("../config/env");
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const configParams = {
   params: ["S.No", "Username", "User Role", "Last Update", "Actions"],
 };
@@ -46,13 +47,13 @@ exports.validateLogin = async (req, res, next) => {
   }
 
   try {
-    const customQuery = `select * from users where user_name='${req.body.username}' and status=true`;
+    const customQuery = `select * from users where user_name=${str(req.body.username)} and status=true`;
     // console.log("-----");
     await db.selectWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
           if (bcrypt.compareSync(req.body.password, results[0].password)) {
-            const getUser = "select * from user_roles where id=" + results[0].user_id;
+            const getUser = "select * from user_roles where id=" + num(results[0].user_id);
             db.selectWithQuery(getUser).then(
               (findByIdRes) => {
                 if (findByIdRes && findByIdRes.length) {
@@ -275,9 +276,9 @@ exports.updateUser = async (req, res, next) => {
     });
 
     let finalUpdatedData = `${Object.keys(updatedData)
-      .map((key) => `${key} ` + "=" + ` '${updatedData[key]}'`)
+      .map((key) => `${key} ` + "=" + ` ${str(updatedData[key])}`)
       .join(", ")}`;
-    const customQuery = `update users set ${finalUpdatedData} where user_id = ${req.body.id}`;
+    const customQuery = `update users set ${finalUpdatedData} where user_id = ${num(req.body.id)}`;
 
     await db.updateWithQuery(customQuery).then(
       (results) => {
@@ -387,7 +388,7 @@ exports.verifyToken = (req, res, next) => {
       });
     }
     else {
-      const getUser = `select * from users where user_id='${decoded.id}' and status=true`;
+      const getUser = `select * from users where user_id=${str(decoded.id)} and status=true`;
       db.selectWithQuery(getUser).then(
         (userInfo) => {
           if (userInfo && userInfo.length) {

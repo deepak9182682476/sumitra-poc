@@ -185,7 +185,7 @@ export class AlarmService {
   //         <span class="ca-alarm-id">
   //           Alarm ID: ${alarmId} 
   //         </span>
-  //         <img class="blinking red" style="height: 25px" src="./assets/sensor-icons/`+ icon + `.svg" id="${element.location.coordinates.toString()}-${alarmId}" alt="Confirmatory Alarm-${element.zone_id}" cat="${element.object_identified}"/>
+  //         <img class="blinking red" style="height: 25px" src="./assets/sensor-icons/`+ icon + `.svg" id="${e(element.location.coordinates.toString())}-${e(alarmId)}" alt="Confirmatory Alarm-${e(element.zone_id)}" cat="${e(element.object_identified)}"/>
   //         </div>
   //     `,
   //     acknowledged: `
@@ -193,7 +193,7 @@ export class AlarmService {
   //       <span class="ca-alarm-id ca-ack-alarm-id">
   //         Alarm ID: ${alarmId}
   //       </span> 
-  //       <img class='acknowledgedAlarm'  style="height: 25px" src="./assets/sensor-icons/` + icon + `.svg" id="${element.location.coordinates.toString()}-${alarmId}"  alt="Confirmatory Alarm-${element.zone_id}" cat="${element.object_identified}"/>
+  //       <img class='acknowledgedAlarm'  style="height: 25px" src="./assets/sensor-icons/` + icon + `.svg" id="${e(element.location.coordinates.toString())}-${e(alarmId)}"  alt="Confirmatory Alarm-${e(element.zone_id)}" cat="${e(element.object_identified)}"/>
   //       </div>
   //     `,
   //     earlyAlarm: `         
@@ -201,7 +201,7 @@ export class AlarmService {
   //       <span class="ea-alarm-id">
   //           Alarm ID: ${alarmId}
   //         </span> 
-  //       <img class='acknowledgedAlarm' style="height: 25px" src="./assets/sensor-icons/` + icon + `.svg" id="${element.location.coordinates.toString()}-${alarmId}"  alt="Early Alarm-${element.zone_id}"/>
+  //       <img class='acknowledgedAlarm' style="height: 25px" src="./assets/sensor-icons/` + icon + `.svg" id="${e(element.location.coordinates.toString())}-${e(alarmId)}"  alt="Early Alarm-${e(element.zone_id)}"/>
   //       </div>
   //     `,
   //     iff: `         
@@ -209,12 +209,24 @@ export class AlarmService {
   //     <span class="ea-alarm-id">
   //         Alarm ID: ${alarmId}
   //       </span> 
-  //     <img class='acknowledgedAlarm' style="height: 25px" src="./assets/sensor-icons/` + icon + `.svg" id="${element.location.coordinates.toString()}-${alarmId}"  alt="Early Alarm-${element.zone_id}"/>
+  //     <img class='acknowledgedAlarm' style="height: 25px" src="./assets/sensor-icons/` + icon + `.svg" id="${e(element.location.coordinates.toString())}-${e(alarmId)}"  alt="Early Alarm-${e(element.zone_id)}"/>
   //     </div>
   //   `,
   //   };
   // }
+
+  // Show data as text inside HTML built by hand (stops script injection through alarm / track data)
+  escapeHtml(value: any): string {
+    return String(value) // same text as before for normal values (null stays "null")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   alarmDomContent(icon, alarmId, element): any {
+    const e = (v: any) => this.escapeHtml(v);
     const lat = element.location?.coordinates?.[1] ?? 'N/A';
     const lon = element.location?.coordinates?.[0] ?? 'N/A';
     let range = element.range ?? 'N/A';
@@ -225,10 +237,10 @@ export class AlarmService {
 
     const label = (cssClass: string) => `
       <span class="${cssClass}">
-        Track ID: ${trackId}<br/>
-        Range: ${range} m<br/>
-        Lat: ${lat}<br/>
-        Lon: ${lon}
+        Track ID: ${e(trackId)}<br/>
+        Range: ${e(range)} m<br/>
+        Lat: ${e(lat)}<br/>
+        Lon: ${e(lon)}
       </span>
     `;
 
@@ -237,36 +249,36 @@ export class AlarmService {
         <div>
           ${label('ca-alarm-id')}
           <img class="blinking red" style="height: 25px" src="./assets/sensor-icons/${icon}.svg"
-            id="${element.location.coordinates.toString()}-${alarmId}"
-            alt="Confirmatory Alarm-${element.zone_id}"
-            cat="${element.object_identified}"/>
+            id="${e(element.location.coordinates.toString())}-${e(alarmId)}"
+            alt="Confirmatory Alarm-${e(element.zone_id)}"
+            cat="${e(element.object_identified)}"/>
         </div>
       `,
       acknowledged: `
         <div>
           ${label('ca-alarm-id ca-ack-alarm-id')}
           <img class="acknowledgedAlarm" style="height: 25px" src="./assets/sensor-icons/${icon}.svg"
-            id="${element.location.coordinates.toString()}-${alarmId}"
-            alt="Confirmatory Alarm-${element.zone_id}"
-            cat="${element.object_identified}"/>
+            id="${e(element.location.coordinates.toString())}-${e(alarmId)}"
+            alt="Confirmatory Alarm-${e(element.zone_id)}"
+            cat="${e(element.object_identified)}"/>
         </div>
       `,
       earlyAlarm: `
         <div>
           ${label('ea-alarm-id')}
           <img class="acknowledgedAlarm" style="height: 25px" src="./assets/sensor-icons/${icon}.svg"
-            id="${element.location.coordinates.toString()}-${alarmId}"
-            alt="Early Alarm-${element.zone_id}"
-            cat="${element.object_identified}"/>
+            id="${e(element.location.coordinates.toString())}-${e(alarmId)}"
+            alt="Early Alarm-${e(element.zone_id)}"
+            cat="${e(element.object_identified)}"/>
         </div>
       `,
       iff: `
         <div>
           ${label('ea-alarm-id')}
           <img class="acknowledgedAlarm" style="height: 25px" src="./assets/sensor-icons/${icon}.svg"
-            id="${element.location.coordinates.toString()}-${alarmId}"
-            alt="Early Alarm-${element.zone_id}"
-            cat="${element.object_identified}"/>
+            id="${e(element.location.coordinates.toString())}-${e(alarmId)}"
+            alt="Early Alarm-${e(element.zone_id)}"
+            cat="${e(element.object_identified)}"/>
         </div>
       `,
     };

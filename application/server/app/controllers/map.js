@@ -1,8 +1,10 @@
 const env = require("../config/env");
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const GeoJSON = require("geojson");
 const request = require("request");
 const turf = require("@turf/turf");
 const multer = require("multer");
+const path = require("path");
 const fs = require("fs");
 const db = require("../controllers/db");
 const log = require("../utils/log");
@@ -36,12 +38,8 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     let ext = ".kml"; // set default extension (if any)
-    if (file.originalname.split(".").length > 1)
-      // checking if there is an extension or not.
-      ext = file.originalname.substring(
-        file.originalname.lastIndexOf("."),
-        file.originalname.length
-      );
+    // extension of the file name only (no folders), e.g. "area.kml" -> ".kml"
+    if (path.extname(path.basename(file.originalname))) ext = path.extname(path.basename(file.originalname));
     cb(null, Date.now() + ext);
   },
 });
@@ -637,14 +635,14 @@ function mapWithTrack(mappingData) {
           track_id: mappingData.radar_track.id,
         });
 
-        const customQuery = `insert into alarm_tail(alarm_id, uid, tail) values('${mappingData.alarm_id}', '${mappingData.radar_track.id}', ST_GeomFromText('LINESTRING(${finalTrackCoords})'))`;
+        const customQuery = `insert into alarm_tail(alarm_id, uid, tail) values(${str(mappingData.alarm_id)}, ${str(mappingData.radar_track.id)}, ST_GeomFromText('LINESTRING(${finalTrackCoords})'))`;
         db.createWithQuery(customQuery).then((result) => { });
       } else if (mappingData.alarm_type === 1) {
         if (alarmTrackInfo.length > 0) {
           alarmTrackInfo.map((item) => {
             if (item.track_id === mappingData.radar_track.id) {
               item.CA = mappingData.alarm_id;
-              const customQuery = `update alarm_tail set alarm_id = '${mappingData.alarm_id}' where uid = '${mappingData.radar_track.id}'`;
+              const customQuery = `update alarm_tail set alarm_id = ${str(mappingData.alarm_id)} where uid = ${str(mappingData.radar_track.id)}`;
               db.updateWithQuery(customQuery).then((result) => { });
               return item;
             }
@@ -655,7 +653,7 @@ function mapWithTrack(mappingData) {
             CA: mappingData.alarm_id,
             track_id: mappingData.radar_track.id,
           });
-          const customQuery = `insert into alarm_tail(uid, tail, alarm_id) values('${mappingData.radar_track.id}', ST_GeomFromText('LINESTRING(${finalTrackCoords})'), '${mappingData.alarm_id}')`;
+          const customQuery = `insert into alarm_tail(uid, tail, alarm_id) values(${str(mappingData.radar_track.id)}, ST_GeomFromText('LINESTRING(${finalTrackCoords})'), ${str(mappingData.alarm_id)})`;
           db.createWithQuery(customQuery).then((result) => { });
         }
       }
@@ -754,12 +752,12 @@ exports.mapConfig = async (req, res, next) => {
   try {
     const site_area = req.body.site_area[0]
       .map((position) => {
-        return `${position[0]} ${position[1]}`;
+        return `${num(position[0])} ${num(position[1])}`;
       })
       .join(", ");
 
     if (!req.body.isUpdate) {
-      let customQuery = `insert into site_dim(default_center, site_area, updated_time) values ('SRID=4326;POINT(${req.body.longitude} ${req.body.latitude})', ST_AsText(ST_Multi(ST_GeomFromText('POLYGON((${site_area}))'))), now())`;
+      let customQuery = `insert into site_dim(default_center, site_area, updated_time) values ('SRID=4326;POINT(${num(req.body.longitude)} ${num(req.body.latitude)})', ST_AsText(ST_Multi(ST_GeomFromText('POLYGON((${site_area}))'))), now())`;
       await db.createWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -803,7 +801,7 @@ exports.mapConfig = async (req, res, next) => {
         }
       );
     } else if (req.body.isUpdate && req.body.id) {
-      let customQuery = `UPDATE site_dim SET default_center = 'SRID=4326;POINT(${req.body.longitude} ${req.body.latitude})', site_area = ST_AsText(ST_Multi(ST_GeomFromText('POLYGON((${site_area}))'))), updated_time=now() WHERE site_id = ${req.body.id}`;
+      let customQuery = `UPDATE site_dim SET default_center = 'SRID=4326;POINT(${num(req.body.longitude)} ${num(req.body.latitude)})', site_area = ST_AsText(ST_Multi(ST_GeomFromText('POLYGON((${site_area}))'))), updated_time=now() WHERE site_id = ${num(req.body.id)}`;
       await db.updateWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -891,14 +889,14 @@ exports.mapWithBfoTrack = (req, response, next) => {
           track_id: mappingData.radar_track.id,
         });
 
-        const customQuery = `insert into alarm_tail(alarm_id, uid, tail) values('${mappingData.alarm_id}', '${mappingData.radar_track.id}', ST_GeomFromText('LINESTRING(${finalTrackCoords})'))`;
+        const customQuery = `insert into alarm_tail(alarm_id, uid, tail) values(${str(mappingData.alarm_id)}, ${str(mappingData.radar_track.id)}, ST_GeomFromText('LINESTRING(${finalTrackCoords})'))`;
         db.createWithQuery(customQuery).then((result) => { });
       } else if (mappingData.alarm_type === 1) {
         if (alarmTrackInfo.length > 0) {
           alarmTrackInfo.map((item) => {
             if (item.track_id === mappingData.radar_track.id) {
               item.CA = mappingData.alarm_id;
-              const customQuery = `update alarm_tail set alarm_id = '${mappingData.alarm_id}' where uid = '${mappingData.radar_track.id}'`;
+              const customQuery = `update alarm_tail set alarm_id = ${str(mappingData.alarm_id)} where uid = ${str(mappingData.radar_track.id)}`;
               db.updateWithQuery(customQuery).then((result) => { });
               return item;
             }
@@ -909,7 +907,7 @@ exports.mapWithBfoTrack = (req, response, next) => {
             CA: mappingData.alarm_id,
             track_id: mappingData.radar_track.id,
           });
-          const customQuery = `insert into alarm_tail(uid, tail, alarm_id) values('${mappingData.radar_track.id}', ST_GeomFromText('LINESTRING(${finalTrackCoords})'), '${mappingData.alarm_id}')`;
+          const customQuery = `insert into alarm_tail(uid, tail, alarm_id) values(${str(mappingData.radar_track.id)}, ST_GeomFromText('LINESTRING(${finalTrackCoords})'), ${str(mappingData.alarm_id)})`;
           db.createWithQuery(customQuery).then((result) => { });
         }
       }
@@ -938,9 +936,9 @@ exports.saveUploadedMap = (req, res, next) => {
     } else {
       let saveQuery;
       if (req.body.type == "url") {
-        saveQuery = `insert into map_config (type, url, priority, updated_date) values('${req.body.type}', '${req.body.url}', 1, 'now()')`;
+        saveQuery = `insert into map_config (type, url, priority, updated_date) values(${str(req.body.type)}, ${str(req.body.url)}, 1, 'now()')`;
       } else {
-        saveQuery = `insert into map_config (type, title, file_name, priority, updated_date) values('${req.body.type}', '${req.body.file_name}', '${req.file.filename}', 1, 'now()')`;
+        saveQuery = `insert into map_config (type, title, file_name, priority, updated_date) values(${str(req.body.type)}, ${str(req.body.file_name)}, ${str(req.file.filename)}, 1, 'now()')`;
       }
 
       await db.createWithQuery(saveQuery).then(
@@ -1089,7 +1087,8 @@ exports.getUploadedMapFiles = async (req, res, next) => {
 
 // delete uploaded map
 exports.deleteUploadedMap = (req, res, next) => {
-  fs.unlink("./map_files/" + req.params.filename, async (err) => {
+  // basename: a file name only, so "../" cannot delete files outside map_files
+  fs.unlink("./map_files/" + path.basename(String(req.params.filename)), async (err) => {
     if (err) {
       res.errorCode = 500;
       res.errorInfo = {
@@ -1099,7 +1098,7 @@ exports.deleteUploadedMap = (req, res, next) => {
       };
       res.send({ ...res.errorInfo, ...{ statusCode: 500 } });
     } else {
-      const customQuery = `delete from map_config where id=${req.params.id}`;
+      const customQuery = `delete from map_config where id=${num(req.params.id)}`;
       await db.deleteWithQuery(customQuery).then(
         (results) => {
           if (results) {
@@ -1166,15 +1165,15 @@ exports.updateUploadedMap = (req, res, next) => {
       });
       res.send(err);
     } else {
-      let updateRndfQuery = `update map_config set title='${req.body.file_name}', priority=1, updated_date='now()' where id = ${req.body.id}`;
+      let updateRndfQuery = `update map_config set title=${str(req.body.file_name)}, priority=1, updated_date='now()' where id = ${num(req.body.id)}`;
 
       if (req.file) {
-        updateRndfQuery = `update map_config set title='${req.body.file_name}', priority=1, updated_date='now()', file_name='${req.file.filename}' where id = ${req.body.id}`;
+        updateRndfQuery = `update map_config set title=${str(req.body.file_name)}, priority=1, updated_date='now()', file_name=${str(req.file.filename)} where id = ${num(req.body.id)}`;
       }
       // console.log(req.body.old_file_name);
 
       if (req.body.old_file_name) {
-        fs.unlink("./map_files/" + req.body.old_file_name, (err) => {
+        fs.unlink("./map_files/" + path.basename(String(req.body.old_file_name)), (err) => {
           // console.log('Removed');
         });
       }
@@ -1303,7 +1302,7 @@ exports.getAlarmWithZoneData = async (req, res, next) => {
 
       const promise2 = new Promise((resolve, reject) => {
         const zoneId = req.params.zone_id + "";
-        const eventsQuery = `SELECT * FROM zone z, alarms a WHERE z.zone_id = a.zone_id and z.current_status = true and a.zone_id='${zoneId}'`;
+        const eventsQuery = `SELECT * FROM zone z, alarms a WHERE z.zone_id = a.zone_id and z.current_status = true and a.zone_id=${str(zoneId)}`;
         db.selectWithQuery(eventsQuery).then(
           (results) => {
             if (results && results.length) {

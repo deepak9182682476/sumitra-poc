@@ -1,5 +1,6 @@
 const request = require("request");
 
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const configParams = {
   params: [
     "S.No",
@@ -63,7 +64,7 @@ exports.getPerimeterJson = async (req, res, next) => {
   try {
     const customQuery = `
     SELECT json_build_object('type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(s.*)::json)) AS geojson
-    FROM (SELECT site_id, site_area, default_center, default_zoom, min_zoom, max_zoom FROM site_dim where type = '${req.query.type}') AS s(site_area)`;
+    FROM (SELECT site_id, site_area, default_center, default_zoom, min_zoom, max_zoom FROM site_dim where type = ${str(req.query.type)}) AS s(site_area)`;
     await db.selectWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
@@ -125,7 +126,7 @@ exports.getSensorsJson = async (req, res, next) => {
     if (sensor_type) {
         customQuery = `SELECT json_build_object('type', 'FeatureCollection', 'features', json_agg(ST_AsGeoJSON(s.*)::json)) AS geojson
         FROM (SELECT sensor_id as id, sensor_location as sensor_id, sensor_type, current_status, ip, mac_address, height, 
-        installed_on, zone_id, azimuth FROM sensors WHERE sensor_type IN ('${sensor_type}') ORDER BY id ASC) AS s(sensor_id)`;
+        installed_on, zone_id, azimuth FROM sensors WHERE sensor_type IN (${str(sensor_type)}) ORDER BY id ASC) AS s(sensor_id)`;
     }
     await db.selectWithQuery(customQuery).then(
       (results) => {
@@ -467,10 +468,10 @@ exports.create = async (req, res, next) => {
     }
 
     let sensorColumns = `${Object.keys(req.body)
-      .map((key) => `${key}`)
+      .map((key) => `${ident(key)}`)
       .join(", ")}`;
     let sensorValues = `${Object.keys(req.body)
-      .map((key) => `'${req.body[key]}'`)
+      .map((key) => `${str(req.body[key])}`)
       .join(", ")}`;
     const customQuery = `insert into sensors (${sensorColumns}) values (${sensorValues})`;
 
@@ -547,9 +548,9 @@ exports.update = async (req, res, next) => {
       delete req.body.location_marker;
     }
     let finalUpdatedData = `${Object.keys(req.body)
-      .map((key) => `${key} ` + "=" + ` '${req.body[key]}'`)
+      .map((key) => `${ident(key)} ` + "=" + ` ${str(req.body[key])}`)
       .join(", ")}`;
-    const customQuery = `update sensors set ${finalUpdatedData} where sensor_id = ${req.body.sensor_id}`;
+    const customQuery = `update sensors set ${finalUpdatedData} where sensor_id = ${num(req.body.sensor_id)}`;
     await db.updateWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
@@ -616,7 +617,7 @@ exports.statusUpdate = async (req, res, next) => {
   try {
     let customQuery;
     if (req.body && req.body.status === 2) {
-      customQuery = `delete from sensors where sensor_id = ${req.body.id} RETURNING sensor_id`;
+      customQuery = `delete from sensors where sensor_id = ${num(req.body.id)} RETURNING sensor_id`;
       await db.deleteWithQuery(customQuery).then(
         (results) => {
           console.log(results)
@@ -662,7 +663,7 @@ exports.statusUpdate = async (req, res, next) => {
         }
       );
     } else {
-      customQuery = `update sensors set current_status = ${req.body.status} where sensor_id = ${req.body.id}`;
+      customQuery = `update sensors set current_status = ${num(req.body.status)} where sensor_id = ${num(req.body.id)}`;
       await db.updateWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -802,7 +803,7 @@ exports.updateDiagnostics = (req, res, next) => {
 exports.systemConfig = async (req, res, next) => {
   try {
     if (!req.body.isUpdate) {
-      let customQuery = `insert into system_configuration(sensors, role, updated_time) values ('${req.body.sensors.join()}', ${
+      let customQuery = `insert into system_configuration(sensors, role, updated_time) values (${str(req.body.sensors.join())}, ${
         req.body.role
       }, now())`;
       await db.createWithQuery(customQuery).then(
@@ -845,9 +846,7 @@ exports.systemConfig = async (req, res, next) => {
         }
       );
     } else if (req.body.isUpdate && req.body.id) {
-      let customQuery = `UPDATE system_configuration SET sensors = '${req.body.sensors.join()}', role=${
-        req.body.role
-      }, updated_time=now() WHERE config_id = ${req.body.id}`;
+      let customQuery = `UPDATE system_configuration SET sensors = ${str(req.body.sensors.join())}, role=${num(req.body.role)}, updated_time=now() WHERE config_id = ${num(req.body.id)}`;
       await db.updateWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -1042,7 +1041,7 @@ exports.connectionStatus = async (req, res, next) => {
         req.body.status.replace(/\s/g, "").toLowerCase() === "disconnected" ||
         req.body.status.replace(/\s/g, "").toLowerCase() === "notconnected")
     ) {
-      const customQuery = `update sensors set current_status=false where ip = '${req.body.ip}'`;
+      const customQuery = `update sensors set current_status=false where ip = ${str(req.body.ip)}`;
 
       await db.updateWithQuery(customQuery).then(
         (results) => {
@@ -1196,7 +1195,7 @@ exports.systemMappedConfig = async (req, res, next) => {
             values ${req.body.selected_options
               .map(
                 (item) =>
-                  `('${item.zone_id}', ${item.radar_id}, ${item.ti_id}, ${item.ugv_id}, ${item.uav_id})`
+                  `(${str(item.zone_id)}, ${num(item.radar_id)}, ${num(item.ti_id)}, ${num(item.ugv_id)}, ${num(item.uav_id)})`
               )
               .join(",")}`;
 
@@ -1247,9 +1246,9 @@ exports.systemMappedConfig = async (req, res, next) => {
       );
     } else if (req.body.isUpdate && req.body.id) {
       let updatedData = `${Object.keys(req.selected_options)
-        .map((key) => `${key} ` + "=" + ` '${req.body[key]}'`)
+        .map((key) => `${ident(key)} ` + "=" + ` ${str(req.body[key])}`)
         .join(", ")}`;
-      let customQuery = `UPDATE system_mapped_config set ${updatedData} WHERE id = ${req.body.id}`;
+      let customQuery = `UPDATE system_mapped_config set ${updatedData} WHERE id = ${num(req.body.id)}`;
 
       await db.updateWithQuery(customQuery).then(
         (results) => {
@@ -1362,9 +1361,7 @@ async function updateDiagnosticsApi(req, res, next) {
             req.body.diagnosticsData.push(
               req.body.data[req.body.diagnosticsData.length]
             );
-            const customQuery = `update sensors set current_status=false where sensor_id = '${
-              req.body.data[req.body.diagnosticsData.length]
-            }'`;
+            const customQuery = `update sensors set current_status=false where sensor_id = ${str(req.body.data[req.body.diagnosticsData.length])}`;
             await db.updateWithQuery(customQuery).then(
               (results) => {
                 if (results && results.length) {
@@ -1403,8 +1400,8 @@ async function updateDiagnosticsApi(req, res, next) {
           }
         } else {
           req.body.diagnosticsData = [req.body.data[0]];
-          // const customQuery = `update zone set current_status=false where zone_id = '${req.body.data[0]}'`;
-          const customQuery = `update sensors set current_status=true where sensor_id = '${req.body.data[0]}'`;
+          // const customQuery = `update zone set current_status=false where zone_id = ${str(req.body.data[0])}`;
+          const customQuery = `update sensors set current_status=true where sensor_id = ${str(req.body.data[0])}`;
           await db.updateWithQuery(customQuery).then(
             (results) => {
               if (results && results.length) {
@@ -1441,12 +1438,12 @@ async function updateDiagnosticsApi(req, res, next) {
         });
       }
     } else {
-      var query = `update sensors set sensor_type = '${req.body.data.sensor_type}', sensor_location = 'SRID=4326;POINT(${req.body.data.long} ${req.body.data.lat})', current_status = ${req.body.data.current_status}, ip = '${req.body.data.ip}', mac_address = '${req.body.data.mac_address}', password = '${req.body.data.password}'`;
+      var query = `update sensors set sensor_type = ${str(req.body.data.sensor_type)}, sensor_location = 'SRID=4326;POINT(${num(req.body.data.long)} ${num(req.body.data.lat)})', current_status = ${num(req.body.data.current_status)}, ip = ${str(req.body.data.ip)}, mac_address = ${str(req.body.data.mac_address)}, password = ${str(req.body.data.password)}`;
       if (req.body.data.azimuth) {
-        query += ` ,azimuth = ${req.body.data.azimuth}`;
+        query += ` ,azimuth = ${num(req.body.data.azimuth)}`;
       }
       var customQuery =
-        query + ` where sensor_id = ${req.body.data.sensor_id}`;
+        query + ` where sensor_id = ${num(req.body.data.sensor_id)}`;
       await db.updateWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -1517,17 +1514,17 @@ exports.getSensorsMappedConfig = async (req, res, next) => {
     if (req.body.column === "zone_id" && req.body.type === "uav") {
       customQuery = `SELECT ua.* FROM uav ua 
                 INNER JOIN system_mapped_config smc ON ua.zone_id = smc.zone_id 
-                where smc.zone_id = '${req.body.zone_id}'`;
+                where smc.zone_id = ${str(req.body.zone_id)}`;
     } else if (req.body.column === "zone_id" && req.body.type === "ugv") {
       customQuery = `SELECT ug.* FROM ugv ug 
                 INNER JOIN system_mapped_config smc ON ug.zone_id = smc.zone_id 
-                where smc.zone_id = '${req.body.zone_id}'`;
+                where smc.zone_id = ${str(req.body.zone_id)}`;
     } else {
       customQuery = `select * from sensors where sensor_id in 
             (
-                SELECT smc.${req.body.column} FROM sensors sr 
+                SELECT smc.${ident(req.body.column)} FROM sensors sr 
                 INNER JOIN system_mapped_config smc ON sr.sensor_id = smc.radar_id 
-                where sr.ip = '${req.body.ip}'
+                where sr.ip = ${str(req.body.ip)}
             )`;
     }
     //  console.log("---customQuery-----", customQuery);
@@ -1596,7 +1593,7 @@ exports.getSensorsMappedConfig = async (req, res, next) => {
 
 exports.getSensorConfig = async (req, res, next) => {
   try {
-    let customQuery = `select * from sensors where ip = inet('${req.body.ip}')`;
+    let customQuery = `select * from sensors where ip = inet(${str(req.body.ip)})`;
     // console.log("---customQuery-----", customQuery);
     await db.selectWithQuery(customQuery).then(
       (results) => {
@@ -1756,7 +1753,7 @@ exports.sensorsTemplateUpload = async (req, res, next) => {
               Object.keys(item).map((key) => {
                 return item[key] == null || item[key] == ""
                   ? "null"
-                  : `'${item[key]}'`;
+                  : `${str(item[key])}`;
               })
             )
             .map((_) => `(${_})`)

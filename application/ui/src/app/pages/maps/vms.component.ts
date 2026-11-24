@@ -24,7 +24,7 @@ export class VmsComponent implements AfterViewInit, OnDestroy {
   @Output() close = new EventEmitter<void>();
   @ViewChildren("videoEl") videoEls: QueryList<ElementRef>;
 
-  maximized = false;       // fullscreen the whole grid
+  maximized = true;        // opens full screen (the button in its header restores the normal size)
   enlargedIdx: number = -1; // -1 = all tiles, 0-3 = that tile fills the panel
 
   feeds: VmsFeed[] = [

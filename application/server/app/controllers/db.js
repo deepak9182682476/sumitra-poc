@@ -1,4 +1,5 @@
 const db = require("../models");
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const fs = require("fs");
 const request = require("request");
 const env = require("../config/env");
@@ -636,11 +637,11 @@ exports.getPostAnalysisData = (req, res, next) => {
 
         if (filterDate.zoneId && !filterDate.alarmId) {
           query = `SELECT * FROM alarms INNER JOIN alarm_events ON alarm_events.alarm_id = alarms.alarm_id 
-          WHERE alarms.zone_id = '${filterDate.zoneId}'`;
+          WHERE alarms.zone_id = ${str(filterDate.zoneId)}`;
           if (filterDate.startDate && filterDate.endDate) {
             query = `SELECT * FROM alarms INNER JOIN alarm_events ON alarm_events.alarm_id = alarms.alarm_id 
-            WHERE alarms.zone_id = '${filterDate.zoneId}' and 
-            (cast(alarms.alarmmsg_time as date) between '${req.query.startDate}' and '${req.query.endDate}')`;
+            WHERE alarms.zone_id = ${str(filterDate.zoneId)} and 
+            (cast(alarms.alarmmsg_time as date) between ${str(req.query.startDate)} and ${str(req.query.endDate)})`;
           }
         } else if (!filterDate.zoneId && !filterDate.alarmId) {
           query = `SELECT alarms.alarm_id, alarms.alarmmsg_time,alarms.alarm_type,
@@ -657,7 +658,7 @@ exports.getPostAnalysisData = (req, res, next) => {
                         alarm_events.alarm_id, alarm_events.event_type,alarm_events.timeofevent,
                         alarms.location FROM alarms
                         INNER JOIN alarm_events ON alarm_events.alarm_id = alarms.alarm_id 
-                        WHERE (cast(alarms.alarmmsg_time as date) between '${filterDate.startDate}' and '${filterDate.endDate}')`;
+                        WHERE (cast(alarms.alarmmsg_time as date) between ${str(filterDate.startDate)} and ${str(filterDate.endDate)})`;
           }
         } else if (
           (!filterDate.zoneId && filterDate.alarmId) ||
@@ -668,7 +669,7 @@ exports.getPostAnalysisData = (req, res, next) => {
                     alarms.location,alarms.sensors_triggered,alarms.zone_id,
                     alarm_events.alarm_id, alarm_events.event_type,alarm_events.timeofevent,
                     alarms.location FROM alarms
-                    INNER JOIN alarm_events ON alarm_events.alarm_id = alarms.alarm_id where alarms.alarm_id='${filterDate.alarmId}'`;
+                    INNER JOIN alarm_events ON alarm_events.alarm_id = alarms.alarm_id where alarms.alarm_id=${str(filterDate.alarmId)}`;
 
           if (filterDate.startDate && filterDate.endDate) {
             query = `SELECT alarms.alarm_id, alarms.alarmmsg_time,alarms.alarm_type,
@@ -677,8 +678,8 @@ exports.getPostAnalysisData = (req, res, next) => {
                         alarm_events.alarm_id, alarm_events.event_type,alarm_events.timeofevent,
                         alarms.location FROM alarms
                         INNER JOIN alarm_events ON alarm_events.alarm_id = alarms.alarm_id  
-                        WHERE (cast(alarms.alarmmsg_time as date) between '${filterDate.startDate}' and '${filterDate.endDate}') 
-                        and alarms.alarm_id='${filterDate.alarmId}'`;
+                        WHERE (cast(alarms.alarmmsg_time as date) between ${str(filterDate.startDate)} and ${str(filterDate.endDate)}) 
+                        and alarms.alarm_id=${str(filterDate.alarmId)}`;
           }
         }
         console.log('queryyyyyyy', query)
@@ -712,26 +713,26 @@ exports.getPostAnalysisData = (req, res, next) => {
         let query;
 
         if (filterDate.zoneId && !filterDate.alarmId) {
-          query = `select zone_id, count(alarm_id) as alarm_count from alarms WHERE alarms.zone_id = '${filterDate.zoneId}' group by zone_id`;
+          query = `select zone_id, count(alarm_id) as alarm_count from alarms WHERE alarms.zone_id = ${str(filterDate.zoneId)} group by zone_id`;
           if (filterDate.startDate && filterDate.endDate) {
-            query = `select zone_id, count(alarm_id) as alarm_count from alarms WHERE alarms.zone_id = '${filterDate.zoneId}' 
-                     and (cast(alarms.alarmmsg_time as date) between '${req.query.startDate}' and '${req.query.endDate}') group by zone_id`;
+            query = `select zone_id, count(alarm_id) as alarm_count from alarms WHERE alarms.zone_id = ${str(filterDate.zoneId)} 
+                     and (cast(alarms.alarmmsg_time as date) between ${str(req.query.startDate)} and ${str(req.query.endDate)}) group by zone_id`;
           }
         } else if (!filterDate.zoneId && !filterDate.alarmId) {
           query = `select zone_id, count(alarm_id) as alarm_count from alarms group by zone_id`;
           if (filterDate.startDate && filterDate.endDate) {
             query = `select zone_id, count(alarm_id) as alarm_count from alarms 
-                     WHERE (cast(alarms.alarmmsg_time as date) between '${filterDate.startDate}' and '${filterDate.endDate}') group by zone_id`;
+                     WHERE (cast(alarms.alarmmsg_time as date) between ${str(filterDate.startDate)} and ${str(filterDate.endDate)}) group by zone_id`;
           }
         } else if (
           (!filterDate.zoneId && filterDate.alarmId) ||
           (filterDate.zoneId && filterDate.alarmId)
         ) {
           query = `select zone_id, count(alarm_id) as alarm_count from alarms 
-                   WHERE alarms.alarm_id='${filterDate.alarmId}' group by zone_id`;
+                   WHERE alarms.alarm_id=${str(filterDate.alarmId)} group by zone_id`;
           if (filterDate.startDate && filterDate.endDate) {
-            query = `select zone_id, count(alarm_id) as alarm_count from alarms WHERE alarms.alarm_id='${filterDate.alarmId}' 
-                     and (cast(alarms.alarmmsg_time as date) between '${filterDate.startDate}' and '${filterDate.endDate}') group by zone_id`;
+            query = `select zone_id, count(alarm_id) as alarm_count from alarms WHERE alarms.alarm_id=${str(filterDate.alarmId)} 
+                     and (cast(alarms.alarmmsg_time as date) between ${str(filterDate.startDate)} and ${str(filterDate.endDate)}) group by zone_id`;
           }
         }
 
@@ -815,18 +816,18 @@ exports.saveSearch = (req, res) => {
     if (req.body) {
       let saveSearchParams = {
         columns: "alarm_id,role",
-        values: `'${req.body.alarmId}', ${req.body.role}`,
-        selectData: `alarm_id='${req.body.alarmId}' and role=${req.body.role}`,
+        values: `${str(req.body.alarmId)}, ${num(req.body.role)}`,
+        selectData: `alarm_id=${str(req.body.alarmId)} and role=${num(req.body.role)}`,
       };
       if (req.body.zoneId) {
         saveSearchParams.columns += ",zone_id";
-        saveSearchParams.values += `,${req.body.zoneId}`;
-        saveSearchParams.selectData += `and zone_id=${req.body.zoneId}`;
+        saveSearchParams.values += `,${num(req.body.zoneId)}`;
+        saveSearchParams.selectData += `and zone_id=${num(req.body.zoneId)}`;
       }
       if (req.body.startDate && req.body.endDate) {
         saveSearchParams.columns += ",start_date,end_date";
-        saveSearchParams.values += `,'${req.body.startDate}', '${req.body.endDate}'`;
-        saveSearchParams.selectData += ` and start_date='${req.body.startDate}' and end_date='${req.body.endDate}'`;
+        saveSearchParams.values += `,${str(req.body.startDate)}, ${str(req.body.endDate)}`;
+        saveSearchParams.selectData += ` and start_date=${str(req.body.startDate)} and end_date=${str(req.body.endDate)}`;
       }
       db.sequelize
         .query(`select * from save_search where ${saveSearchParams.selectData}`)
@@ -923,7 +924,7 @@ exports.getSaveSearch = async (req, res) => {
 
     if (req.query.role) {
       await db.sequelize
-        .query(`select * from save_search where role=${req.query.role}`)
+        .query(`select * from save_search where role=${num(req.query.role)}`)
         .then(
           (selectResults) => {
             const data =
@@ -984,7 +985,7 @@ exports.deleteSavedSearch = async (req, res) => {
 
     if (req.params.id) {
       await db.sequelize
-        .query(`delete from save_search where id=${req.params.id}`)
+        .query(`delete from save_search where id=${num(req.params.id)}`)
         .then(
           (selectResults) => {
             log.createLog({
@@ -1413,9 +1414,9 @@ exports.delete = async (req, res) => {
   if (req.params.id) {
     let deleteQuery = null;
     if (req.params.type === "uav") {
-      deleteQuery = `delete from uav where uav_id=${req.params.id}`;
+      deleteQuery = `delete from uav where uav_id=${num(req.params.id)}`;
     } else {
-      deleteQuery = `delete from ugv where ugv_id=${req.params.id}`;
+      deleteQuery = `delete from ugv where ugv_id=${num(req.params.id)}`;
     }
 
     db.sequelize.query(deleteQuery).then(
@@ -1455,7 +1456,7 @@ exports.delete = async (req, res) => {
  * Update UAV
  */
 exports.updateUAV = (req, res, next) => {
-  const customQuery = `update uav set ip = '${req.body.data.ipaddress}', rth_location = 'SRID=4326;POINT(${req.body.data.longitude} ${req.body.data.latitude})', current_status = ${req.body.data.current_status}, zone_id=${req.body.data.zone_id},is_assigned = ${req.body.data.is_assigned} where uav_id=${req.body.data.uav_id}`;
+  const customQuery = `update uav set ip = ${str(req.body.data.ipaddress)}, rth_location = 'SRID=4326;POINT(${num(req.body.data.longitude)} ${num(req.body.data.latitude)})', current_status = ${num(req.body.data.current_status)}, zone_id=${num(req.body.data.zone_id)},is_assigned = ${num(req.body.data.is_assigned)} where uav_id=${num(req.body.data.uav_id)}`;
 
   db.sequelize.query(customQuery).then(
     (results) => {
@@ -1491,7 +1492,7 @@ exports.updateUAV = (req, res, next) => {
  * Update UAV
  */
 exports.insertUAV = (req, res, next) => {
-  const customQuery = `insert into uav (ip, rth_location, current_status, zone_id, is_assigned) values('${req.body.data.ipaddress}', 'SRID=4326;POINT(${req.body.data.longitude} ${req.body.data.latitude})', ${req.body.data.current_status}, ${req.body.data.zone_id}, ${req.body.data.is_assigned})`;
+  const customQuery = `insert into uav (ip, rth_location, current_status, zone_id, is_assigned) values(${str(req.body.data.ipaddress)}, 'SRID=4326;POINT(${num(req.body.data.longitude)} ${num(req.body.data.latitude)})', ${num(req.body.data.current_status)}, ${num(req.body.data.zone_id)}, ${num(req.body.data.is_assigned)})`;
 
   db.sequelize.query(customQuery).then(
     (results) => {
@@ -1529,7 +1530,7 @@ exports.insertUAV = (req, res, next) => {
  * Update UAV
  */
 exports.updateUGV = (req, res, next) => {
-  const customQuery = `update ugv set ip = '${req.body.data.ipaddress}', base_location = 'SRID=4326;POINT(${req.body.data.longitude} ${req.body.data.latitude})', current_status = ${req.body.data.current_status}, zone_id=${req.body.data.zone_id},is_assigned = ${req.body.data.is_assigned} where ugv_id=${req.body.data.ugv_id}`;
+  const customQuery = `update ugv set ip = ${str(req.body.data.ipaddress)}, base_location = 'SRID=4326;POINT(${num(req.body.data.longitude)} ${num(req.body.data.latitude)})', current_status = ${num(req.body.data.current_status)}, zone_id=${num(req.body.data.zone_id)},is_assigned = ${num(req.body.data.is_assigned)} where ugv_id=${num(req.body.data.ugv_id)}`;
 
   db.sequelize.query(customQuery).then(
     (results) => {
@@ -1565,7 +1566,7 @@ exports.updateUGV = (req, res, next) => {
  * Update UGV
  */
 exports.insertUGV = (req, res, next) => {
-  const customQuery = `insert into ugv (ip, base_location, current_status, zone_id, is_assigned) values('${req.body.data.ipaddress}', 'SRID=4326;POINT(${req.body.data.longitude} ${req.body.data.latitude})', ${req.body.data.current_status}, ${req.body.data.zone_id}, ${req.body.data.is_assigned})`;
+  const customQuery = `insert into ugv (ip, base_location, current_status, zone_id, is_assigned) values(${str(req.body.data.ipaddress)}, 'SRID=4326;POINT(${num(req.body.data.longitude)} ${num(req.body.data.latitude)})', ${num(req.body.data.current_status)}, ${num(req.body.data.zone_id)}, ${num(req.body.data.is_assigned)})`;
 
   db.sequelize.query(customQuery).then(
     (results) => {
@@ -1663,7 +1664,7 @@ exports.activeTimeConfig = async (req, res, next) => {
   try {
     if (!req.body.isUpdate) {
       console.log("testing")
-      let customQuery = `insert into active_time_config (start_time, end_time, session_timeout) values('${req.body.start_time}', '${req.body.end_time}', '${req.body.session_timeout}')`;
+      let customQuery = `insert into active_time_config (start_time, end_time, session_timeout) values(${str(req.body.start_time)}, ${str(req.body.end_time)}, ${str(req.body.session_timeout)})`;
       console.log("active_time_config insertion")
       await db.sequelize.query(customQuery).then(
         (results) => {
@@ -1708,7 +1709,7 @@ exports.activeTimeConfig = async (req, res, next) => {
         }
       );
     } else if (req.body.isUpdate && req.body.id) {
-      let customQuery = `UPDATE active_time_config SET start_time = '${req.body.start_time}', end_time = '${req.body.end_time}', session_timeout = '${req.body.session_timeout}' WHERE 1 = 1`;
+      let customQuery = `UPDATE active_time_config SET start_time = ${str(req.body.start_time)}, end_time = ${str(req.body.end_time)}, session_timeout = ${str(req.body.session_timeout)} WHERE 1 = 1`;
       await db.sequelize.query(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -1852,7 +1853,7 @@ let getQueueLength = async function () {
 let getQueueList = async function (limit) {
   return await db.sequelize
     .query(
-      `select alarm_id,frameid,obj_id from tbl_external_alarm_obj_transaction order by id desc limit ${limit}`,
+      `select alarm_id,frameid,obj_id from tbl_external_alarm_obj_transaction order by id desc limit ${num(limit)}`,
       { type: db.sequelize.QueryTypes.SELECT }
     )
     .then(

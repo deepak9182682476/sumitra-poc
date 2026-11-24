@@ -25,7 +25,7 @@ export class TrackHistoryComponent implements OnInit, OnDestroy {
   range: "1h" | "24h" | "7d" | "custom" = "24h";
 
   loading = false;
-  maximized = false;
+  maximized = true;   // opens full screen (the button in its header restores the normal size)
   error = "";
   tracks: any[] = [];
   filteredTracks: any[] = [];       // tracks visible in the table (bar-filter applied)

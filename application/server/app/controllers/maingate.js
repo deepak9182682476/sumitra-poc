@@ -1,4 +1,5 @@
 const env = require("../config/env");
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const db = require("../controllers/db");
 const request = require("request");
 const log = require("../utils/log");
@@ -16,7 +17,7 @@ exports.create = async (req, res, next) => {
       entryReason: req.body.entryReason
     };
 
-    const customQuery = `insert into visitors_info(aadhaar_number, name, mobile, photo, vehicle_no, things_along, reason, entry_time) values('${visitorInfo.aadhaarNumber}', '${visitorInfo.visitorName}', '${visitorInfo.mobileNo}', '${visitorInfo.photo}', '${visitorInfo.vehicleNo}', '${visitorInfo.thingsAlong}', '${visitorInfo.entryReason}', now())`;
+    const customQuery = `insert into visitors_info(aadhaar_number, name, mobile, photo, vehicle_no, things_along, reason, entry_time) values(${str(visitorInfo.aadhaarNumber)}, ${str(visitorInfo.visitorName)}, ${str(visitorInfo.mobileNo)}, ${str(visitorInfo.photo)}, ${str(visitorInfo.vehicleNo)}, ${str(visitorInfo.thingsAlong)}, ${str(visitorInfo.entryReason)}, now())`;
     await db.createWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
@@ -134,7 +135,7 @@ exports.camerasList = async (req, res, next) => {
 // Update camera data into the database.
 exports.cameraUpdate = async (req, res, next) => {
   try {
-    const customQuery = `update camera_info set ip = '${req.body.ip}', url = '${req.body.url}', name = '${req.body.name}' where id = ${req.body.id}`;
+    const customQuery = `update camera_info set ip = ${str(req.body.ip)}, url = ${str(req.body.url)}, name = ${str(req.body.name)} where id = ${num(req.body.id)}`;
     await db.updateWithQuery(customQuery).then(
       (results) => {
         if (results) {

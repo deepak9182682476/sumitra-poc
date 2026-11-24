@@ -1,4 +1,5 @@
 const env = require("../config/env");
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const db = require("../controllers/db");
 const map = require("../controllers/map");
 const request = require("request");
@@ -52,12 +53,8 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     let ext = ".kml"; // set default extension (if any)
-    if (file.originalname.split(".").length > 1)
-      // checking if there is an extension or not.
-      ext = file.originalname.substring(
-        file.originalname.lastIndexOf("."),
-        file.originalname.length
-      );
+    // extension of the file name only (no folders), e.g. "area.kml" -> ".kml"
+    if (path.extname(path.basename(file.originalname))) ext = path.extname(path.basename(file.originalname));
     cb(null, Date.now() + ext);
   },
 });
@@ -172,7 +169,7 @@ exports.getGeoJson = async (req, res, next) => {
             'features', json_agg(ST_AsGeoJSON(t.*)::json)
         ) as geojson
         from (
-            SELECT * FROM ${req.query.type}
+            SELECT * FROM ${ident(req.query.type)}
         ) as t`;
     await db.selectWithQuery(customQuery).then(
       (results) => {
@@ -234,7 +231,7 @@ exports.getGeoJson = async (req, res, next) => {
 // Save/Update Patrol Flag
 exports.savePatrolFlag = async (req, res, next) => {
   try {
-    let values = req.body.ugv_ids.map((item) => { return `(${item}, 0, true)`; });
+    let values = req.body.ugv_ids.map((item) => { return `(${num(item)}, 0, true)`; });
     let customQuery = `
     update ugv as ugv set is_assigned  = new_val.is_assigned, is_in_patrol = new_val.is_in_patrol
     from ( values ${values} ) as new_val(ugv_id, is_assigned, is_in_patrol)
@@ -302,8 +299,8 @@ exports.savePatrolFlag = async (req, res, next) => {
 
 exports.saveUGVManualRoute = async (req, res, next) => {
   try {
-    let waypoints = req.body.waypoints.map((item) => { return `'${item}'`; });
-    let customQuery = `update ugv set manual_route = ARRAY[${waypoints}] where ugv_id = ${req.body.ugv_id}`;
+    let waypoints = req.body.waypoints.map((item) => { return `${str(item)}`; });
+    let customQuery = `update ugv set manual_route = ARRAY[${waypoints}] where ugv_id = ${num(req.body.ugv_id)}`;
     await db.updateWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
@@ -367,7 +364,7 @@ exports.saveUGVManualRoute = async (req, res, next) => {
 
 exports.getUGVManualRoute = async (req, res, next) => {
   try {
-    const customQuery = `select manual_route from ugv where ugv_id = ${req.query.ugv_id}`;
+    const customQuery = `select manual_route from ugv where ugv_id = ${num(req.query.ugv_id)}`;
     await db.selectWithQuery(customQuery).then(
       (results) => {
         if (results && results.length) {
@@ -510,7 +507,7 @@ exports.saveAssignmentRules = async (req, res, next) => {
   try {
     assignment_rules = req.body.assignments;
     if (!req.body.isUpdate) {
-      let customQuery = `insert into assignment_rules(assignments) values (ARRAY['${req.body.assignments}'])`;
+      let customQuery = `insert into assignment_rules(assignments) values (ARRAY[${str(req.body.assignments)}])`;
       await db.createWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -551,7 +548,7 @@ exports.saveAssignmentRules = async (req, res, next) => {
         }
       );
     } else if (req.body.isUpdate && req.body.id) {
-      let customQuery = `UPDATE assignment_rules SET assignments = ARRAY['${req.body.assignments}'] WHERE id = ${req.body.id}`;
+      let customQuery = `UPDATE assignment_rules SET assignments = ARRAY[${str(req.body.assignments)}] WHERE id = ${num(req.body.id)}`;
       await db.updateWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -762,10 +759,10 @@ function processAssignment(req, res, next) {
     const promise1 = new Promise((resolve, reject) => {
       let query;
       if (req.body.type === 'uav') {
-        query = `update ${req.body.type} set is_assigned=1 where zone_id='${req.body.zone_id}'`;
+        query = `update ${req.body.type} set is_assigned=1 where zone_id=${str(req.body.zone_id)}`;
       }
       else if (req.body.type === 'ugv') {
-        query = `update ${req.body.type} set is_in_patrol=false, is_assigned=1 where zone_id='${req.body.zone_id}'`;
+        query = `update ${req.body.type} set is_in_patrol=false, is_assigned=1 where zone_id=${str(req.body.zone_id)}`;
       }
       db.updateWithQuery(query).then(
         (results) => {
@@ -789,7 +786,7 @@ function processAssignment(req, res, next) {
     });
     // Update Alarm Events
     const promise2 = new Promise((resolve, reject) => {
-      const eventsQuery = `INSERT INTO alarm_events (alarm_id, event_type, timeofevent, location) VALUES ('${req.body.alarm_data.alarm_id}', '${req.body.eventType}', 'now()', ST_GeomFromText('POINT(${req.body.alarm_data.location.coordinates[0]} ${req.body.alarm_data.location.coordinates[1]})', 4326))`;
+      const eventsQuery = `INSERT INTO alarm_events (alarm_id, event_type, timeofevent, location) VALUES (${str(req.body.alarm_data.alarm_id)}, ${str(req.body.eventType)}, 'now()', ST_GeomFromText('POINT(${num(req.body.alarm_data.location.coordinates[0])} ${num(req.body.alarm_data.location.coordinates[1])})', 4326))`;
       db.createWithQuery(eventsQuery).then(
         (results) => {
           if (results && results.length) {
@@ -812,7 +809,7 @@ function processAssignment(req, res, next) {
     });
 
     Promise.all([promise1, promise2]).then(function (results) {
-      const customQuery = `SELECT * FROM ${req.body.type} WHERE zone_id = '${req.body.zone_id}'`;
+      const customQuery = `SELECT * FROM ${ident(req.body.type)} WHERE zone_id = ${str(req.body.zone_id)}`;
       db.selectWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -1284,7 +1281,7 @@ exports.saveRndfConfig = (req, res, next) => {
       });
       res.send(err);
     } else {
-      const saveRndfQuery = `insert into rndf_configuration (title, file_name, updated_date) values('${req.body.file_name}', '${req.file.filename}', 'now()')`;
+      const saveRndfQuery = `insert into rndf_configuration (title, file_name, updated_date) values(${str(req.body.file_name)}, ${str(req.file.filename)}, 'now()')`;
       await db.createWithQuery(saveRndfQuery).then(
         (results) => {
           if (results && results.length) {
@@ -1703,7 +1700,8 @@ function getJsonFromtxt(data) {
 
 // Delete RNDF Config
 exports.deleteRndfConfig = (req, res, next) => {
-  fs.unlink("./rndf_files/" + req.params.filename, async (err) => {
+  // basename: a file name only, so "../" cannot delete files outside rndf_files
+  fs.unlink("./rndf_files/" + path.basename(String(req.params.filename)), async (err) => {
     if (err) {
       res.errorCode = 500;
       res.errorInfo = {
@@ -1720,7 +1718,7 @@ exports.deleteRndfConfig = (req, res, next) => {
       });
       res.send({ ...res.errorInfo, ...{ statusCode: 500 } });
     } else {
-      const customQuery = `delete from rndf_configuration where id=${req.params.id}`;
+      const customQuery = `delete from rndf_configuration where id=${num(req.params.id)}`;
       await db.deleteWithQuery(customQuery).then(
         (results) => {
           if (results) {
@@ -1774,8 +1772,8 @@ exports.setDefaultRndfConfig = async (req, res, next) => {
     const customQuery = `
         update rndf_configuration set is_selected = 
         case 
-            when id != ${req.params.id} then false
-            when id = ${req.params.id} then true
+            when id != ${num(req.params.id)} then false
+            when id = ${num(req.params.id)} then true
         end`;
 
     await db.updateWithQuery(customQuery).then(
@@ -1858,13 +1856,13 @@ exports.updateRndfConfig = (req, res, next) => {
       });
       res.send(err);
     } else {
-      let updateRndfQuery = `update rndf_configuration set title='${req.body.file_name}', updated_date='now()' where id = ${req.body.id}`;
+      let updateRndfQuery = `update rndf_configuration set title=${str(req.body.file_name)}, updated_date='now()' where id = ${num(req.body.id)}`;
       if (req.file) {
-        updateRndfQuery = `update rndf_configuration set title='${req.body.file_name}', updated_date='now()', file_name='${req.file.filename}' where id = ${req.body.id}`;
+        updateRndfQuery = `update rndf_configuration set title=${str(req.body.file_name)}, updated_date='now()', file_name=${str(req.file.filename)} where id = ${num(req.body.id)}`;
       }
 
       if (req.body.old_file_name) {
-        fs.unlink("./rndf_files/" + req.body.old_file_name, (err) => {
+        fs.unlink("./rndf_files/" + path.basename(String(req.body.old_file_name)), (err) => {
           // console.log('Removed');
         });
       }

@@ -5,6 +5,7 @@
  */
 
 const request = require("request");
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const env = require("../config/env");
 const path = require("path");
 const ffmpeg = require("ffmpeg");
@@ -110,7 +111,7 @@ exports.findImageInfofromDataBase = async (req, res, next) => {
       LEFT JOIN ( SELECT alarm_id, json_agg(json_build_object('frameid', frameid, 'obj_id', obj_id)) as obj_data 
       FROM tbl_external_alarm_obj_transaction GROUP BY alarm_id ) tbl_ext_aot 
       ON tbl_ext_aot.alarm_id = alarms.alarm_id 
-      WHERE alarms.zone_id = '${filterDate.zoneId}'`;
+      WHERE alarms.zone_id = ${str(filterDate.zoneId)}`;
 
       if (filterDate.startDate && filterDate.endDate) {
         customQuery = `SELECT alarms.*, alarm_videos.*, tbl_ext_aot.* 
@@ -120,7 +121,7 @@ exports.findImageInfofromDataBase = async (req, res, next) => {
         LEFT JOIN ( SELECT alarm_id, json_agg(json_build_object('frameid', frameid, 'obj_id', obj_id)) as obj_data 
         FROM tbl_external_alarm_obj_transaction GROUP BY alarm_id ) tbl_ext_aot 
         ON tbl_ext_aot.alarm_id = alarms.alarm_id 
-        WHERE alarms.zone_id = '${filterDate.zoneId}' and (cast(alarms.alarmmsg_time as date) BETWEEN '${req.query.startDate}' AND '${req.query.endDate}')`;
+        WHERE alarms.zone_id = ${str(filterDate.zoneId)} and (cast(alarms.alarmmsg_time as date) BETWEEN ${str(req.query.startDate)} AND ${str(req.query.endDate)})`;
       }
 
     } else if (!filterDate.zoneId && !filterDate.alarmId) {
@@ -139,7 +140,7 @@ exports.findImageInfofromDataBase = async (req, res, next) => {
         ON alarm_videos.alarm_id = alarms.alarm_id and alarms.alarm_type = 1 
         LEFT JOIN ( SELECT alarm_id, json_agg(json_build_object('frameid', frameid, 'obj_id', obj_id)) as obj_data 
         FROM tbl_external_alarm_obj_transaction GROUP BY alarm_id ) tbl_ext_aot 
-        ON tbl_ext_aot.alarm_id = alarms.alarm_id WHERE (cast(alarms.alarmmsg_time as date) BETWEEN '${req.query.startDate}' AND '${req.query.endDate}')`;
+        ON tbl_ext_aot.alarm_id = alarms.alarm_id WHERE (cast(alarms.alarmmsg_time as date) BETWEEN ${str(req.query.startDate)} AND ${str(req.query.endDate)})`;
       }
 
     } else if (
@@ -153,7 +154,7 @@ exports.findImageInfofromDataBase = async (req, res, next) => {
       LEFT JOIN ( SELECT alarm_id, json_agg(json_build_object('frameid', frameid, 'obj_id', obj_id)) as obj_data 
       FROM tbl_external_alarm_obj_transaction GROUP BY alarm_id ) tbl_ext_aot 
       ON tbl_ext_aot.alarm_id = alarms.alarm_id 
-      WHERE alarms.alarm_id='${filterDate.alarmId}'`;
+      WHERE alarms.alarm_id=${str(filterDate.alarmId)}`;
 
       if (filterDate.startDate && filterDate.endDate) {
         customQuery = `SELECT alarms.*, alarm_videos.*, tbl_ext_aot.* 
@@ -163,7 +164,7 @@ exports.findImageInfofromDataBase = async (req, res, next) => {
         LEFT JOIN ( SELECT alarm_id, json_agg(json_build_object('frameid', frameid, 'obj_id', obj_id)) as obj_data 
         FROM tbl_external_alarm_obj_transaction GROUP BY alarm_id ) tbl_ext_aot 
         ON tbl_ext_aot.alarm_id = alarms.alarm_id 
-        WHERE alarms.alarm_id='${filterDate.alarmId}' and (cast(alarms.alarmmsg_time as date) BETWEEN '${req.query.startDate}' AND '${req.query.endDate}')`;
+        WHERE alarms.alarm_id=${str(filterDate.alarmId)} and (cast(alarms.alarmmsg_time as date) BETWEEN ${str(req.query.startDate)} AND ${str(req.query.endDate)})`;
       }
 
     }
@@ -345,6 +346,14 @@ exports.extractFrames = (req, res, next) => {
   });
 };
 
+
+// The resolved file must stay inside the media folder (stops "../" reading other files)
+function insideFolder(base, file) {
+  const root = require("path").resolve(String(base));
+  const full = require("path").resolve(String(file));
+  return full === root || full.startsWith(root + require("path").sep);
+}
+
 exports.getImage = async (req, res, next) => {
   console.log('listening ------------------');
   try {
@@ -353,6 +362,9 @@ exports.getImage = async (req, res, next) => {
     // let date_obj_str = time;
 
     let filepath = path.join(folder_path + "/" + image_path + ".jpg");
+    if (!insideFolder(folder_path, filepath)) {
+      return res.status(400).send({ error: 'Invalid image path' });
+    }
 
     console.log('--------------', image_path, filepath);
     if (fs.existsSync(filepath)) {
@@ -375,6 +387,9 @@ exports.getVideo = async (req, res, next) => {
   console.log('inside video ------ ')
 
   const path = folder_path+'/'+req.query.id+".mp4"
+  if (!insideFolder(folder_path, path)) {
+    return res.status(400).send({ error: 'Invalid video id' });
+  }
   const stat = fs.statSync(path)
   const fileSize = stat.size
   const range = req.headers.range

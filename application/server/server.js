@@ -12,6 +12,14 @@ const maingateRouter = require('./app/routes/maingate');
 
 const app = express();
 
+// Security headers (do not change how the API works)
+app.disable('x-powered-by');                      // do not advertise the server type
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff'); // browsers must not guess file types
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');     // pages cannot be framed by other sites
+  next();
+});
+
 const corsOptions = {
   origin: "*",
   optionsSuccessStatus: 200
@@ -64,10 +72,9 @@ app.use('/api/maingate', maingateRouter);
 
 app.use('/', checkActiveTime, routes);
 
-// catch 404 and forward to error handler
+// catch 404 (the old handler referred to an undefined variable and answered 500 with "err is not defined")
 app.use(function (req, res, next) {
-  next(err);
-  res.status(404).json({ error: { message: err.message } });
+  res.status(404).json({ error: { message: 'Not found' } });
 });
 
 // error handler
@@ -77,7 +84,7 @@ app.use(function (err, req, res, next) {
   res.locals.error = req.app.get('env') === 'development' ? err : {};
 
   // send the error
-  res.status(err.status >= 100 && err.status < 600 ? err.code : 500).send(err.message);
+  res.status(err.status >= 100 && err.status < 600 ? err.status : 500).send(err.message);
 });
 
 

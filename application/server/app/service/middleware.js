@@ -1,6 +1,23 @@
 const env = require('../config/env');
 const request = require('request');
 const db = require('../models');
+const jwt = require('jsonwebtoken');
+
+// Requires a signed-in user: the UI sends its login token (JWT) in the Auth-Token header on every request.
+// Checks the token's signature and expiry (works after a backend restart too).
+exports.requireLogin = (req, res, next) => {
+    const token = req.headers['auth-token'];
+    if (!token) {
+        return res.status(401).send({ error: true, statusCode: 401, message: 'Please sign in' });
+    }
+    jwt.verify(token, env.jwt_secret_key, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ error: true, statusCode: 401, message: 'Session expired, please sign in again' });
+        }
+        req.user = decoded;
+        next();
+    });
+}
 
 exports.authendicateToken = (req, response, next) => {
     const authHeader = req.headers['auth-token'];

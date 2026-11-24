@@ -1,4 +1,5 @@
 const turf = require("@turf/turf");
+const { str, num, ident, numList } = require("../utils/sqlSafe"); // SQL-injection safe values
 const request = require("request");
 const env = require("../config/env");
 const db = require("../controllers/db");
@@ -21,7 +22,7 @@ exports.alarmInfo = async (req, res, next) => {
         ON alarm_events.alarm_id = alarms.alarm_id and alarm_events.event_type != 2
         LEFT JOIN (SELECT DISTINCT ON (alarm_id) * FROM alarm_tail) alarm_tail 
         ON alarm_tail.alarm_id = alarms.alarm_id and alarm_tail.status = true
-        WHERE COALESCE(alarms.alarm_id::text, '') !~ '${ZERO_ID_SQL_REGEX}'
+        WHERE COALESCE(alarms.alarm_id::text, '') !~ ${str(ZERO_ID_SQL_REGEX)}
         `;
     await db.selectWithQuery(customQuery).then(
       (results) => {
@@ -188,7 +189,7 @@ exports.acknowledgeClearAlarm = async (req, res, next) => {
           Object.keys(item).map((key) => {
             return item[key] == null || item[key] == ""
               ? "null"
-              : `'${item[key]}'`;
+              : `${str(item[key])}`;
           })
         )
         .map((_) => `(${_})`)
@@ -204,7 +205,7 @@ exports.acknowledgeClearAlarm = async (req, res, next) => {
           Object.keys(item).map((key) => {
             return item[key] == null || item[key] == ""
               ? "null"
-              : `'${item[key]}'`;
+              : `${str(item[key])}`;
           })
         );
 
@@ -253,7 +254,7 @@ exports.acknowledgeClearAlarm = async (req, res, next) => {
       );
     } else {
       // const customQuery = "update alarm_events set event_type=" + req.body.acknowledged_cleared + ", timeofevent=now() where alarm_id='" + req.body.alarm_id + "'";
-      const customQuery = `insert into alarm_events(alarm_id, event_type, timeofevent, location) values('${req.body.alarm_id}', ${req.body.acknowledged_cleared}, now(), ST_GeomFromText('POINT(${req.body.location.coordinates[0]} ${req.body.location.coordinates[1]})', 4326))`;
+      const customQuery = `insert into alarm_events(alarm_id, event_type, timeofevent, location) values(${str(req.body.alarm_id)}, ${num(req.body.acknowledged_cleared)}, now(), ST_GeomFromText('POINT(${num(req.body.location.coordinates[0])} ${num(req.body.location.coordinates[1])})', 4326))`;
       await db.createWithQuery(customQuery).then(
         (results) => {
           if (results && results.length) {
@@ -326,7 +327,7 @@ exports.clearIntrusionTracks = async (req, res, next) => {
           track_length: (item.track_length > 0) ? item.track_length : 0
         }
       })
-        .map(item => Object.keys(item).map(key => { return (typeof item[key] == "number") ? item[key] : (item[key] == null || item[key] == '') ? 'null' : `'${item[key]}'` }))
+        .map(item => Object.keys(item).map(key => { return (typeof item[key] == "number") ? item[key] : (item[key] == null || item[key] == '') ? 'null' : `${str(item[key])}` }))
         .map((_) => `(${_})`).join(","); // alarm_ids (12345,10),(13456,8),(1234567,13)
 
       const customQuery = `update alarm_tail at set track_length=tmp.track_length 
@@ -449,7 +450,7 @@ exports.getAlarmTimelineEvents = async (req, res, next) => {
                             a.location, a.sensors_triggered, a.object_identified, a.zone_id, a.alarm_priority,
                             ae.event_type, ae.timeofevent, ae.location as event_location
                             FROM alarms a INNER JOIN alarm_events ae ON a.alarm_id = ae.alarm_id 
-                            WHERE a.zone_id = '${filterDate.zoneId}'
+                            WHERE a.zone_id = ${str(filterDate.zoneId)}
                             group by a.alarm_id, ae.alarm_id, ae.event_type, ae.timeofevent, ae.location`;
 
         if (filterDate.startDate && filterDate.endDate) {
@@ -457,8 +458,8 @@ exports.getAlarmTimelineEvents = async (req, res, next) => {
                                 a.location, a.sensors_triggered, a.object_identified, a.zone_id, a.alarm_priority,
                                 ae.event_type, ae.timeofevent, ae.location as event_location
                                 FROM alarms a INNER JOIN alarm_events ae ON a.alarm_id = ae.alarm_id 
-                                WHERE a.zone_id = '${filterDate.zoneId}' and 
-                                (cast(a.alarmmsg_time as date) BETWEEN '${req.query.startDate}' AND '${req.query.endDate}')
+                                WHERE a.zone_id = ${str(filterDate.zoneId)} and 
+                                (cast(a.alarmmsg_time as date) BETWEEN ${str(req.query.startDate)} AND ${str(req.query.endDate)})
                                 group by a.alarm_id, ae.alarm_id, ae.event_type, ae.timeofevent, ae.location`;
         }
       } else if (!filterDate.zoneId && !filterDate.alarmId) {
@@ -473,7 +474,7 @@ exports.getAlarmTimelineEvents = async (req, res, next) => {
                                 a.location, a.sensors_triggered, a.object_identified, a.zone_id, a.alarm_priority,
                                 ae.event_type, ae.timeofevent, ae.location as event_location
                                 FROM alarms a INNER JOIN alarm_events ae ON a.alarm_id = ae.alarm_id 
-                                WHERE (cast(a.alarmmsg_time as date) BETWEEN '${req.query.startDate}' AND '${req.query.endDate}')
+                                WHERE (cast(a.alarmmsg_time as date) BETWEEN ${str(req.query.startDate)} AND ${str(req.query.endDate)})
                                 group by a.alarm_id, ae.alarm_id, ae.event_type, ae.timeofevent, ae.location`;
         }
       } else if (
@@ -484,15 +485,15 @@ exports.getAlarmTimelineEvents = async (req, res, next) => {
                             a.location, a.sensors_triggered, a.object_identified, a.zone_id, a.alarm_priority,
                             ae.event_type, ae.timeofevent, ae.location as event_location
                             FROM alarms a INNER JOIN alarm_events ae ON a.alarm_id = ae.alarm_id 
-                            WHERE a.alarm_id = '${filterDate.alarmId}'
+                            WHERE a.alarm_id = ${str(filterDate.alarmId)}
                             group by a.alarm_id, ae.alarm_id, ae.event_type, ae.timeofevent, ae.location`;
         if (filterDate.startDate && filterDate.endDate) {
           customQuery = `SELECT a.alarm_id, a.id, a.alarmmsg_time, a.alarm_type, a.event_id, a.camera_id,
                                 a.location, a.sensors_triggered, a.object_identified, a.zone_id, a.alarm_priority,
                                 ae.event_type, ae.timeofevent, ae.location as event_location
                                 FROM alarms a INNER JOIN alarm_events ae ON a.alarm_id = ae.alarm_id 
-                                WHERE a.alarm_id = '${filterDate.alarmId}' 
-                                and (cast(a.alarmmsg_time as date) BETWEEN '${req.query.startDate}' AND '${req.query.endDate}')
+                                WHERE a.alarm_id = ${str(filterDate.alarmId)} 
+                                and (cast(a.alarmmsg_time as date) BETWEEN ${str(req.query.startDate)} AND ${str(req.query.endDate)})
                                 group by a.alarm_id, ae.alarm_id, ae.event_type, ae.timeofevent, ae.location`;
         }
       }
@@ -678,7 +679,7 @@ exports.createUpdateAlarms = (req, res, next) => {
 
     console.log("----alarmInfo----", alarmInfo);
 
-//    let customQuery = `select * from alarms where alarm_id = '${alarmInfo.alarm_id}'`;
+//    let customQuery = `select * from alarms where alarm_id = ${str(alarmInfo.alarm_id)}`;
 
     let customQuery = `
       SELECT a.*, ae.event_type 
@@ -688,7 +689,7 @@ exports.createUpdateAlarms = (req, res, next) => {
         FROM alarm_events 
         ORDER BY alarm_id, timeofevent DESC
       ) ae ON a.alarm_id = ae.alarm_id 
-      WHERE a.alarm_id = '${alarmInfo.alarm_id}'
+      WHERE a.alarm_id = ${str(alarmInfo.alarm_id)}
     `;
     db.selectWithQuery(customQuery).then(
       (results) => {
@@ -738,7 +739,7 @@ function updateExistingAlarm(alarmInfo, results) {
       if (results[0] && results[0].alarmmsg_time) alarmInfo.alarmmsg_time = results[0].alarmmsg_time; // card shows its start time
       if (alarmInfo.alarm_type != 2) {
         alarmInfo.iff_data = (alarmInfo.iff_data == null || alarmInfo.iff_data == undefined) ? {} : alarmInfo.iff_data;
-        let query = `UPDATE alarms SET record_flag=${alarmInfo.record_flag},alarm_type=${alarmInfo.alarm_type} WHERE alarm_id='${alarmInfo.alarm_id}'`;
+        let query = `UPDATE alarms SET record_flag=${num(alarmInfo.record_flag)},alarm_type=${num(alarmInfo.alarm_type)} WHERE alarm_id=${str(alarmInfo.alarm_id)}`;
         db.updateWithQuery(query).then(
           (update_response) => {
             if (results[0].alarm_type != alarmInfo.alarm_type || results[0].event_type == 2 || results[0].event_type == null) {
@@ -750,7 +751,7 @@ function updateExistingAlarm(alarmInfo, results) {
               // means primary or confirmatory with record flag change
               // table_ext _alarm insert query has to be here
               let tbl_ext_alarm_create = `INSERT INTO tbl_external_alarm(start_time, end_time, clip_status, ftp_server_ip, ftp_filename) 
-              VALUES(${new Date(results[0].alarmmsg_time).getTime()}, ${new Date().getTime()}, 'AVAILABLE', '195.67.15.3', '${env.videos_url + alarmInfo.alarm_id}_raw.mp4')`;
+              VALUES(${new Date(results[0].alarmmsg_time).getTime()}, ${new Date().getTime()}, 'AVAILABLE', '195.67.15.3', ${str(env.videos_url + alarmInfo.alarm_id + "_raw.mp4")})`;
               // console.log("---tbl_ext_alarm---", tbl_ext_alarm_create);
               db.createWithQuery(tbl_ext_alarm_create).then((data) => {
                 console.log(data);
@@ -859,18 +860,18 @@ function findZone(alarmInfo){
                   givenParam: alarmInfo,
                 });
                 let insertUpdateData = `INSERT INTO ALARMS(alarm_id, alarmmsg_time, alarm_type, event_id, camera_id, location, sensors_triggered, object_identified, pole_number, record_flag)
-                            VALUES('${alarmInfo.alarm_id}', now(), ${alarmInfo.alarm_type}, '${alarmInfo.event_id}', '${alarmInfo.camera_id}',
-                                ST_GeomFromText('POINT(${alarmInfo.location[0]} ${alarmInfo.location[1]})', 4326), ARRAY['${alarmInfo.sensors_triggered}'], 'person', '15', 'false') RETURNING id, alarmmsg_time`;
+                            VALUES(${str(alarmInfo.alarm_id)}, now(), ${num(alarmInfo.alarm_type)}, ${str(alarmInfo.event_id)}, ${str(alarmInfo.camera_id)},
+                                ST_GeomFromText('POINT(${num(alarmInfo.location[0])} ${num(alarmInfo.location[1])})', 4326), ARRAY[${str(alarmInfo.sensors_triggered)}], 'person', '15', 'false') RETURNING id, alarmmsg_time`;
                 if (isAlarmExistsInZone) {
                   insertUpdateData = `INSERT INTO ALARMS(alarm_id, alarmmsg_time, alarm_type, event_id, camera_id, location, sensors_triggered, object_identified, pole_number, record_flag, zone_id)
-                            VALUES('${alarmInfo.alarm_id}', now(), ${alarmInfo.alarm_type}, '${alarmInfo.event_id}', '${alarmInfo.camera_id}',
-                                ST_GeomFromText('POINT(${alarmInfo.location[0]} ${alarmInfo.location[1]})', 4326), ARRAY['${alarmInfo.sensors_triggered}'], 'person', '15', 'false', '${isAlarmExistsInZone.zone_id}') RETURNING id, alarmmsg_time`;
+                            VALUES(${str(alarmInfo.alarm_id)}, now(), ${num(alarmInfo.alarm_type)}, ${str(alarmInfo.event_id)}, ${str(alarmInfo.camera_id)},
+                                ST_GeomFromText('POINT(${num(alarmInfo.location[0])} ${num(alarmInfo.location[1])})', 4326), ARRAY[${str(alarmInfo.sensors_triggered)}], 'person', '15', 'false', ${str(isAlarmExistsInZone.zone_id)}) RETURNING id, alarmmsg_time`;
                 }
                 db.createWithQuery(insertUpdateData).then((alarm_data) => {
                   alarmInfo.id = alarm_data[0][0].id;
                   alarmInfo.alarmmsg_time = alarm_data[0][0].alarmmsg_time; // start time: tells apart alarms with the same track id
                   //if (alarmInfo.alarm_type == 2) {  // *** check as alarms are !2
-                    let alarmEventInsert = `INSERT INTO ALARM_EVENTS(alarm_id, event_type, timeofevent,location) values('${alarmInfo.alarm_id}', 0,now(),ST_GeomFromText('POINT(${alarmInfo.location[0]} ${alarmInfo.location[1]})', 4326))`;
+                    let alarmEventInsert = `INSERT INTO ALARM_EVENTS(alarm_id, event_type, timeofevent,location) values(${str(alarmInfo.alarm_id)}, 0,now(),ST_GeomFromText('POINT(${num(alarmInfo.location[0])} ${num(alarmInfo.location[1])})', 4326))`;
                     db.createWithQuery(alarmEventInsert).then((data) => {
                       console.log(data);
                     });
@@ -898,10 +899,10 @@ function findZone(alarmInfo){
 }
 
 function updateAlarmEvents(alarmInfo, zoneId) {
-  let alarmEventInsert = `INSERT INTO ALARM_EVENTS(alarm_id, event_type, timeofevent,location) values('${alarmInfo.alarm_id}', 0,now(),ST_GeomFromText('POINT(${alarmInfo.location[0]} ${alarmInfo.location[1]})', 4326))`;
+  let alarmEventInsert = `INSERT INTO ALARM_EVENTS(alarm_id, event_type, timeofevent,location) values(${str(alarmInfo.alarm_id)}, 0,now(),ST_GeomFromText('POINT(${num(alarmInfo.location[0])} ${num(alarmInfo.location[1])})', 4326))`;
   db.createWithQuery(alarmEventInsert).then((data) => {
     let customQuery = `SELECT count(a.zone_id) FROM alarms a INNER JOIN alarm_events ae ON a.alarm_id = ae.alarm_id and 
-        (ae.event_type = 0 or ae.event_type = 1) WHERE a.zone_id = '${zoneId}'`;
+        (ae.event_type = 0 or ae.event_type = 1) WHERE a.zone_id = ${str(zoneId)}`;
     db.selectWithQuery(customQuery).then((results) => {
       // console.log("count is ", results);
       if (results && results.length) {
@@ -1090,7 +1091,7 @@ exports.setVideoEntryData = async (req, res, next) => {
 function processVideoEntryData(data) {
   console.log('processVideoEntryData', data);
 
-  let tbl_ext_alarm_create = `INSERT INTO tbl_external_alarm(start_time, end_time, clip_status, ftp_server_ip, ftp_filename, alarm_id) VALUES(${new Date(data.start_time)}, ${new Date().getTime(data.end_time)}, 'AVAILABLE', ${data.ip}, '${env.videos_url + data.alarm_id}_raw.mp4', ${data.alarm_id})`;
+  let tbl_ext_alarm_create = `INSERT INTO tbl_external_alarm(start_time, end_time, clip_status, ftp_server_ip, ftp_filename, alarm_id) VALUES(${num(new Date(data.start_time).getTime())}, ${num(new Date().getTime())}, 'AVAILABLE', ${str(data.ip)}, ${str(env.videos_url + data.alarm_id + "_raw.mp4")}, ${str(data.alarm_id)})`;
   db.createWithQuery(tbl_ext_alarm_create).then((response) => {
     console.log(response);
   });
@@ -1122,7 +1123,7 @@ function processAlarmVideoEntry(data) {
       Object.keys(item).map((key) => {
         return item[key] == null || item[key] == ""
           ? "null"
-          : `'${item[key]}'`;
+          : `${str(item[key])}`;
       })
     )
     .map((_) => `(${_})`)
@@ -1166,7 +1167,7 @@ function processAlarmTransactionEntry(data) {
       Object.keys(item).map((key) => {
         return item[key] == null || item[key] == ""
           ? "null"
-          : `'${item[key]}'`;
+          : `${str(item[key])}`;
       })
     )
     .map((_) => `(${_})`)

@@ -27,7 +27,8 @@ router.get("/verfiy-token/:token", auth.verifyToken);
 // router.put("/users/:id", middleware.validateToken, auth.update);
 
 //Update user details
-router.put("/update-user/:id", auth.updateUser);
+// signed-in users only (stops anyone on the network changing a password)
+router.put("/update-user/:id", middleware.requireLogin, auth.updateUser);
 
 //Delete User
 // router.delete("/users/:id", middleware.validateToken, auth.delete);
