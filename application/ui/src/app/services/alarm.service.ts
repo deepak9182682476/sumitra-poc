@@ -10,8 +10,9 @@ import {
   HttpErrorResponse,
   HttpParams,
 } from '@angular/common/http';
-import { Observable, throwError, BehaviorSubject } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { Observable, throwError, BehaviorSubject, Subject } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import { isValidTrackId, isZeroTrackPush } from '../shared/track-id';
 import { config } from '../../config/config';
 
 import { webSocket } from 'rxjs/webSocket';
@@ -72,7 +73,13 @@ export class AlarmService {
   /** Get Alarm Details */
   getAlarmInfo(): Observable<any> {
     const API_URL = `${this.apiConfig.serverApiUrl.alarmService}/alarm-info`;
-    return this.http.get(API_URL).pipe(catchError(this.handleError));
+    return this.http.get(API_URL).pipe(
+      // alarms with track ID 0 are never listed (old rows saved before the backend rejected them)
+      map((res: any) => {
+        if (res && Array.isArray(res.data)) res.data = res.data.filter((a: any) => isValidTrackId(a && a.alarm_id));
+        return res;
+      }),
+      catchError(this.handleError));
   }
 
   // Clear Tracks of alarms
@@ -140,12 +147,28 @@ export class AlarmService {
 
   // Publish Alarm Data
   publishAlarmSocketData(data): any {
+    if (data && isZeroTrackPush({ category: "alarm", ...data })) return; // track ID 0: never shown
     this.socketAlarmData.next(data);
   }
 
   // Publish Alarm Data
   publishAccordionData(data): any {
     this.accordionZones.next(data);
+  }
+
+  // Assign UAV / Return Home buttons on an alarm card. The map handles them with the same code as the
+  // UAV Controls panel (DEMO drone, messages on success / failure). Plain Subject: an old click is never replayed.
+  private uavCommandEvent = new Subject<any>();
+  receiveUavCommand = this.uavCommandEvent.asObservable();
+  publishUavCommand(cmd: any): void {
+    this.uavCommandEvent.next(cmd);
+  }
+
+  // Radar re-used a track id for a new target: the old alarm card now has key "<id>@<start time>"
+  private alarmArchivedEvent = new Subject<any>();
+  receiveAlarmArchived = this.alarmArchivedEvent.asObservable();
+  publishAlarmArchived(msg: any): void {
+    this.alarmArchivedEvent.next(msg);
   }
 
   // Publish Slew TI Data

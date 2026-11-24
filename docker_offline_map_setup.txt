@@ -1,0 +1,100 @@
+OFFLINE OSM TILE SERVER - DOCKER SETUP STEPS
+==============================================
+
+PART 1 - ONE-TIME SETUP (needs internet only for this part)
+-------------------------------------------------------------
+
+1. Pull the tile server image
+   docker pull cvpr/openstreetmap-tile-server
+
+2. Download your region's OSM extract (one-time, needs internet)
+   Get the .osm.pbf from https://download.geofabrik.de/
+   Example: india-latest.osm.pbf
+   Place it at: C:\maps\india-latest.osm.pbf
+
+3. Create the data volume
+   docker volume create openstreetmap-data
+
+4. Run the import (one-time, can take 1-3+ hours depending on region size/memory)
+   docker run --name osm-import ^
+     -v /c/maps/india-latest.osm.pbf:/data.osm.pbf ^
+     -v openstreetmap-data:/var/lib/postgresql/12/main ^
+     -e THREADS=8 ^
+     -e OSM2PGSQL_EXTRA_ARGS="-C 4096" ^
+     cvpr/openstreetmap-tile-server import
+
+   Wait for it to finish (check with: docker logs osm-import --tail 20)
+   It should end with "+ exit 0"
+
+5. Remove the import container (data persists in the volume)
+   docker rm osm-import
+
+6. Create the tile cache volume
+   docker volume create openstreetmap-rendered-tiles
+
+7. Start the tile server (this is the one that needs to run every time)
+   docker run -d --name osm-tiles ^
+     -p 6090:80 ^
+     -v openstreetmap-data:/var/lib/postgresql/12/main ^
+     -v openstreetmap-rendered-tiles:/var/lib/mod_tile ^
+     -e ALLOW_CORS=enabled ^
+     --restart unless-stopped ^
+     cvpr/openstreetmap-tile-server run
+
+   --restart unless-stopped = auto-starts with Docker (good for offline deployment)
+   ALLOW_CORS=enabled = required so Angular app on a different port can fetch tiles
+
+8. Verify it works
+   Open in browser: http://localhost:6090/tile/0/0/0.png
+   (Tile URL format is /tile/{z}/{x}/{y}.png)
+
+
+PART 2 - MOVE TO ANOTHER OFFLINE MACHINE (no internet at all)
+-------------------------------------------------------------
+
+On a machine WITH internet/data already set up, package everything:
+
+   docker save cvpr/openstreetmap-tile-server -o osm-tile-server-image.tar
+
+   docker run --rm -v openstreetmap-data:/data -v %cd%:/backup alpine tar czf /backup/osm-data.tar.gz -C /data .
+
+   docker run --rm -v openstreetmap-rendered-tiles:/data -v %cd%:/backup alpine tar czf /backup/osm-tiles.tar.gz -C /data .
+
+Copy these 3 files to the offline machine:
+   osm-tile-server-image.tar
+   osm-data.tar.gz
+   osm-tiles.tar.gz
+
+On the OFFLINE machine, restore everything:
+
+   docker load -i osm-tile-server-image.tar
+
+   docker volume create openstreetmap-data
+   docker volume create openstreetmap-rendered-tiles
+
+   docker run --rm -v openstreetmap-data:/data -v %cd%:/backup alpine tar xzf /backup/osm-data.tar.gz -C /data
+
+   docker run --rm -v openstreetmap-rendered-tiles:/data -v %cd%:/backup alpine tar xzf /backup/osm-tiles.tar.gz -C /data
+
+Then run STEP 7 from Part 1 above to start the server.
+
+
+PART 3 - DAY-TO-DAY USAGE (no internet needed)
+-------------------------------------------------------------
+
+If the container was created with --restart unless-stopped, it auto-starts
+with Docker. Otherwise, to start it manually after a reboot:
+
+   docker start osm-tiles
+
+To stop it:
+   docker stop osm-tiles
+
+To check it's running:
+   docker ps --filter name=osm-tiles
+
+To check logs / troubleshoot:
+   docker logs osm-tiles --tail 50
+
+Tile endpoint for apps to consume:
+   http://localhost:6090/tile/{z}/{x}/{y}.png

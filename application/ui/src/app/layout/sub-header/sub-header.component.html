@@ -2,7 +2,7 @@
   <!-- left box -->
   <div class="navbar-nav flex-fill align-items-left justify-content-start warning-nav">
     <div class="d-flex">
-      <div class="btn-group btn-group-sm btns-nav border-right-0" *ngIf="isSignedIn">
+      <div class="btn-group btn-group-sm btns-nav border-right-0" *ngIf="isSignedIn && showRobotControls">
         <button class="btn btn-sm btn-success" title="Add Robot to PMM" #selRobotsPopover="bs-popover"
           [popover]="addRobotTemplate" placement="bottom right" containerClass="sysNotifyPopup" [outsideClick]="false">
           <i class="fa fa-plus icon-white" aria-hidden="true"></i> &nbsp; Add Robot
@@ -59,7 +59,9 @@
   <!-- right box -->
   <div class="navbar-nav flex-fill flex-row align-items-center justify-content-end warning-nav">
     <div class="d-flex">
-      <div class="btn-group btn-group-sm btns-nav" *ngIf="isSignedIn">
+      <!-- RTH (Return To Home) buttons per old Bhuj UAV: hidden for Sundarbans - their command code is commented out.
+           Use RTL in the UAV window / Return Home on the alarm card instead. Change *ngIf="false" back to *ngIf="isSignedIn" to show. -->
+      <div class="btn-group btn-group-sm btns-nav" *ngIf="false">
         <button href="#" class="btn rthz-btn rthz-light" *ngFor="let item of uavs; let i = index"
           (click)="assignToDefault(item, 'UAV')" id="{{ item?.properties?.zone_id }}-uav">
           RTH - {{ item?.properties?.uav_id }}

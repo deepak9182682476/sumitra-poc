@@ -8,7 +8,9 @@ import {
   ViewEncapsulation,
   Input,
   ChangeDetectorRef,
+  NgZone,
   TemplateRef,
+  HostListener,
 } from "@angular/core";
 import { BsModalService, BsModalRef } from "ngx-bootstrap/modal";
 import { FormBuilder, FormGroup, Validators, NgForm } from "@angular/forms";
@@ -27,21 +29,23 @@ import { fromCircle } from "ol/geom/Polygon";
 import Point from "ol/geom/Point";
 import { GeoJSON } from "ol/format";
 import { getWidth } from "ol/extent";
+import { isValidTrackId, isZeroTrackPush, radarTrackIdOf } from "../../shared/track-id";
 import Feature from "ol/Feature";
 import KML from "ol/format/KML";
-import { Circle as CircleStyle, Fill, Stroke, Style, Icon } from "ol/style";
+import { Circle as CircleStyle, Fill, Stroke, Style, Icon, Text } from "ol/style";
 import { Tile as TileLayer, Vector as VectorLayer } from "ol/layer";
 import { TileWMS, XYZ, Vector as VectorSource, Cluster } from "ol/source";
 import { DataService } from "../../services/data.service";
 import { EventService } from "../../services/event.service";
 import { CommonService } from "../../services/common.service";
 import { AlarmService } from "../../services/alarm.service";
-import { Subscription } from "rxjs";
+import { Subscription, Subject, merge } from "rxjs";
 import { ThemeService } from "../../theme/theme.service";
 import { RndfService } from "src/app/services/rndf.service";
 import { ActivatedRoute, Router } from "@angular/router";
 import { DiagnosticsService } from "src/app/services/diagnostics.service";
 import { AlarmDataService } from '../../shared/alarm-data.service';
+import { server_info, stream_urls } from "../../../config/config";
 
 const CustomGeoJson = require("geojson");
 
@@ -65,11 +69,12 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   isPtzExpanded = false;
   enableUavVideo = false;
   //uavStreamUrl = 'http://192.168.2.146:8091/uav';
-  uavStreamUrl = 'https://itms.gctp.in/stream?ip=10.0.207.190'
+  // live video links come from config.ts -> stream_urls (links from the RTS team)
+  uavStreamUrl = stream_urls.UAV;
   isThermalFeed = false;
   //slewDayUrl = 'http://192.168.2.146:8091/';
-  slewDayUrl = 'https://itms.gctp.in/stream?ip=10.0.207.190';
-  slewThermalUrl = 'http://192.168.2.146:8091/thermal';
+  slewDayUrl = stream_urls.DAY;
+  slewThermalUrl = stream_urls.THERMAL;
   get slewFeedUrl(): string { return this.isThermalFeed ? this.slewThermalUrl : this.slewDayUrl; }
   isSlewPopupEnabled = true; // *** thermal
   isCameraPopupEnabled = false; // *** thermal
@@ -113,6 +118,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   mapLayerSubscription: Subscription;
   roleAuthSubscription: Subscription;
   slewTISubscription: Subscription;
+  uavCommandSubscription: Subscription;
   tracksList = [];
   isMaskTypeSelected: boolean = false;
   isMapView: boolean = true;
@@ -146,13 +152,15 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild("paOverlayElement") paOverlayElement: ElementRef;
 
   @ViewChild("daPopupElement") daPopupElement: ElementRef;
-  @ViewChild("daPopupCloser") daPopupCloser: ElementRef;
+  @ViewChild("daPopupCloser") daPopupCloser!: ElementRef;
   @ViewChild("daOverlayElement") daOverlayElement: ElementRef;
 
+  // Manual camera steering (spec v2: POST :8000/move)
   ptzControls: any = {
-    query: "position",
-    camera: 2,
-    track_id: null
+    pan: 0,
+    tilt: 0,
+    zoom_distance_m: 1000,
+    gimbal_mode: 0, // 0 Position, 1 Stabilize, 2 Velocity, 4 Halt
   };
   ptzSelected = {
     pan: false,
@@ -167,12 +175,12 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   private startWidth = 220;
   private startHeightOffset = 0;
   uavWidth = 220;
-  uavHeight = 220;
+  uavHeight = 180;
   isUavResizing = false;
   private startUavX = 0;
   private startUavY = 0;
   private startUavWidth = 220;
-  private startUavHeight = 220;
+  private startUavHeight = 180;
   activeSlewAlarm: any = null;
   ti_camera_ip: any = "";
   ti_location: any = [];
@@ -197,15 +205,16 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     public router: Router,
     public diagnosticsService: DiagnosticsService,
     private cdr: ChangeDetectorRef,
-    private alarmDataService: AlarmDataService
+    private alarmDataService: AlarmDataService,
+    private ngZone: NgZone
   ) {
     this.mapParams = this.dataService.config.MapConfig;
     this.view = new View({
       // extent: this.mapParams.DefaultExtent,
       center: this.mapParams.DefaultCenter,
       zoom: this.mapParams.DefaultZoom,
-      // minZoom: this.mapParams.MinZoom,
-      // maxZoom: this.mapParams.MaxZoom,
+      minZoom: this.mapParams.MinZoom,
+      maxZoom: this.mapParams.MaxZoom,
       projection: this.mapParams.Projection,
     });
 
@@ -394,6 +403,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.startCamHealth();
     /* var mousePosition = new MousePosition({
       coordinateFormat: createStringXY(7),
       projection: 'EPSG:4326',
@@ -471,6 +481,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.updateRadarTrack();
       this.getServerData();
       this.olmap.setTarget("map");
+      this.setUavMarker("uav-home", this.uavHome, false);
+      this.startDemoFeeds();
+      this.startUavPolling();
       this.changeVisibility();
       this.checkAuthendication();
       // this.retriveRNDFFileData();
@@ -488,6 +501,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           opacity: "Yes"
         })
       );
+      // hide the static QRT placeholder (0,0) until a live QRT position arrives
+      const qrtPlaceholderLayer = this.findLayer("QRT");
+      if (qrtPlaceholderLayer) { qrtPlaceholderLayer.setVisible(false); }
       if (!this.commonService.getLocalStorage("userInfo")) {
         this.themeSelection("default");
       } else {
@@ -505,22 +521,27 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       this.commonService.watchStorage().subscribe((data: string) => {
         // this will call whenever your localStorage data changes
-        const getSignedInData = this.commonService.getDecryptedUserData();
-        const userInfo = getSignedInData ? JSON.parse(getSignedInData) : false;
-        const theme = userInfo && userInfo.theme ? userInfo.theme : "dark";
-        const selected_font =
-          userInfo && userInfo.selected_font
-            ? userInfo.selected_font
-            : "Medium";
-        const event = {
-          target: {
-            checked: true,
-            value: theme,
-          },
-        };
-        this.themeSelection(event);
-        this.changeMaskedAreaTheme(theme);
-        this.changeIconScale(selected_font);
+        // (try/catch: an error here used to unsubscribe this listener, so the map stopped following the theme)
+        try {
+          const getSignedInData = this.commonService.getDecryptedUserData();
+          const userInfo = getSignedInData ? JSON.parse(getSignedInData) : false;
+          const theme = userInfo && userInfo.theme ? userInfo.theme : "dark";
+          const selected_font =
+            userInfo && userInfo.selected_font
+              ? userInfo.selected_font
+              : "Medium";
+          const event = {
+            target: {
+              checked: true,
+              value: theme,
+            },
+          };
+          this.themeSelection(event);
+          this.changeMaskedAreaTheme(theme);
+          this.changeIconScale(selected_font);
+        } catch (e) {
+          console.error("Map theme update failed", e);
+        }
       });
       this.popup = new Overlay({
         element: <HTMLDivElement>document.getElementById("popup"),
@@ -883,16 +904,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     // else if (this.activeRouteUrl == "system-configuration") {
     // }
-    var centerPosition = <HTMLElement>(
-      document.getElementById("default-location")
-    );
-    centerPosition.addEventListener("click", function () {
-      self.view.animate({
-        center: self.mapParams.DefaultCenter,
-        zoom: self.mapParams.DefaultZoom,
-        duration: 2000,
-      });
-    });
+    // "go to default location" button is wired in the template: (click)="goToDefaultLocation()"
   }
 
   loadSystemConfigurationMap(data) {
@@ -1247,16 +1259,20 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   getWatchStorage() {
     this.commonService.watchStorage().subscribe((data: string) => {
       // this will call whenever your localStorage data changes
-      const getSignedInData = this.commonService.getDecryptedUserData();
-      const userInfo = getSignedInData ? JSON.parse(getSignedInData) : false;
-      const theme = userInfo && userInfo.theme ? userInfo.theme : "dark";
-      const event = {
-        target: {
-          checked: true,
-          value: theme,
-        },
-      };
-      this.themeSelection(event);
+      try {
+        const getSignedInData = this.commonService.getDecryptedUserData();
+        const userInfo = getSignedInData ? JSON.parse(getSignedInData) : false;
+        const theme = userInfo && userInfo.theme ? userInfo.theme : "dark";
+        const event = {
+          target: {
+            checked: true,
+            value: theme,
+          },
+        };
+        this.themeSelection(event);
+      } catch (e) {
+        console.error("Map theme update failed", e);
+      }
     });
   }
 
@@ -1296,7 +1312,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                   Source: trackObj,
                   SourceType: "GeoJSON",
                   Style: {
-                    color: "orange",
+                    color: this.singleTrackColor || "orange",
                     width: 1,
                     fill: "transparent",
                   },
@@ -1359,18 +1375,74 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       );
     });
 
-    // console.log("border details", this.dataService.config.border_layer)
-    // this.addLayerToMap( Object.assign({}, this.layers, {
-    //   LayerTitle: "Border",
-    //   LayerType: "Vector",
-    //   ApplyClustering: "No",
-    //   Source: this.dataService.config.border_layer,
-    //   SourceType: "GeoJSON",
-    //   Style: { color: "#00FFF6", width: 6, fill: "rgba(212, 66, 66, 0)", type: "Polygon" },
-    //   zIndex: 3,
-    //   Popup: "No"
-    // }))
+    this.withIndiaBorder((border) => {
+      this.addLayerToMap(
+        Object.assign({}, this.layers, {
+          LayerTitle: "Border",
+          LayerType: "Vector",
+          ApplyClustering: "No",
+          Source: border,
+          SourceType: "GeoJSON",
+          Style: {
+            color: "#00FFF6",
+            width: 3,
+            fill: "rgba(0, 0, 0, 0)",
+            type: "Polygon",
+          },
+          zIndex: 3,
+          Popup: "No",
+        })
+      );
+    });
 
+    // India - Bangladesh international border: dashed red, separate from the cyan island outlines
+    this.withIntlBorder((intl) => {
+      this.addLayerToMap(
+        Object.assign({}, this.layers, {
+          LayerTitle: "International Border",
+          LayerType: "Vector",
+          ApplyClustering: "No",
+          Source: intl,
+          SourceType: "GeoJSON",
+          Style: {
+            color: "#ff3b30",
+            width: 3,
+            linedash: [14, 6],
+            fill: "rgba(0, 0, 0, 0)",
+            type: "Polygon",
+          },
+          zIndex: 4,
+          Popup: "No",
+        })
+      );
+    });
+  }
+
+  // India boundary drawn in cyan. assets/india-border.geojson = OpenStreetMap boundary of India incl. every island
+  // (DataMeet india-osm, same source as the offline map tiles): ~2 m Sundarbans, ~10 m West Bengal, ~150 m elsewhere.
+  // If the file can't be loaded, the old coarse outline in config.ts (border_layer) is used.
+  private indiaBorderGeo: any = null;
+  private withIndiaBorder(cb: (geojson: any) => void) {
+    if (this.indiaBorderGeo) { cb(this.indiaBorderGeo); return; }
+    fetch("assets/india-border.geojson")
+      .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then((geo) => { this.indiaBorderGeo = geo; cb(geo); })
+      .catch((err) => {
+        console.log("India border file not loaded, using the outline from config.ts:", err && err.message);
+        if (this.dataService.config.border_layer) cb(this.dataService.config.border_layer);
+      });
+  }
+
+  // All of India's international land borders (assets/international-border.geojson): Pakistan, China,
+  // Nepal, Bhutan, Myanmar, Bangladesh (river border at the Sundarbans) and Afghanistan. Official boundary of
+  // India (DataMeet india-composite / LSIB) with the sea coast removed. Sir Creek to the Sundarbans.
+  private intlBorderGeo: any = null;
+  private withIntlBorder(cb: (geojson: any) => void) {
+    if (this.intlBorderGeo) { cb(this.intlBorderGeo); return; }
+    fetch("assets/international-border.geojson")
+      .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then((geo) => { this.intlBorderGeo = geo; cb(geo); })
+      .catch((err) => console.log("International border file not loaded:", err && err.message));
   }
 
   getPerimeterCoordinates1() {
@@ -1383,6 +1455,48 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           SourceType: "GeoJSON",
           Style: { color: "#00FFF6", width: 3, fill: "rgba(255,255,255,0)" },
           zIndex: 1,
+          Popup: "No",
+        })
+      );
+    });
+
+    this.withIndiaBorder((border) => {
+      this.addLayerToMap1(
+        Object.assign({}, this.layers, {
+          LayerTitle: "Border",
+          LayerType: "Vector",
+          ApplyClustering: "No",
+          Source: border,
+          SourceType: "GeoJSON",
+          Style: {
+            color: "#00FFF6",
+            width: 3,
+            fill: "rgba(0, 0, 0, 0)",
+            type: "Polygon",
+          },
+          zIndex: 3,
+          Popup: "No",
+        })
+      );
+    });
+
+    // India - Bangladesh international border: dashed red, separate from the cyan island outlines
+    this.withIntlBorder((intl) => {
+      this.addLayerToMap1(
+        Object.assign({}, this.layers, {
+          LayerTitle: "International Border",
+          LayerType: "Vector",
+          ApplyClustering: "No",
+          Source: intl,
+          SourceType: "GeoJSON",
+          Style: {
+            color: "#ff3b30",
+            width: 3,
+            linedash: [14, 6],
+            fill: "rgba(0, 0, 0, 0)",
+            type: "Polygon",
+          },
+          zIndex: 4,
           Popup: "No",
         })
       );
@@ -1525,23 +1639,28 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   }
 
+  // Remove all zone layers. (Was done while looping over the live layer list: removing one layer shifted
+  // the next one past the loop, so the Masked layer stayed and every reload added a second copy -
+  // the Zones menu then showed every zone twice.)
+  private removeZoneLayers() {
+    const zoneLayers = this.olmap
+      .getLayers()
+      .getArray()
+      .filter((layer: any) =>
+        layer.get("id") !== 1 && layer.values_.id !== "tileLayer" &&
+        (layer.get("title") === "Unmasked Zones" || layer.get("title") === "Masked Zones"));
+    zoneLayers.forEach((layer: any) => this.olmap.removeLayer(layer));
+  }
+
+  private zoneLoadSeq = 0;
   getZoneCoordinates(reload = null) {
     if (reload === true) {
-      this.olmap
-        .getLayers()
-        .getArray()
-        .filter((layer, i) => {
-          if (layer.get("id") !== 1 && layer.values_.id !== "tileLayer") {
-            if (
-              layer.get("title") === "Unmasked Zones" ||
-              layer.get("title") === "Masked Zones"
-            ) {
-              this.olmap.removeLayer(layer);
-            }
-          }
-        });
+      this.removeZoneLayers();
     }
+    const seq = ++this.zoneLoadSeq;
     this.dataService.getZoneCoordinates().subscribe((result: any) => {
+      if (seq !== this.zoneLoadSeq) return; // a newer reload is on its way - only the latest one draws
+      this.removeZoneLayers();              // never draw the zones on top of an older copy
       if (result && result.data.length > 0) {
         result.data.forEach((element) => {
           if (element.zone_priority) {
@@ -1587,10 +1706,33 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             );
           }
         });
-
-
+        this.getUpdatedLayers();
       }
     });
+  }
+
+  // Zones menu -> click a zone -> "Delete zone" (asks for a second click, then deletes it from the database)
+  zoneDeleteArmed: any = null;
+  private zoneDeleteTimer: any = null;
+  deleteZone(props: any) {
+    const id = props && props.zone_area;
+    if (id === undefined || id === null) return;
+    if (this.zoneDeleteArmed !== id) {
+      this.zoneDeleteArmed = id;
+      clearTimeout(this.zoneDeleteTimer);
+      this.zoneDeleteTimer = setTimeout(() => (this.zoneDeleteArmed = null), 4000);
+      return;
+    }
+    this.zoneDeleteArmed = null;
+    clearTimeout(this.zoneDeleteTimer);
+    this.dataService.deleteZone(id).subscribe(
+      () => {
+        this.toastr.success("Zone-" + id + " deleted");
+        this.getZoneCoordinates(true); // removes the zone layers and loads what is left
+        this.getUpdatedLayers();       // refresh the Zones list (also when no zone is left)
+      },
+      (err: any) => this.toastr.error("Could not delete zone-" + id + ": " + ((err && err.error && err.error.message) || "server not reachable"))
+    );
   }
 
   setZoneCoordinates(zonedata) {
@@ -1953,15 +2095,12 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   themeSelection($event = null) {
-    this.olmap.getLayers().forEach((layer) => {
-      if (
-        layer &&
-        layer.get("id") &&
-        (layer.get("id") == 1 || layer.get("id") == 2)
-      ) {
-        this.olmap.removeLayer(layer);
-      }
-    });
+    // collect the old base-map layers first, then remove them
+    // (removing inside forEach skips the next layer, which could leave an old light/dark map behind)
+    const oldBaseLayers = this.olmap.getLayers().getArray().filter((layer) =>
+      layer && layer.get("id") && (layer.get("id") == 1 || layer.get("id") == 2)
+    );
+    oldBaseLayers.forEach((layer) => this.olmap.removeLayer(layer));
     if ($event === "default" || $event?.target?.checked) {
       if ($event?.target?.checked) this.mapParams.Theme = $event?.target?.value;
       let url = undefined;
@@ -1976,7 +2115,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         // url =
         //   this.dataService.config.LOCAL_MAP_URL +
         //   "/styles/osm-bright/{z}/{x}/{y}.png";
-        url = 'https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+        // CARTO light tiles need an API key ("API KEY REQUIRED") and don't work offline:
+        // use the offline map server, shown in light colours (.light-map-tiles in the scss)
+        url = 'http://localhost:6090/tile/{z}/{x}/{y}.png';
       } if (this.mapParams.Theme === "satellite") {
         // url =
         // this.dataService.config.LOCAL_SAT_MAP_URL +
@@ -1988,21 +2129,29 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       // this.dataService.config.LOCAL_SAT_MAP_URL +
       // "/wmts/gm_layer/gm_grid/{z}/{x}/{y}.png";
       //url = 'http://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-      url = 'http://localhost:6090/tile/{z}/{x}/{y}.png';
+      // (removed) url = 'http://localhost:6090/tile/{z}/{x}/{y}.png';  <- this line overwrote the Satellite choice
+      if (url == undefined) {
+        url = 'http://localhost:6090/tile/{z}/{x}/{y}.png'; // any other theme -> offline dark map
+      }
 
       if (url != undefined) {
-        this.mapParams.satelliteThemeChecked = false;
-        this.olmap.addLayer(
-          new TileLayer({
-            id: 1,
-            source: new XYZ({
-              attributions: "",
-              url: url,
-              crossOrigin: "anonymous",
-            }),
-            zIndex: -1,
-          })
-        );
+        // keep the Satellite tick-box in step with the map that is shown
+        this.mapParams.satelliteThemeChecked = this.mapParams.Theme === "satellite";
+        const tileOpts: any = { id: 1, source: this.createTileSource(url), zIndex: -1 };
+        // base map gets its own canvas; the light filter is switched by a class on the map element,
+        // so switching back to dark always removes it (no page refresh needed)
+        tileOpts.className = "ol-layer base-map-tiles";
+        this.setLightMapClass(this.olmap, this.mapParams.Theme === "light");
+        this.olmap.addLayer(new TileLayer(tileOpts));
+        // Add labels overlay on satellite so place names are visible
+        if (this.mapParams.Theme === "satellite") {
+          const labelsUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+          this.olmap.addLayer(new TileLayer({
+            id: 2,
+            source: new XYZ({ url: labelsUrl, crossOrigin: "anonymous" }),
+            zIndex: 0
+          } as any));
+        }
         this.olmap.getView().setMinZoom(this.mapParams.MinZoom);
       }
     } else if (!$event?.target?.checked) {
@@ -2017,16 +2166,148 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  mapThemeSelection($event = null) {
-    this.mrolmap.getLayers().forEach((layer) => {
-      if (
-        layer &&
-        layer.get("id") &&
-        (layer.get("id") == 1 || layer.get("id") == 2)
-      ) {
-        this.mrolmap.removeLayer(layer);
-      }
+  // Light theme = the dark offline tiles shown inverted (.light-map .base-map-tiles in the scss).
+  // The class sits on the map element, so it follows the theme immediately.
+  private setLightMapClass(map: any, light: boolean) {
+    if (!map) return;
+    map.set("lightTheme", light);
+    const el = map.getTargetElement ? map.getTargetElement() : null;
+    if (el && el.classList) {
+      el.classList.toggle("light-map", light);
+    } else {
+      // map not attached to the page yet: apply when it is
+      map.once("change:target", () => this.setLightMapClass(map, map.get("lightTheme")));
+    }
+  }
+
+  private createTileSource(url: string) {
+    return new XYZ({
+      attributions: "",
+      url: url,
+      crossOrigin: "anonymous",
+      tileLoadFunction: (imageTile: any, src: string) => {
+        const img = imageTile.getImage();
+        if (src.indexOf(":6090") === -1 && src.indexOf(":8088") === -1 && src.indexOf(":5101") === -1 && src.indexOf("dark") === -1) {
+          img.src = src;
+          return;
+        }
+
+        const match = src.match(/\/(\d+)\/(\d+)\/(\d+)\.(png|jpg)/);
+        if (!match) {
+          img.src = src;
+          return;
+        }
+
+        const z = parseInt(match[1], 10);
+        const tileX = parseInt(match[2], 10);
+        const tileY = parseInt(match[3], 10);
+        const totalTiles = Math.pow(2, z);
+
+        // Tile longitude range
+        const minLon = (tileX / totalTiles) * 360 - 180;
+        const maxLon = ((tileX + 1) / totalTiles) * 360 - 180;
+
+        // Tile latitude range
+        const nTop = Math.PI - (2 * Math.PI * tileY) / totalTiles;
+        const maxLat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(nTop) - Math.exp(-nTop)));
+        const nBottom = Math.PI - (2 * Math.PI * (tileY + 1)) / totalTiles;
+        const minLat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(nBottom) - Math.exp(-nBottom)));
+
+        // If the tile is completely outside Bangladesh Sundarbans region:
+        // Indian Sundarbans (west of border) keeps all blue dotted lines naturally!
+        if (maxLon < 88.9 || minLon > 91.5 || minLat > 23.5 || maxLat < 21.0) {
+          img.src = src;
+          return;
+        }
+
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = image.naturalWidth || image.width;
+            canvas.height = image.naturalHeight || image.height;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              img.src = src;
+              return;
+            }
+            ctx.drawImage(image, 0, 0);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            let modified = false;
+
+            const totalPx = 256 * totalTiles;
+
+            for (let py = 0; py < canvas.height; py++) {
+              const globalY = tileY * 256 + py;
+              const n = Math.PI - (2 * Math.PI * globalY) / totalPx;
+              const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+
+              // International border line longitude between India and Bangladesh
+              // Each value is shifted ~0.008-0.01° east of the actual border to ensure
+              // Indian islands near the border keep all their water dots.
+              let borderLon = 89.100;
+              if (lat < 21.65) borderLon = 89.100;
+              else if (lat < 21.72) borderLon = 89.085;
+              else if (lat < 21.78) borderLon = 89.060;
+              else if (lat < 21.88) borderLon = 89.045; // West of Talpatti island
+              else if (lat < 21.95) borderLon = 89.038; // River channel north of Talpatti
+              else if (lat < 22.13) borderLon = 89.065;
+              else if (lat < 22.25) borderLon = 89.076;
+              else if (lat < 22.45) borderLon = 89.010;
+              else if (lat < 22.70) borderLon = 88.940;
+              else borderLon = 88.890;
+
+              for (let px = 0; px < canvas.width; px++) {
+                const idx = (py * canvas.width + px) * 4;
+                const r = data[idx];
+                const g = data[idx + 1];
+                const b = data[idx + 2];
+
+                // Check for blue wetland / mangrove water features (wider threshold
+                // to catch all blue variants on Bangladesh side)
+                if (b > 150 && r < 130 && g > 90) {
+                  const globalX = tileX * 256 + px;
+                  const lon = (globalX / totalPx) * 360 - 180;
+
+                  // ONLY remove blue dotted lines if located in Bangladesh!
+                  // In Indian Sundarbans (lon <= borderLon), KEEP the blue dotted lines!
+                  if (lon > borderLon) {
+                    data[idx] = 58;
+                    data[idx + 1] = 58;
+                    data[idx + 2] = 58;
+                    modified = true;
+                  }
+                }
+              }
+            }
+
+            if (modified) {
+              ctx.putImageData(imgData, 0, 0);
+              img.src = canvas.toDataURL();
+            } else {
+              img.src = src;
+            }
+          } catch (e) {
+            img.src = src;
+          }
+        };
+        image.onerror = () => {
+          img.src = src;
+        };
+        image.src = src;
+      },
     });
+  }
+
+  mapThemeSelection($event = null) {
+    // collect the old base-map layers first, then remove them
+    // (removing inside forEach skips the next layer, which could leave an old light/dark map behind)
+    const oldBaseLayers = this.mrolmap.getLayers().getArray().filter((layer) =>
+      layer && layer.get("id") && (layer.get("id") == 1 || layer.get("id") == 2)
+    );
+    oldBaseLayers.forEach((layer) => this.mrolmap.removeLayer(layer));
     if ($event === "default" || $event?.target?.checked) {
       if ($event?.target?.checked) this.mapParams.Theme = $event?.target?.value;
 
@@ -2047,7 +2328,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         // url =
         //   this.dataService.config.LOCAL_MAP_URL +
         //   "/styles/osm-bright/{z}/{x}/{y}.png";
-        url = 'https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+        // CARTO light tiles need an API key ("API KEY REQUIRED") and don't work offline:
+        // use the offline map server, shown in light colours (.light-map-tiles in the scss)
+        url = 'http://localhost:6090/tile/{z}/{x}/{y}.png';
       } if (this.mapParams.Theme === "satellite") {
         // url =
         //   this.dataService.config.LOCAL_SAT_MAP_URL +
@@ -2057,17 +2340,19 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
       if (url != undefined) {
         // this.mapParams.satelliteThemeChecked = false;
-        this.mrolmap.addLayer(
-          new TileLayer({
-            id: 1,
-            source: new XYZ({
-              attributions: "",
-              url: url,
-              crossOrigin: "anonymous",
-            }),
-            zIndex: -1,
-          })
-        );
+        const tileOpts: any = { id: 1, source: this.createTileSource(url), zIndex: -1 };
+        tileOpts.className = "ol-layer base-map-tiles";
+        this.setLightMapClass(this.mrolmap, this.mapParams.Theme === "light");
+        this.mrolmap.addLayer(new TileLayer(tileOpts));
+        // Add labels overlay on satellite so place names are visible
+        if (this.mapParams.Theme === "satellite") {
+          const labelsUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+          this.mrolmap.addLayer(new TileLayer({
+            id: 2,
+            source: new XYZ({ url: labelsUrl, crossOrigin: "anonymous" }),
+            zIndex: 0
+          } as any));
+        }
         this.mrolmap.getView().setMinZoom(this.mapParams.MinZoom);
       }
     } else if (!$event?.target?.checked) {
@@ -2136,24 +2421,30 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   getServerData(): void {
     // Subscribe Alarm Data
     // isTrackReceived = false
-    this.alarmSubscription = this.alarmService
-      .getServerPushData()
-      .subscribe((results) => {
+    // "Clear Tracks" in the alarm list publishes this event; nothing on the map listened to it before
+    this.clearedTracksSubscription = this.alarmService.clearedAlarmData.subscribe((res: any) => {
+      if (res && res.type === "clear_all_tracks") {
+        this.clearAllTracksOnMap();
+      }
+    });
+
+    // localPush lets the Manual Input panel feed the same handler when the backend is unavailable
+    this.alarmSubscription = merge(this.alarmService.getServerPushData(), this.localPush)
+      .subscribe((results: any) => {
         // console.log(results)
+        // Track ID 0 is not a real target: never draw it, never list it, never sound the alarm for it
+        if (isZeroTrackPush(results)) {
+          console.log("[MAPS] ignored " + results.category + " message with track ID 0");
+          return;
+        }
+        if (results && results.category === "alarm_archived") {
+          this.onAlarmArchived(results);
+          return;
+        }
         if (results && results.category === "uav_status") {
-          let layer = this.findLayer("uav_tracks")
-          if (layer) {
-            const features = layer.getSource().getFeatures();
-            let feature = features.find((feature) => {
-              if (feature.getProperties().ip === results.gJson.properties.ip) {
-                feature.getGeometry().setCoordinates(results.gJson.geometry.coordinates);
-                return true
-              }
-            });
-            if (!feature) {
-              this.createFeatureOnGeoJSON(layer, results)
-            }
-          }
+          this.updateUavPosition(results);
+        } else if (results && results.category === "drone_telemetry") {
+          this.onKafkaDroneTelemetry(results.data);
         } else if (results && results.category === "ugvpath") {
           if (results) {
             let layer = this.findLayer("ugvpath");
@@ -2177,6 +2468,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           if (results) {
             let layer = this.findLayer("QRT");
             if (layer) {
+              layer.setVisible(true); // live QRT position received, show the marker
               const features = layer.getSource().getFeatures();
               features.find((feature) => {
                 if (feature.getProperties().category === "qrt_location") {
@@ -2304,6 +2596,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 featureProjection: 'EPSG:4326'
               });
               newFeature.setId(gJson.properties.id); // ensure ID is set for future lookups
+              newFeature.setStyle(this.trackStyle(gJson.properties.id)); // each track ID gets its own colour
               layer.getSource().addFeature(newFeature);
             }
           }
@@ -2389,9 +2682,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
               results[0].event_type &&
               results[0].event_type === 2
             ) {
-              if (this.olmap.getOverlays().getArray().length) {
-                this.removeOverlay(results, false);
-              }
+              this.removeOverlay(results, false); // also removes a copy hidden by the Early Warning switch
             } else {
               let hasOverlay = false;
               if (results && results[0]) {
@@ -2414,6 +2705,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         if (results) {
           let self = this;
           let overlayIndexes = []
+          if (results.type === "ea") this.hiddenEarlyAlarms = []; // early alarms cleared
           if (results.type === "ea" || results.type === "ca") {
             {
               let overlays = this.olmap.getOverlays().getArray();
@@ -2469,6 +2761,1325 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     return
   }
 
+  // ---------------- Slew TI window buttons: feedback ----------------
+  demoCamState = "";       // shown in the DEMO picture after a button press
+  private demoCamStateAt = 0;
+
+  // Start / Stop Tracking need an alarm: open Slew TI from an alarm card (camera icon) to select one.
+  private needSlewAlarm(action: string): boolean {
+    if (this.activeSlewAlarm) return true;
+    this.toastr.warning(action + ": no alarm selected. Open Slew TI from an alarm card in the left list.");
+    return false;
+  }
+
+  // In DEMO mode the buttons act on the demo picture instead of a real camera.
+  private camDemo(state: string, message: string): boolean {
+    if (!this.useDemoFeed("slew")) return false;
+    this.demoCamState = state;
+    this.demoCamStateAt = Date.now();
+    this.demoCamApply(state);
+    console.log("DEMO: " + message);
+    return true;
+  }
+
+  private camOk(message: string, res: any) {
+    console.log(message, res);
+    this.toastr.success(message);
+  }
+
+  private camFail(err: any) {
+    console.log("Camera server error:", err);
+    this.toastr.error(this.apiErrorText(err, "Camera server", server_info.CAMERA_API));
+  }
+
+  // Server answered with an error (e.g. 400 + {"status":"error","message":...}) -> show its message.
+  // No answer at all (status 0 / network error) -> "not reachable".
+  apiErrorText(err: any, name: string, url: string): string {
+    const status = err && typeof err.status === "number" ? err.status : 0;
+    if (status > 0) {
+      const msg = err.error && (err.error.message || err.error.detail);
+      return name + ": " + (msg ? msg : "error " + status);
+    }
+    return name + " not reachable (" + url + ")";
+  }
+
+  // Camera service health (spec v2: GET :8000/health) - shown as CAM LINK UP / DOWN in the Slew TI window
+  camLink: "unknown" | "up" | "down" = "unknown";
+  camHealth: any = null;
+  private camHealthTimer: any = null;
+  private startCamHealth() {
+    if (this.camHealthTimer) return;
+    this.camHealthTimer = setInterval(() => this.pollCamHealth(), 5000);
+  }
+  private stopCamHealth() {
+    if (this.camHealthTimer) clearInterval(this.camHealthTimer);
+    this.camHealthTimer = null;
+  }
+  pollCamHealth() {
+    if (!this.enableVideo || this.useDemoFeed("slew")) { this.camLink = "unknown"; return; }
+    this.dataService.cameraHealth().subscribe(
+      (h: any) => { this.camHealth = h; this.camLink = "up"; },
+      () => { this.camHealth = null; this.camLink = "down"; }
+    );
+  }
+  get camHealthTitle(): string {
+    const h = this.camHealth;
+    if (!h) return "Camera server " + (this.camLink === "down" ? "not reachable" : "");
+    return "Camera " + (h.camera || "") + (h.zoom ? " | EO preset " + h.zoom.last_eo + ", IR preset " + h.zoom.last_ir : "") + (h.kafka ? " | Kafka " + h.kafka : "");
+  }
+
+  // ---------------- UAV Controls (Drone API spec v2) ----------------
+  // Panel under the UAV video. DRONE_DEMO = true drives the simulated drone instead of the real one.
+  isUavCtlExpanded = false;
+  uavCtl = { trackId: null as number, lat: 22.1320, lon: 89.0550, alt: 250, setAlt: 250 };
+  uavLink: "unknown" | "up" | "down" = "unknown";
+  uavTelemetry: any = null;   // last /telemetry drone entry
+  uavHealth: any = null;      // last /health response
+  private uavPollTimer: any = null;
+  private uavPollSkip = 0;
+  demoDroneAlt = 250;
+  demoCamTilt = -30;
+  demoCamZoom = 1;
+  demoPursuitTrack: number = null;
+  private demoPursuitTimer: any = null;
+  private demoHeading = 0; // degrees, for nudges
+
+  get droneDemo(): boolean {
+    return !!(server_info as any).DRONE_DEMO;
+  }
+
+  // Track ID to pursue: typed in the box, else the alarm selected with the camera icon, else the Manual Input target
+  // shown under Pursue so the operator sees which target the drone will chase
+  get pursueTarget(): number { return this.uavTargetTrack(); }
+
+  private uavTargetTrack(): number {
+    const typed = parseInt(String(this.uavCtl.trackId), 10);
+    if (!isNaN(typed) && isValidTrackId(typed)) return typed;   // track ID 0 is never a target
+    if (this.activeSlewAlarm) {
+      const id = radarTrackIdOf(this.activeSlewAlarm);
+      if (id !== null) return id;
+    }
+    return null;
+  }
+
+  private droneOk(msg: string) { this.toastr.success(msg); }
+  private droneFail(err: any) {
+    console.log("Drone API error:", err);
+    this.toastr.error(this.apiErrorText(err, "Drone server", (server_info as any).DRONE_API));
+  }
+  private droneCall(obs: any, okMsg: string) {
+    obs.subscribe(
+      (res: any) => {
+        if (res && res.status === "error") { this.toastr.error(res.message || "Drone server returned an error"); return; }
+        // /fly_track: accepted, but no fresh radar position yet -> the drone leaves when the next radar packet arrives
+        if (res && res.immediate_send === false) {
+          this.toastr.info(okMsg + " - waiting for fresh radar data" + (res.reason ? " (" + res.reason + ")" : ""));
+          return;
+        }
+        this.droneOk(okMsg);
+      },
+      (err: any) => this.droneFail(err)
+    );
+  }
+
+  // 1. Pursue radar track (POST /fly_track)
+  uavPursue() {
+    const id = this.uavTargetTrack();
+    if (id === null) { this.toastr.warning("No target: click the camera icon on an alarm card first."); return; }
+    if (this.droneDemo) {
+      if (Number(this.simRadar.id) !== id || !this.simRadarTail.length) {
+        console.log("DEMO: no simulated target with Track ID " + id + ". Start one in Manual Input (current: " + this.simRadar.id + ").");
+        return;
+      }
+      this.startDemoPursuit(id);
+      console.log("DEMO: pursuing track " + id);
+      return;
+    }
+    this.droneCall(this.dataService.droneFlyTrack(id), "Drone pursuing track " + id);
+  }
+
+  // 2. Fly to a point (POST /fly_to)
+  uavFlyTo() {
+    const lat = Number(this.uavCtl.lat), lon = Number(this.uavCtl.lon), alt = Number(this.uavCtl.alt);
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) { this.toastr.warning("Enter a valid latitude and longitude."); return; }
+    if (this.droneDemo) {
+      this.stopDemoPursuit();
+      if (!isNaN(alt)) this.demoDroneAlt = alt;
+      this.flySimUav([lon, lat]);
+      console.log("DEMO: flying to " + lat.toFixed(5) + ", " + lon.toFixed(5));
+      return;
+    }
+    this.droneCall(this.dataService.droneFlyTo(lat, lon, isNaN(alt) ? undefined : alt), "Drone flying to " + lat.toFixed(5) + ", " + lon.toFixed(5));
+  }
+
+  // 3. Set mission altitude (POST /set_altitude, 0-5000 m)
+  uavSetAltitude() {
+    const alt = Number(this.uavCtl.setAlt);
+    if (isNaN(alt) || alt < 0 || alt > 5000) { this.toastr.warning("Altitude must be 0 - 5000 m."); return; }
+    if (this.droneDemo) { this.demoDroneAlt = alt; console.log("DEMO: altitude set to " + alt + " m"); return; }
+    this.droneCall(this.dataService.droneSetAltitude(alt), "Altitude set to " + alt + " m");
+  }
+
+  // The radar re-used a track id for a new target. The old alarm stays (as "<id>@<start time>") in the list;
+  // its marker and trail leave the map so the new target with the same id starts clean.
+  onAlarmArchived(msg: any) {
+    if (!msg || msg.old_id === undefined || msg.old_id === null) return;
+    const oldId = String(msg.old_id);
+    this.removeOverlay([{ alarm_id: oldId }], false);
+    this.tracksList = (this.tracksList || []).filter((t: any) => !(t && t.properties && String(t.properties.id) === oldId));
+    if (this.activeSlewAlarm && String(this.activeSlewAlarm.alarm_id) === oldId && msg.archived_id) {
+      this.activeSlewAlarm = { ...this.activeSlewAlarm, alarm_id: msg.archived_id };
+    }
+    this.alarmService.publishAlarmArchived(msg);
+  }
+
+  // Alarm card buttons: "Assign UAV" = pursue that alarm's track, "Return Home" = RTL.
+  // Same behaviour and messages as the UAV Controls panel, including DEMO mode.
+  onAlarmCardUavCommand(cmd: any) {
+    if (!cmd) return;
+    if (cmd.type === "rtl") { this.uavRtl(); return; }
+    if (cmd.type !== "pursue") return;
+    const id = Number(cmd.track_id);
+    if (isNaN(id) || !isValidTrackId(id)) { this.toastr.warning("This alarm has no valid track ID - cannot assign the UAV."); return; }
+    if (this.droneDemo) {
+      if (Number(this.simRadar.id) === id && this.simRadarTail.length) {
+        this.startDemoPursuit(id);
+        console.log("DEMO: UAV assigned - pursuing track " + id);
+        return;
+      }
+      // no moving demo target with this ID: fly the demo drone to where the alarm is
+      const loc = cmd.location;
+      if (loc && loc.length >= 2 && !isNaN(Number(loc[0])) && !isNaN(Number(loc[1]))) {
+        this.stopDemoPursuit();
+        this.flySimUav([Number(loc[0]), Number(loc[1])]);
+        console.log("DEMO: UAV assigned - flying to the alarm of track " + id);
+        return;
+      }
+      console.log("DEMO: no position for track " + id + " - start a target in Manual Input.");
+      return;
+    }
+    this.droneCall(this.dataService.droneFlyTrack(id), "UAV assigned - pursuing track " + id);
+  }
+
+  // 4. Return to launch (POST /rtl)
+  uavRtl() {
+    if (this.droneDemo) { this.stopDemoPursuit(); this.returnSimUavHome(); console.log("DEMO: returning to launch"); return; }
+    this.droneCall(this.dataService.droneRtl(), "Drone returning to launch");
+  }
+
+  // ---------- Detection mode: on / off switch, only the operator turns it off ----------
+  uavDetectionOn = false;
+  uavDetectionBusy = false;
+
+  // header icons: setUavDetection(true) = start, setUavDetection(false) = stop
+  setUavDetection(turnOn: boolean) {
+    if (this.uavDetectionBusy) return;
+    if (turnOn === this.uavDetectionOn) {
+      this.toastr.info(turnOn ? "Detection is already on" : "Detection is already off");
+      return;
+    }
+    if (this.droneDemo) {
+      this.uavDetectionOn = turnOn;
+      console.log("DEMO: detection mode " + (turnOn ? "on" : "off"));
+      this.toastr.info("DEMO: detection mode " + (turnOn ? "on" : "off"));
+      return;
+    }
+    this.uavDetectionBusy = true;
+    const call = turnOn ? this.dataService.droneDetectionStart() : this.dataService.droneDetectionStop();
+    call.subscribe(
+      (res: any) => {
+        this.uavDetectionBusy = false;
+        if (res && res.status === "error") { this.toastr.error(res.message || "Drone server returned an error"); return; }
+        this.uavDetectionOn = turnOn; // only changes when the drone accepted it
+        this.droneOk(turnOn ? "Detection mode on" : "Detection mode off");
+      },
+      (err: any) => {
+        this.uavDetectionBusy = false;
+        this.droneFail(err);
+      }
+    );
+  }
+
+  // ---------- Tracking mode: click one point on the UAV video ----------
+  // Button turns the video interactive; the next click sends that pixel (x, y) and switches the mode off.
+  uavPickMode = false;
+  uavPickMarker: { left: number; top: number } | null = null;
+  private uavPickMarkerTimer: any = null;
+
+  toggleUavPickMode() {
+    this.uavPickMode = !this.uavPickMode;
+  }
+
+  @HostListener("document:keydown.escape")
+  cancelUavPickMode() {
+    if (this.uavPickMode) this.uavPickMode = false;
+  }
+
+  onUavVideoClick(event: MouseEvent) {
+    if (!this.uavPickMode) return;
+    const wrapper = event.currentTarget as HTMLElement;
+    const media: any = wrapper && wrapper.querySelector("#uav-video, #uav-demo-canvas");
+    if (!media) return;
+
+    // size of the video frame itself (MJPEG image or demo canvas)
+    const rect = media.getBoundingClientRect();
+    const frameW = media.naturalWidth || media.width || 0;
+    const frameH = media.naturalHeight || media.height || 0;
+    if (!frameW || !frameH || !rect.width || !rect.height) {
+      this.toastr.warning("No video picture yet - try again when the video is showing.");
+      return; // stay in tracking mode
+    }
+
+    // undo the CSS object-fit scaling/cropping (the video uses "cover")
+    const fit = getComputedStyle(media).objectFit;
+    let scale = 1, offX = 0, offY = 0, sx = rect.width / frameW, sy = rect.height / frameH;
+    if (fit === "cover" || fit === "contain" || fit === "scale-down") {
+      scale = fit === "cover" ? Math.max(sx, sy) : Math.min(sx, sy, fit === "scale-down" ? 1 : Infinity);
+      sx = sy = scale;
+      offX = (rect.width - frameW * scale) / 2;
+      offY = (rect.height - frameH * scale) / 2;
+    }
+    // floor = the pixel the click is inside (0 .. width-1, 0 .. height-1)
+    const x = Math.floor((event.clientX - rect.left - offX) / sx);
+    const y = Math.floor((event.clientY - rect.top - offY) / sy);
+    if (x < 0 || y < 0 || x >= frameW || y >= frameH) {
+      this.toastr.warning("Click inside the video picture.");
+      return; // stay in tracking mode
+    }
+
+    // one click only: leave tracking mode straight away
+    this.uavPickMode = false;
+
+    // small marker where the user clicked
+    const wRect = wrapper.getBoundingClientRect();
+    this.uavPickMarker = { left: event.clientX - wRect.left, top: event.clientY - wRect.top };
+    if (this.uavPickMarkerTimer) clearTimeout(this.uavPickMarkerTimer);
+    this.uavPickMarkerTimer = setTimeout(() => (this.uavPickMarker = null), 1500);
+
+    if (this.droneDemo) {
+      console.log("DEMO: tracking point x=" + x + ", y=" + y + " (frame " + frameW + "x" + frameH + ")");
+      this.toastr.info("DEMO: tracking point x " + x + ", y " + y);
+      return;
+    }
+    this.droneCall(
+      this.dataService.droneTrackPixel(x, y, frameW, frameH),
+      "Tracking point sent: x " + x + ", y " + y
+    );
+  }
+
+  // 5. Stop tracking and loiter (POST /stop_tracking)
+  uavStopTracking() {
+    if (this.droneDemo) { this.stopDemoPursuit(); this.stopSimUav(); console.log("DEMO: stopped, holding position"); return; }
+    this.droneCall(this.dataService.droneStopTracking(), "Tracking stopped - drone holding position");
+  }
+
+  // Manual nudge (POST /move/<direction>)
+  uavMove(direction: string) {
+    if (this.droneDemo) {
+      this.stopDemoPursuit();
+      this.stopSimUav();
+      if (direction === "yaw_left") { this.demoHeading = (this.demoHeading + 345) % 360; }
+      else if (direction === "yaw_right") { this.demoHeading = (this.demoHeading + 15) % 360; }
+      else {
+        const rel = { forward: 0, right: 90, backward: 180, left: 270 }[direction];
+        const start = this.simUavStart();
+        this.simUavPos = this.simMove(start, (this.demoHeading + rel) % 360, 25);
+        this.simSendUav(this.simUavPos);
+      }
+      console.log("DEMO: " + direction.replace("_", " "));
+      return;
+    }
+    this.droneCall(this.dataService.droneMove(direction), "Sent: " + direction.replace("_", " "));
+  }
+
+  // Payload camera gimbal (POST /camera/<action>)
+  uavCamera(action: string) {
+    if (this.droneDemo) {
+      if (action === "up") this.demoCamTilt = Math.min(0, this.demoCamTilt + 5);
+      if (action === "down") this.demoCamTilt = Math.max(-90, this.demoCamTilt - 5);
+      if (action === "zoom_in") this.demoCamZoom = Math.min(30, this.demoCamZoom + 1);
+      if (action === "zoom_out") this.demoCamZoom = Math.max(1, this.demoCamZoom - 1);
+      console.log("DEMO: camera " + action.replace("_", " ") + " (tilt " + this.demoCamTilt + "°, zoom " + this.demoCamZoom + "x)");
+      return;
+    }
+    this.droneCall(this.dataService.droneCamera(action), "Camera: " + action.replace("_", " "));
+  }
+
+  // Demo pursuit: keep re-vectoring the simulated drone to the moving simulated target
+  private startDemoPursuit(trackId: number) {
+    this.stopDemoPursuit();
+    this.demoPursuitTrack = trackId;
+    const go = () => {
+      if (!this.simRadarTail.length) return;
+      const t = this.simRadarTail[this.simRadarTail.length - 1];
+      this.flySimUav([t[0], t[1]]);
+    };
+    go();
+    this.demoPursuitTimer = setInterval(go, 3000);
+  }
+
+  private stopDemoPursuit() {
+    if (this.demoPursuitTimer) clearInterval(this.demoPursuitTimer);
+    this.demoPursuitTimer = null;
+    this.demoPursuitTrack = null;
+  }
+
+  // Telemetry: poll GET /telemetry + /health every second while the UAV window is open.
+  // Positions the drone marker on the map (heading, altitude, battery).
+  private startUavPolling() {
+    if (this.uavPollTimer) return;
+    this.uavPollTimer = setInterval(() => this.pollUav(), 1000);
+  }
+
+  private stopUavPolling() {
+    if (this.uavPollTimer) clearInterval(this.uavPollTimer);
+    this.uavPollTimer = null;
+  }
+
+  private pollUav() {
+    if (!this.enableUavVideo) return;
+    if (this.droneDemo) {
+      const m = this.uavMarkers["sim-uav"] || this.uavMarkers["uav-home"];
+      const p = m ? m.getGeometry().getCoordinates() : this.uavHome;
+      this.uavLink = "up";
+      this.uavTelemetry = { latitude: p[1], longitude: p[0], altitude: this.demoDroneAlt, heading: this.demoHeading, battery_voltage: 24.6, stale: false };
+      return;
+    }
+    // Kafka drone_telemetry arrived in the last 3 s -> no need to ask /telemetry (it is the backup)
+    if (this.kafkaTelemetryFresh()) {
+      this.dataService.droneHealth().subscribe((h: any) => (this.uavHealth = h), () => (this.uavHealth = null));
+      return;
+    }
+    if (this.uavPollSkip > 0) { this.uavPollSkip--; return; } // back off after a failure
+    this.dataService.droneTelemetry().subscribe(
+      (res: any) => {
+        const drones = res && res.drones ? res.drones : {};
+        const key = drones["default"] ? "default" : Object.keys(drones)[0]; // "default" = mission UAV SDE52
+        this.applyDroneTelemetry(key ? drones[key] : null, key);
+      },
+      () => { this.uavLink = "down"; this.uavPollSkip = 4; }
+    );
+    this.dataService.droneHealth().subscribe((h: any) => (this.uavHealth = h), () => (this.uavHealth = null));
+  }
+
+  // Drone position from the Kafka topic drone_telemetry (backend forwards it over the WebSocket).
+  // Same data as GET /telemetry, but pushed as soon as it arrives. Ignored while DRONE_DEMO is on.
+  telemetrySource: "" | "kafka" | "poll" = "";
+  private lastKafkaTelemetryAt = 0;
+
+  kafkaTelemetryFresh(): boolean {
+    return Date.now() - this.lastKafkaTelemetryAt < 3000;
+  }
+
+  onKafkaDroneTelemetry(d: any) {
+    if (this.droneDemo || !d) return;
+    this.lastKafkaTelemetryAt = Date.now();
+    this.applyDroneTelemetry(d, d.drone_key || d.drone_id || "default", "kafka");
+  }
+
+  private applyDroneTelemetry(raw: any, key: string, source: "kafka" | "poll" = "poll") {
+    // API spec v2: always use altitude_m / heading_deg (altitude / heading kept only as a fallback)
+    const d = raw ? {
+      ...raw,
+      altitude: raw.altitude_m !== undefined && raw.altitude_m !== null ? raw.altitude_m : raw.altitude,
+      heading: raw.heading_deg !== undefined && raw.heading_deg !== null ? raw.heading_deg : raw.heading,
+    } : null;
+    this.uavTelemetry = d;
+    this.uavLink = d && !d.stale ? "up" : "down";
+    if (d) this.telemetrySource = source;
+    if (d && d.latitude !== undefined && d.longitude !== undefined) {
+      this.updateUavPosition({
+        category: "uav_status",
+        data: {
+          // one marker whichever source (Kafka says "SDE52", /telemetry says "default")
+          ip: "drone-uav", lat: d.latitude, lon: d.longitude, heading: d.heading,
+          remaining_time: d.battery_voltage !== undefined ? d.battery_voltage + "V" : "",
+        },
+      });
+    }
+  }
+
+  // ---------------- DEMO video for Slew TI / UAV windows ----------------
+  // Animated, clearly-labelled DEMO picture drawn on a canvas, for testing without real cameras.
+  // Controlled by config.ts -> stream_urls.DEMO_FEED ('on' | 'auto' | 'off').
+  feedFailed = { slew: false, uav: false };
+  private demoTimer: any = null;
+  private demoScene: any = null;
+
+  useDemoFeed(which: "slew" | "uav"): boolean {
+    const mode = (stream_urls as any).DEMO_FEED || "off";
+    if (mode === "on") return true;
+    if (mode === "auto") return this.feedFailed[which];
+    return false;
+  }
+
+  onFeedError(which: "slew" | "uav") {
+    this.feedFailed[which] = true; // only used in 'auto' mode
+  }
+
+  private startDemoFeeds() {
+    if (this.demoTimer) return;
+    // build a fixed random scene once
+    const rnd = (a: number, b: number) => a + Math.random() * (b - a);
+    this.demoScene = {
+      trees: Array.from({ length: 200 }, () => ({ x: rnd(0, 1), h: rnd(0.08, 0.22), w: rnd(0.02, 0.05) })),
+      patches: Array.from({ length: 70 }, () => ({ x: rnd(0, 1), y: rnd(0, 1), r: rnd(0.03, 0.09) })),
+      t0: Date.now(),
+    };
+    // draw ~12 frames/second outside Angular so the map page doesn't re-render every frame
+    this.ngZone.runOutsideAngular(() => {
+      this.demoTimer = setInterval(() => this.drawDemoFrames(), 80);
+    });
+  }
+
+  private stopDemoFeeds() {
+    if (this.demoTimer) clearInterval(this.demoTimer);
+    this.demoTimer = null;
+  }
+
+  private fitCanvas(c: HTMLCanvasElement): CanvasRenderingContext2D {
+    const w = c.clientWidth || 220, h = c.clientHeight || 140;
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    return c.getContext("2d");
+  }
+
+  private demoHud(ctx: CanvasRenderingContext2D, w: number, h: number, title: string, lines: string[]) {
+    const t = new Date();
+    const time = t.toTimeString().slice(0, 8);
+    ctx.font = "bold 10px monospace";
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, 0, w, 14);
+    ctx.fillStyle = "#e6e6e6";
+    ctx.textAlign = "left";
+    ctx.fillText(title, 4, 10);
+    ctx.textAlign = "right";
+    ctx.fillText(time, w - 4, 10);
+    // blinking DEMO badge on its own line, top-right under the clock (never overlaps the title)
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(w - 74, 14, 74, 12);
+    if (Math.floor(Date.now() / 600) % 2 === 0) {
+      ctx.fillStyle = "#ff3b30";
+      ctx.beginPath(); ctx.arc(w - 66, 20, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = "#ff3b30";
+    ctx.textAlign = "right";
+    ctx.fillText("DEMO FEED", w - 4, 23);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, h - 12 * lines.length - 4, w, 12 * lines.length + 4);
+    ctx.fillStyle = "#9be7a1";
+    ctx.font = "9px monospace";
+    lines.forEach((l, i) => ctx.fillText(l, 4, h - 12 * (lines.length - i) + 6));
+  }
+
+  private demoCrosshair(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
+    ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x - 14, y); ctx.lineTo(x - 4, y); ctx.moveTo(x + 4, y); ctx.lineTo(x + 14, y);
+    ctx.moveTo(x, y - 14); ctx.lineTo(x, y - 4); ctx.moveTo(x, y + 4); ctx.lineTo(x, y + 14);
+    ctx.stroke();
+    ctx.strokeRect(x - 20, y - 14, 40, 28);
+  }
+
+  private drawDemoFrames() {
+    if (!this.demoScene) return;
+    const sec = (Date.now() - this.demoScene.t0) / 1000;
+    const slew = document.getElementById("slew-demo-canvas") as HTMLCanvasElement;
+    if (slew) this.drawSlewDemo(slew, sec);
+    const uav = document.getElementById("uav-demo-canvas") as HTMLCanvasElement;
+    if (uav) this.drawUavDemo(uav, sec);
+  }
+
+  // ---- Demo Slew TI camera model: where the pretend tower camera is looking ----
+  // az/el/fov move smoothly towards tAz/tEl/tFov; every camera button changes these, so the picture really reacts.
+  private dcam = { az: 124, el: -2, fov: 40, tAz: 124, tEl: -2, tFov: 40, mode: "idle" as "idle" | "track" | "search", searchAt: 0 };
+  private readonly DEMO_HOME_AZ = 124;
+  demoZoomM: number = null;
+
+  private angDiff(a: number, b: number): number { return ((a - b + 540) % 360) - 180; }
+  private demoTargetAz(sec: number): number { return this.DEMO_HOME_AZ + Math.sin(sec * 0.12) * 15; }
+
+  // called from camDemo(): turn a button press into a camera movement
+  private demoCamApply(state: string) {
+    const d = this.dcam;
+    const sec = this.demoScene ? (Date.now() - this.demoScene.t0) / 1000 : 0;
+    if (state === "TRACKING STOPPED" || state === "TRACK CANCELLED" || state === "AUTO ACQUIRE OFF") { d.mode = "idle"; d.tAz = d.az; d.tEl = d.el; }
+    else if (state.indexOf("TRACKING ") === 0 || state === "MANUAL LOCK") d.mode = "track";
+    else if (state === "RETURNING HOME") { d.mode = "idle"; d.tAz = 0; d.tEl = 0; d.tFov = 40; } // spec: home = pan 0, tilt 0
+    else if (state === "AUTO ACQUIRE") { d.mode = "search"; d.searchAt = Date.now(); }
+    else if (state.indexOf("SLEW") === 0) { d.mode = "idle"; d.tAz = this.demoTargetAz(sec); d.tEl = -2; d.tFov = 20; }
+    else if (state.indexOf("MOVE") === 0) {
+      d.mode = "idle";
+      if (this.demoPan !== null) d.tAz = Number(this.demoPan);
+      if (this.demoTilt !== null) d.tEl = Number(this.demoTilt);
+      if (this.demoZoomM !== null) d.tFov = Math.max(1.5, Math.min(40, 40 * 250 / Math.max(250, this.demoZoomM)));
+    }
+  }
+
+  private drawSlewDemo(c: HTMLCanvasElement, sec: number) {
+    const ctx = this.fitCanvas(c); if (!ctx) return;
+    const w = c.width, h = c.height, thermal = this.isThermalFeed;
+    const d = this.dcam;
+    const targetAz = this.demoTargetAz(sec);
+    // camera behaviour
+    if (d.mode === "track") { d.tAz = targetAz; d.tEl = -2; }
+    if (d.mode === "search") {
+      if (Date.now() - d.searchAt < 2500) { d.tAz = this.DEMO_HOME_AZ + Math.sin(sec * 1.5) * 25; d.tEl = -2; }
+      else { d.mode = "track"; this.demoCamState = "AUTO ACQUIRED"; this.demoCamStateAt = Date.now(); }
+    }
+    const k = d.mode === "idle" ? 0.12 : 0.25;
+    d.az = (d.az + this.angDiff(d.tAz, d.az) * k + 360) % 360;
+    d.el += (d.tEl - d.el) * k;
+    d.fov += (d.tFov - d.fov) * k;
+    const fov = d.fov, vfov = fov * h / w, mag = 40 / fov;
+    const xOf = (az: number) => w / 2 + this.angDiff(az, d.az) / fov * w;
+    const yOf = (el: number) => h * 0.45 + (d.el - el) / vfov * h;
+    const horizon = yOf(0);
+    // sky + ground
+    const hy = Math.max(0, Math.min(h, horizon));
+    let g = ctx.createLinearGradient(0, hy - h, 0, hy);
+    g.addColorStop(0, thermal ? "#050505" : "#6f8fa8"); g.addColorStop(1, thermal ? "#1a1a1a" : "#b9c8d2");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, hy);
+    g = ctx.createLinearGradient(0, hy, 0, hy + h);
+    g.addColorStop(0, thermal ? "#2a2a2a" : "#4d5b34"); g.addColorStop(1, thermal ? "#121212" : "#2f3a22");
+    ctx.fillStyle = g; ctx.fillRect(0, hy, w, h - hy);
+    // river band (between 5 and 7.5 degrees below the horizon)
+    ctx.fillStyle = thermal ? "#0b0b0b" : "#5f7a86";
+    ctx.beginPath();
+    for (let sx = 0; sx <= w; sx += 6) {
+      const az = d.az + (sx - w / 2) / w * fov;
+      const y = yOf(-5) + Math.sin(az * 0.5 + sec * 0.3) * 3;
+      if (sx === 0) ctx.moveTo(sx, y); else ctx.lineTo(sx, y);
+    }
+    ctx.lineTo(w, yOf(-7.5)); ctx.lineTo(0, yOf(-7.5)); ctx.fill();
+    // mangrove tree line all around the tower (360 degrees)
+    ctx.fillStyle = thermal ? "#3a3a3a" : "#24331c";
+    this.demoScene.trees.forEach((t: any) => {
+      const x = xOf(t.x * 360);
+      const tw = t.w * 40 / fov * w, th = t.h * 12 / vfov * h;
+      if (x < -tw || x > w + tw) return;
+      ctx.beginPath(); ctx.ellipse(x, horizon - th * 0.8, tw, th, 0, 0, Math.PI * 2); ctx.fill();
+    });
+    // moving target (person / small boat) - only visible when the camera points at it
+    const tx = xOf(targetAz), ty = yOf(-2) + Math.sin(sec * 1.7) * 1.5;
+    const sz = Math.min(mag, 6);
+    if (tx > -30 && tx < w + 30) {
+      if (thermal) {
+        const rg = ctx.createRadialGradient(tx, ty - 5 * sz, 1, tx, ty - 5 * sz, 14 * sz);
+        rg.addColorStop(0, "rgba(255,255,255,1)"); rg.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = rg; ctx.fillRect(tx - 14 * sz, ty - 19 * sz, 28 * sz, 28 * sz);
+        ctx.fillStyle = "#ffffff";
+      } else {
+        ctx.fillStyle = "#1b1b1b";
+      }
+      ctx.fillRect(tx - 2 * sz, ty - 9 * sz, 4 * sz, 9 * sz);
+      ctx.beginPath(); ctx.arc(tx, ty - 11 * sz, 2.5 * sz, 0, Math.PI * 2); ctx.fill();
+    }
+    // sensor noise
+    ctx.fillStyle = thermal ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)";
+    for (let i = 0; i < 160; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+    // boresight crosshair (centre of the camera)
+    this.demoCrosshair(ctx, w / 2, h / 2, thermal ? "#ffcc00" : "#00e5ff");
+    // lock box on the target while tracking / searching box while acquiring
+    ctx.font = "bold 9px monospace"; ctx.textAlign = "left";
+    if (d.mode === "track" && tx > 0 && tx < w) {
+      const bw = 12 * sz + 8, bh = 16 * sz + 8;
+      ctx.strokeStyle = "#34c759"; ctx.lineWidth = 2;
+      ctx.strokeRect(tx - bw / 2, ty - 13 * sz - 4, bw, bh);
+      ctx.fillStyle = "#34c759"; ctx.fillText("LOCK", tx - bw / 2, ty - 13 * sz - 7);
+    } else if (d.mode === "search") {
+      ctx.strokeStyle = "#ffcc00"; ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
+      ctx.strokeRect(w / 2 - 34, h / 2 - 22, 68, 44); ctx.setLineDash([]);
+      ctx.fillStyle = "#ffcc00"; ctx.fillText("SEARCHING", w / 2 - 34, h / 2 - 25);
+    }
+    const trk = this.activeSlewAlarm ? "TRK " + (this.activeSlewAlarm.alarm_id || this.activeSlewAlarm.id) : "NO TRACK";
+    if (this.demoCamState && Date.now() - this.demoCamStateAt < 60000) {
+      ctx.font = "bold 11px monospace";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(w / 2 - 70, 36, 140, 15);
+      const good = this.demoCamState.indexOf("TRACKING ") === 0 && this.demoCamState !== "TRACKING STOPPED";
+      ctx.fillStyle = good || this.demoCamState === "MANUAL LOCK" || this.demoCamState === "AUTO ACQUIRED" ? "#9be7a1" : "#ffcc00";
+      ctx.fillText(this.demoCamState, w / 2, 47);
+      ctx.textAlign = "left";
+    }
+    const modeTxt = d.mode === "track" ? "TRACKING" : (d.mode === "search" ? "SEARCHING" : "MANUAL");
+    this.demoHud(ctx, w, h, "TI-1 " + (thermal ? "THERMAL" : "DAY"), [
+      trk + "  " + modeTxt,
+      "AZ " + d.az.toFixed(1) + "°  EL " + d.el.toFixed(1) + "°  ZOOM " + mag.toFixed(1) + "x",
+    ]);
+  }
+
+  // ---- Demo UAV camera: top-down view that follows the drone's real (simulated) position, heading,
+  // altitude and camera tilt/zoom - so Fly To, arrows, yaw, altitude and camera buttons all change the picture.
+  private uavView = { hdg: 0, zoom: 1, tilt: -30, alt: 250 };
+
+  private drawUavDemo(c: HTMLCanvasElement, sec: number) {
+    const ctx = this.fitCanvas(c); if (!ctx) return;
+    const w = c.width, h = c.height;
+    const m = this.uavMarkers["sim-uav"] || this.uavMarkers["uav-home"];
+    const pos = m ? m.getGeometry().getCoordinates() : this.uavHome;
+    const flying = this.simUavRunning;
+    // smooth the camera so changes are visible as movement
+    const v = this.uavView;
+    v.hdg = (v.hdg + this.angDiff(this.demoHeading, v.hdg) * 0.2 + 360) % 360;
+    v.zoom += (this.demoCamZoom - v.zoom) * 0.2;
+    v.tilt += (this.demoCamTilt - v.tilt) * 0.2;
+    v.alt += (this.demoDroneAlt - v.alt) * 0.1;
+    // metres east / north of the home point
+    const cosLat = Math.cos(this.uavHome[1] * Math.PI / 180);
+    const toM = (lon: number, lat: number) => [(lon - this.uavHome[0]) * 111320 * cosLat, (lat - this.uavHome[1]) * 110540];
+    const [dx, dy] = toM(pos[0], pos[1]);
+    const alt = Math.max(20, v.alt);
+    const ppm = (w / 300) * (250 / alt) * v.zoom;                                    // pixels per metre
+    const look = Math.min(150, alt * Math.tan((90 + v.tilt) * Math.PI / 180) * 0.25); // camera tilted forward looks a little ahead
+    const hr = v.hdg * Math.PI / 180, cs = Math.cos(hr), sn = Math.sin(hr);
+    const cx = dx + sn * look, cy = dy + cs * look;
+    const toS = (x: number, y: number) => {
+      const ex = x - cx, ny = y - cy;
+      return [w / 2 + (ex * cs - ny * sn) * ppm, h / 2 - (ex * sn + ny * cs) * ppm];  // heading always points up
+    };
+    const R = Math.hypot(w, h) / 2 / ppm;   // view radius in metres
+    // ground
+    ctx.fillStyle = "#3d4a2a"; ctx.fillRect(0, 0, w, h);
+    const cell = 400;
+    if (R < cell * 4) {
+      ctx.fillStyle = "#2a3520";
+      for (let i = Math.floor((cx - R) / cell); i <= Math.floor((cx + R) / cell); i++) {
+        for (let j = Math.floor((cy - R) / cell); j <= Math.floor((cy + R) / cell); j++) {
+          this.demoScene.patches.forEach((p: any) => {
+            const [sx, sy] = toS(i * cell + p.x * cell, j * cell + p.y * cell);
+            const r = p.r * 300 * ppm;
+            if (sx < -r || sx > w + r || sy < -r || sy > h + r) return;
+            ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+          });
+        }
+      }
+    }
+    // winding creek (fixed on the ground, north-south)
+    ctx.strokeStyle = "#56707b"; ctx.lineWidth = Math.max(2, 14 * ppm);
+    ctx.beginPath();
+    for (let k = 0; k <= 60; k++) {
+      const y = cy - R + (2 * R) * k / 60;
+      const [sx, sy] = toS(60 + 80 * Math.sin(y / 120), y);
+      if (k === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+    // target on the ground: the Manual Input radar target if there is one, else a small boat near home
+    let tgt: number[];
+    if (this.simRadarTail && this.simRadarTail.length) {
+      const last: any = this.simRadarTail[this.simRadarTail.length - 1];
+      tgt = toM(last[0], last[1]);
+    } else {
+      tgt = [120 + Math.sin(sec * 0.5) * 15, 80 + Math.cos(sec * 0.4) * 10];
+    }
+    const [tx, ty] = toS(tgt[0], tgt[1]);
+    const tr = Math.max(2, Math.min(10, 4 * ppm));
+    ctx.fillStyle = "#f2f2f2"; ctx.beginPath(); ctx.arc(tx, ty, tr, 0, Math.PI * 2); ctx.fill();
+    // sky at the top when the camera is tilted up towards the horizon
+    if (v.tilt > -25) {
+      const sky = h * Math.min(1, (v.tilt + 25) / 25) * 0.45;
+      const g = ctx.createLinearGradient(0, 0, 0, sky);
+      g.addColorStop(0, "#6f8fa8"); g.addColorStop(1, "#b9c8d2");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, sky);
+    }
+    ctx.fillStyle = "rgba(0,0,0,0.05)";
+    for (let i = 0; i < 120; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+    this.demoCrosshair(ctx, w / 2, h / 2, "#00e5ff");
+    // lock box while pursuing
+    if (this.demoPursuitTrack && tx > 0 && tx < w && ty > 0 && ty < h) {
+      ctx.strokeStyle = "#34c759"; ctx.lineWidth = 2; ctx.strokeRect(tx - tr - 6, ty - tr - 6, 2 * tr + 12, 2 * tr + 12);
+      ctx.fillStyle = "#34c759"; ctx.font = "bold 9px monospace"; ctx.textAlign = "left"; ctx.fillText("LOCK " + this.demoPursuitTrack, tx - tr - 6, ty - tr - 9);
+    }
+    // compass: arrow shows where North is
+    const ccx = 14, ccy = 32;
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.beginPath(); ctx.arc(ccx, ccy, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.translate(ccx, ccy); ctx.rotate(-hr);
+    ctx.fillStyle = "#ff3b30"; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(3, 0); ctx.lineTo(-3, 0); ctx.fill();
+    ctx.fillStyle = "#e6e6e6"; ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(3, 0); ctx.lineTo(-3, 0); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = "#e6e6e6"; ctx.font = "bold 8px monospace"; ctx.textAlign = "center"; ctx.fillText("N", ccx, ccy - 12 < 16 ? ccy + 19 : ccy - 12); ctx.textAlign = "left";
+    const bat = Math.max(15, 100 - Math.floor(sec / 30));
+    this.demoHud(ctx, w, h, "UAV SDE52  " + (this.demoPursuitTrack ? "PURSUE " + this.demoPursuitTrack : (flying ? "FLYING" : "HOVER")), [
+      "ALT " + Math.round(this.demoDroneAlt) + "m HDG " + Math.round(this.demoHeading) + "° BAT " + bat + "%" + (flying ? " " + this.simUav.speed + "m/s" : ""),
+      "CAM " + this.demoCamTilt + "° Z" + this.demoCamZoom + "x " + Number(pos[1]).toFixed(5) + "," + Number(pos[0]).toFixed(5),
+    ]);
+  }
+
+  // ---------------- Default location button ----------------
+  // Sundarbans site: between the radar (89.05194, 22.13) and the thermal camera (89.0529, 22.12855).
+  siteCenter: number[] = [89.0525, 22.1310]; // [lon, lat]
+  siteZoom = 14;
+
+  goToDefaultLocation() {
+    // use the map's current view (the view object can be replaced when the map is rebuilt)
+    const view = this.olmap && this.olmap.getView();
+    if (!view) return;
+    view.animate({ center: this.siteCenter, zoom: this.siteZoom, duration: 1500 });
+  }
+
+  // ---------------- Clear Tracks ----------------
+  private clearedTracksSubscription: Subscription;
+
+  // Removes the dotted radar track lines (live and history) from the map.
+  // Alarm markers and the alarm list are left alone - use Clear All / acknowledge for those.
+  clearAllTracksOnMap() {
+    if (!this.olmap) return;
+    const layers = [...this.olmap.getLayers().getArray()];
+    layers.forEach((layer: any) => {
+      const title = layer && layer.get ? layer.get("title") : "";
+      if (!title) return;
+      if (title === "radar_tracks" || title === "uav_tracks") {
+        const source = layer.getSource && layer.getSource();
+        if (source && source.clear) source.clear(); // keep the layer so new tracks still draw
+      } else if (String(title).indexOf("radartrack-") === 0) {
+        this.olmap.removeLayer(layer); // history tracks drawn per alarm
+      }
+    });
+    if (this.simTargetLayer) this.simTargetLayer.getSource().clear();
+    this.simRadarTail = [];
+    this.tracksList = [];
+  }
+
+  // ---------------- VMS (Video Management System) ----------------
+  showVms = false;
+
+  // ---------------- Track History (dashboard + path on the map) ----------------
+  showTrackHistory = false;
+  private historyLayer: any = null;
+
+  toggleTrackHistory(open?: boolean) {
+    this.showTrackHistory = open === undefined ? !this.showTrackHistory : open;
+    if (!this.showTrackHistory) this.clearHistoryPath();
+  }
+
+  // Draw a saved track: dashed red line (orange if singleTrackColor is ""), green start, red end, small dots for each position; zoom to it.
+  showHistoryPath(evt: { track: any; points: any[] }) {
+    if (!this.olmap || !evt || !evt.points || !evt.points.length) return;
+    this.clearHistoryPath();
+    const coords = evt.points.map((p: any) => [Number(p.longitude), Number(p.latitude)]);
+    const source = new VectorSource();
+    if (coords.length > 1) {
+      const line = new Feature({ geometry: new LineString(coords) });
+      line.setStyle([
+        new Style({ stroke: new Stroke({ color: "rgba(0,0,0,0.55)", width: 6 }) }),
+        new Style({ stroke: new Stroke({ color: this.singleTrackColor || "#ffb020", width: 3, lineDash: [8, 6] }) }),
+      ]);
+      source.addFeature(line);
+      const step = Math.max(1, Math.floor(coords.length / 200));
+      for (let i = 0; i < coords.length; i += step) {
+        const d = new Feature({ geometry: new Point(coords[i]) });
+        d.setStyle(new Style({ image: new CircleStyle({ radius: 2, fill: new Fill({ color: this.singleTrackColor ? "#ff8a80" : "#ffd27a" }) }) }));
+        source.addFeature(d);
+      }
+    }
+    const mark = (c: number[], color: string, label: string) => {
+      const f = new Feature({ geometry: new Point(c) });
+      f.setStyle(new Style({
+        image: new CircleStyle({ radius: 7, fill: new Fill({ color }), stroke: new Stroke({ color: "#fff", width: 2 }) }),
+        text: new Text({ text: label, offsetY: -16, font: "bold 11px sans-serif", fill: new Fill({ color: "#fff" }), stroke: new Stroke({ color: "#000", width: 3 }) }),
+      }));
+      source.addFeature(f);
+    };
+    mark(coords[0], "#34c759", "START " + evt.track.track_id);
+    if (coords.length > 1) mark(coords[coords.length - 1], "#ff3b30", "END");
+    this.historyLayer = new VectorLayer({ source, zIndex: 25 } as any);
+    this.historyLayer.set("title", "track_history");
+    this.olmap.addLayer(this.historyLayer);
+    try {
+      const extent = source.getExtent();
+      this.olmap.getView().fit(extent, { padding: [80, 700, 80, 380], maxZoom: 16, duration: 600 });
+    } catch (e) { }
+  }
+
+  clearHistoryPath() {
+    if (this.historyLayer && this.olmap) this.olmap.removeLayer(this.historyLayer);
+    this.historyLayer = null;
+  }
+
+  // ---------------- Radar track colours ----------------
+  // All radar tracks are drawn in ONE colour (red). To go back to a different colour per track ID,
+  // set singleTrackColor to "" - the per-ID list below is then used again.
+  singleTrackColor = "#ff3b30";
+  // Distinct colours so tracks with different IDs can be told apart on the map.
+  trackColors: string[] = ["#ff3b30", "#ffcc00", "#34c759", "#00e5ff", "#ff2dff", "#ff9500", "#5ac8fa", "#af52de", "#a2ff00", "#ff6f91"];
+
+  trackColor(id: any): string {
+    if (this.singleTrackColor) return this.singleTrackColor;
+    const n = Math.abs(parseInt(String(id), 10));
+    const index = isNaN(n)
+      ? String(id).split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % this.trackColors.length
+      : n % this.trackColors.length;
+    return this.trackColors[index];
+  }
+
+  trackStyle(id: any) {
+    return new Style({
+      stroke: new Stroke({ color: this.trackColor(id), width: 4, lineDash: [1, 7], lineCap: "round" }),
+    });
+  }
+
+  // Stop the looping alarm sound (it normally stops only when the alarm is acknowledged)
+  stopAlarmSound() {
+    try {
+      this.audio.pause();
+      this.audio.currentTime = 0;
+    } catch (e) { }
+  }
+
+  // ---------------- Manual Input (simulate radar / UAV from the UI) ----------------
+  // Messages pushed here go through the same handler as live WebSocket data.
+  private localPush = new Subject<any>();
+  showSimPanel = false;
+  simMode: "auto" | "ui" = "auto"; // auto = send through backend, fall back to UI only if it fails
+
+  // ---------- Manual Input panel resize ----------
+  isSimResizing = false;
+  private simResizeDir = '';
+  private simResizeStartX = 0;
+  private simResizeStartY = 0;
+  private simStartRect = { top: 0, left: 0, width: 0, height: 0 };
+  private readonly SIM_MIN_W = 280;
+  private readonly SIM_MIN_H = 200;
+
+  startSimResize(event: MouseEvent, dir: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isSimResizing = true;
+    this.simResizeDir = dir;
+    this.simResizeStartX = event.clientX;
+    this.simResizeStartY = event.clientY;
+    const panel = (event.target as HTMLElement).closest('.sim-panel') as HTMLElement;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    this.simStartRect = { top: r.top, left: r.left, width: r.width, height: r.height };
+  }
+
+  @HostListener('document:mousemove', ['$event'])
+  onSimResizeMove(event: MouseEvent) {
+    if (!this.isSimResizing) return;
+    event.preventDefault();
+    const dx = event.clientX - this.simResizeStartX;
+    const dy = event.clientY - this.simResizeStartY;
+    const dir = this.simResizeDir;
+    const s = this.simStartRect;
+    let newTop = s.top, newLeft = s.left, newW = s.width, newH = s.height;
+    if (dir.includes('e')) { newW = Math.max(this.SIM_MIN_W, s.width + dx); }
+    if (dir.includes('w')) { newW = Math.max(this.SIM_MIN_W, s.width - dx); newLeft = s.left + (s.width - newW); }
+    if (dir.includes('s')) { newH = Math.max(this.SIM_MIN_H, s.height + dy); }
+    if (dir.includes('n')) { newH = Math.max(this.SIM_MIN_H, s.height - dy); newTop = s.top + (s.height - newH); }
+    const panel = document.querySelector('.sim-panel') as HTMLElement;
+    if (!panel) return;
+    panel.style.width = newW + 'px';
+    panel.style.height = newH + 'px';
+    panel.style.top = newTop + 'px';
+    panel.style.left = newLeft + 'px';
+    panel.style.bottom = 'auto';
+    panel.style.maxHeight = 'none';
+  }
+
+  @HostListener('document:mouseup')
+  onSimResizeEnd() {
+    if (this.isSimResizing) {
+      this.isSimResizing = false;
+      this.simResizeDir = '';
+    }
+  }
+
+  // Radar position (sensor 161 in the sensors table) - used to compute target range.
+  simRadarOrigin: number[] = [89.05194, 22.13]; // [lon, lat]
+  simRadar = { id: MapsComponent.simNextTrackId(), lat: 22.1340, lon: 89.0560, heading: 270, speed: 5 };
+
+  // Track IDs already used are remembered in this browser, so a refresh doesn't reuse one
+  // (the backend ignores a track ID it has already seen, so a reused ID would not create a new alarm).
+  private static simLastTrackId(): number {
+    try {
+      const v = Number(localStorage.getItem("simLastTrackId"));
+      return v > 0 ? v : 9100; // 9001-9011 were used in earlier tests
+    } catch (e) {
+      return 9100;
+    }
+  }
+  private static simNextTrackId(): number {
+    return MapsComponent.simLastTrackId() + 1;
+  }
+  private simRememberTrackId(id: number) {
+    try {
+      if (id > MapsComponent.simLastTrackId()) localStorage.setItem("simLastTrackId", String(id));
+    } catch (e) { }
+  }
+  simRadarRunning = false;
+  simRadarStatus = "";
+  private simRadarTimer: any;
+  private simRadarTail: number[][] = [];
+
+  simUav = { lat: 22.1320, lon: 89.0550, speed: 15 };
+  simUavRunning = false;
+  simUavStatus = "";
+  private simUavTimer: any;
+  private simUavPos: number[] = null; // [lon, lat]
+  private simTargetLayer: any;
+
+  private simApi(path: string) {
+    return this.dataService.config.serverApiUrl.map.replace(/\/map$/, "") + path;
+  }
+
+  private simRadarRun = 0;
+  private simRadarNewTrack = false; // true until the first point of a new track has been shown
+  private simUavRun = 0;
+  private simRadarBusy = false;
+  private simUavBusy = false;
+  private simAborts: { [key: string]: AbortController } = {};
+
+  private simAbort(key: string) {
+    if (this.simAborts[key]) {
+      this.simAborts[key].abort();
+      delete this.simAborts[key];
+    }
+  }
+
+  private async simPost(path: string, body: any, key: string): Promise<boolean> {
+    if (this.simMode === "ui") return false;
+    const controller = new AbortController();
+    this.simAborts[key] = controller;
+    const timeout = setTimeout(() => controller.abort(), 3000); // a slow backend counts as failed
+    try {
+      const res = await fetch(this.simApi(path), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      return res.ok;
+    } catch (e) {
+      return false;
+    } finally {
+      clearTimeout(timeout);
+      if (this.simAborts[key] === controller) delete this.simAborts[key];
+    }
+  }
+
+  // metres -> degrees helpers
+  private simMove(lonlat: number[], headingDeg: number, metres: number): number[] {
+    const h = (headingDeg * Math.PI) / 180;
+    const dLat = (metres * Math.cos(h)) / 111320;
+    const dLon = (metres * Math.sin(h)) / (111320 * Math.cos((lonlat[1] * Math.PI) / 180));
+    return [lonlat[0] + dLon, lonlat[1] + dLat];
+  }
+
+  private simDistance(a: number[], b: number[]): number {
+    const dLat = (b[1] - a[1]) * 111320;
+    const dLon = (b[0] - a[0]) * 111320 * Math.cos((a[1] * Math.PI) / 180);
+    return Math.sqrt(dLat * dLat + dLon * dLon);
+  }
+
+  private simShowTargetDot(lonlat: number[]) {
+    if (!this.simTargetLayer) {
+      this.simTargetLayer = new VectorLayer({ source: new VectorSource(), zIndex: 19 });
+      this.simTargetLayer.set("title", "sim_target");
+    }
+    if (this.olmap.getLayers().getArray().indexOf(this.simTargetLayer) === -1) {
+      this.olmap.addLayer(this.simTargetLayer);
+    }
+    const source = this.simTargetLayer.getSource();
+    source.clear();
+    const f = new Feature({ geometry: new Point(lonlat) });
+    f.setStyle(new Style({
+      image: new CircleStyle({ radius: 7, fill: new Fill({ color: "#ff3b30" }), stroke: new Stroke({ color: "#ffffff", width: 2 }) }),
+      text: new Text({
+        text: "Track " + this.simRadar.id, offsetY: -16, font: "bold 11px sans-serif",
+        fill: new Fill({ color: "#ff3b30" }), stroke: new Stroke({ color: "#000000", width: 3 }),
+      }),
+    }));
+    source.addFeature(f);
+  }
+
+  // ---- Radar ----
+  private async simSendRadarPoint(point: number[]) {
+    const run = this.simRadarRun;
+    const range = Math.round(this.simDistance(this.simRadarOrigin, point));
+    this.simRadarTail.push(point);
+    this.simRadar.lat = Number(point[1].toFixed(7));
+    this.simRadar.lon = Number(point[0].toFixed(7));
+    // same body the backend builds from Kafka (topic.js -> /api/map/radar/track); range is in km like the real radar
+    const ok = await this.simPost("/map/radar/track", {
+      track: [{ id: this.simRadar.id, radarId: 223, ip: "195.67.6.3", tail: [point], range: range / 1000 }],
+    }, "radar");
+    if (run !== this.simRadarRun) return; // stopped while this point was being sent
+    const firstPoint = this.simRadarNewTrack;
+    this.simRadarNewTrack = false;
+    if (ok) {
+      this.simRadarStatus = "Track " + this.simRadar.id + (firstPoint ? " - new alarm raised" : "") + " - via backend - range " + range + " m";
+    } else {
+      // backend not available: draw it directly in the UI
+      this.localPush.next({
+        category: "radar_tracks",
+        gJson: {
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: this.simRadarTail.slice() },
+          properties: { id: this.simRadar.id, track_id: this.simRadar.id, range: range / 1000 },
+        },
+      });
+      this.simShowTargetDot(point);
+      // no backend = no alarm from the server, so sound the alarm here for a new track
+      if (firstPoint) {
+        try { this.playAlarmAudio(); } catch (e) { }
+      }
+      this.simRadarStatus = "Track " + this.simRadar.id + " - " + (this.simMode === "ui" ? "UI only" : "Backend unavailable - shown in UI only") + " - range " + range + " m";
+    }
+  }
+
+  // Start = a NEW detection. The backend raises an alarm (and the alarm sound) only the first
+  // time it sees a track ID, so a Track ID that was already used gets the next free one.
+  startSimRadar() {
+    this.stopSimRadar();
+    let id = Number(this.simRadar.id);
+    if (!isValidTrackId(this.simRadar.id)) {
+      this.toastr.warning("Track ID 0 is not allowed - using the next free Track ID.");
+    }
+    if (!(id > 0) || id <= MapsComponent.simLastTrackId()) {
+      id = MapsComponent.simLastTrackId() + 1;
+    }
+    this.simRadar.id = id;
+    this.simRememberTrackId(id);
+    this.simRadarTail = [];
+    if (this.simTargetLayer) this.simTargetLayer.getSource().clear();
+    this.simRunRadar(true);
+  }
+
+  // Resume = keep moving the stopped target (same Track ID, no new alarm - like the real radar).
+  resumeSimRadar() {
+    if (this.simRadarRunning || !this.simRadarTail.length) return;
+    this.simRunRadar(false);
+  }
+
+  get canResumeSimRadar(): boolean {
+    return !this.simRadarRunning && this.simRadarTail.length > 0;
+  }
+
+  private simRunRadar(isNewTrack: boolean) {
+    this.stopSimRadar();
+    this.simRadarRunning = true;
+    this.simRadarNewTrack = isNewTrack;
+    const run = ++this.simRadarRun;
+    let pos = isNewTrack
+      ? [Number(this.simRadar.lon), Number(this.simRadar.lat)]
+      : this.simMove(this.simRadarTail[this.simRadarTail.length - 1], Number(this.simRadar.heading), Number(this.simRadar.speed));
+    const tick = async () => {
+      if (run !== this.simRadarRun) return;
+      if (this.simRadarBusy) return; // previous point still being sent - skip, don't pile up requests
+      this.simRadarBusy = true;
+      try {
+        await this.simSendRadarPoint(pos);
+      } finally {
+        this.simRadarBusy = false;
+      }
+      pos = this.simMove(pos, Number(this.simRadar.heading), Number(this.simRadar.speed));
+    };
+    tick();
+    this.simRadarTimer = setInterval(tick, 1000);
+  }
+
+  stopSimRadar() {
+    this.simRadarRun++; // invalidates any tick or request still in flight
+    if (this.simRadarTimer) clearInterval(this.simRadarTimer);
+    this.simRadarTimer = null;
+    this.simRadarRunning = false;
+    this.simRadarBusy = false;
+    this.simAbort("radar");
+    if (this.simRadarStatus && this.simRadarStatus.indexOf("Stopped") !== 0) this.simRadarStatus = "Stopped - Track " + this.simRadar.id + " (Resume to continue it, Start for a new target)";
+  }
+
+  newSimRadarTrack() {
+    this.stopSimRadar();
+    this.simRadar.id = Math.max(Number(this.simRadar.id), MapsComponent.simLastTrackId()) + 1;
+    this.simRadarTail = [];
+    if (this.simTargetLayer) this.simTargetLayer.getSource().clear();
+    this.simRadarStatus = "New track ID " + this.simRadar.id;
+  }
+
+  // ---- UAV ----
+  private async simSendUav(pos: number[], battery: string = "") {
+    const run = this.simUavRun;
+    const msg = { category: "uav_status", data: { ip: "sim-uav", lat: pos[1], lon: pos[0], remaining_time: battery, zone_id: "" } };
+    // same message tcp.client.js sends; backend relays it to every open screen
+    const ok = await this.simPost("/communication/to-ui", msg, "uav");
+    if (run !== this.simUavRun) return ok; // stopped meanwhile
+    if (!ok) this.localPush.next(msg);
+    return ok;
+  }
+
+  private simUavStart(): number[] {
+    if (this.simUavPos) return this.simUavPos;
+    const home = this.uavMarkers["uav-home"] || this.uavMarkers["sim-uav"];
+    return home ? home.getGeometry().getCoordinates().slice() : this.uavHome.slice();
+  }
+
+  async setSimUavPosition() {
+    this.stopSimUav();
+    this.simUavPos = [Number(this.simUav.lon), Number(this.simUav.lat)];
+    const ok = await this.simSendUav(this.simUavPos);
+    this.simUavStatus = ok ? "Position sent via backend" : "Position shown in UI only";
+  }
+
+  flySimUav(target?: number[]) {
+    this.stopSimUav();
+    const dest = target || [Number(this.simUav.lon), Number(this.simUav.lat)];
+    this.simUavPos = this.simUavStart();
+    this.simUavRunning = true;
+    const run = ++this.simUavRun;
+    this.simUavTimer = setInterval(async () => {
+      if (run !== this.simUavRun || this.simUavBusy) return;
+      this.simUavBusy = true;
+      const remaining = this.simDistance(this.simUavPos, dest);
+      const step = Number(this.simUav.speed);
+      if (remaining <= step) {
+        this.simUavPos = dest.slice();
+        this.stopSimUav();
+      } else {
+        const heading = (Math.atan2(
+          (dest[0] - this.simUavPos[0]) * Math.cos((this.simUavPos[1] * Math.PI) / 180),
+          dest[1] - this.simUavPos[1]) * 180) / Math.PI;
+        this.simUavPos = this.simMove(this.simUavPos, heading, step);
+      }
+      const arrived = !this.simUavRunning;
+      let ok = false;
+      try {
+        ok = await this.simSendUav(this.simUavPos);
+      } finally {
+        this.simUavBusy = false;
+      }
+      if (run !== this.simUavRun && !arrived) return; // stopped by the user meanwhile
+      this.simUavStatus = (arrived ? "Arrived" : "Flying - " + Math.round(Math.max(remaining - step, 0)) + " m to go")
+        + (ok ? " (via backend)" : " (UI only)");
+    }, 1000);
+  }
+
+  flySimUavToTrack() {
+    this.flySimUav([Number(this.simRadar.lon), Number(this.simRadar.lat)]);
+  }
+
+  returnSimUavHome() {
+    this.flySimUav(this.uavHome.slice());
+  }
+
+  stopSimUav() {
+    this.simUavRun++;
+    if (this.simUavTimer) clearInterval(this.simUavTimer);
+    this.simUavTimer = null;
+    this.simUavRunning = false;
+    this.simUavBusy = false;
+    this.simAbort("uav");
+  }
+
+  stopAllSim() {
+    this.stopSimRadar();
+    this.stopAlarmSound();
+    this.stopSimUav();
+    this.simUavStatus = "Stopped";
+  }
+
+  // ---------------- Drone (UAV) marker ----------------
+  // Default spot where the drone icon is shown until live position arrives.
+  // Taken from the default coordinates in integration/uav/uav_server.py - change to the real launch point.
+  uavHome: number[] = [89.0579166667, 22.1356333333]; // [lon, lat]
+  private uavMarkerLayer: any;
+  private uavMarkers: { [ip: string]: any } = {};
+
+  private ensureUavMarkerLayer() {
+    if (!this.uavMarkerLayer) {
+      this.uavMarkerLayer = new VectorLayer({ source: new VectorSource(), zIndex: 20 });
+      this.uavMarkerLayer.set("title", "uav_marker");
+    }
+    // re-attach if the map was rebuilt or its layers were cleared (e.g. on refresh)
+    if (this.olmap && this.olmap.getLayers().getArray().indexOf(this.uavMarkerLayer) === -1) {
+      this.olmap.addLayer(this.uavMarkerLayer);
+    }
+    return this.uavMarkerLayer;
+  }
+
+  private uavStyle(rotation: number, live: boolean, label: string) {
+    return new Style({
+      image: new Icon({
+        src: "assets/sensor-icons/UAV-26px.svg",
+        scale: 1.3,
+        rotation: rotation,
+        rotateWithView: true,
+        opacity: live ? 1 : 0.6,
+      }),
+      text: new Text({
+        text: label,
+        offsetY: 24,
+        font: "bold 11px sans-serif",
+        fill: new Fill({ color: live ? "#00e5ff" : "#bbbbbb" }),
+        stroke: new Stroke({ color: "#000000", width: 3 }),
+      }),
+    });
+  }
+
+  // Place (or move) the drone icon. coord is [lon, lat].
+  setUavMarker(ip: string, coord: number[], live: boolean, info: string = "", headingDeg: number = null) {
+    if (!coord || coord.length < 2 || isNaN(Number(coord[0])) || isNaN(Number(coord[1]))) return;
+    const point = [Number(coord[0]), Number(coord[1])];
+    const source = this.ensureUavMarkerLayer().getSource();
+    let feature = this.uavMarkers[ip];
+    let rotation = 0;
+    if (feature) {
+      const prev = feature.getGeometry().getCoordinates();
+      const dx = point[0] - prev[0];
+      const dy = point[1] - prev[1];
+      rotation = dx !== 0 || dy !== 0 ? Math.atan2(dx, dy) : feature.get("rotation") || 0;
+      feature.getGeometry().setCoordinates(point);
+    } else {
+      feature = new Feature({ geometry: new Point(point), ip: ip, category: "uav_marker" });
+      source.addFeature(feature);
+      this.uavMarkers[ip] = feature;
+    }
+    if (headingDeg !== null && headingDeg !== undefined && !isNaN(Number(headingDeg))) {
+      rotation = (Number(headingDeg) * Math.PI) / 180; // real heading from telemetry
+    }
+    feature.set("rotation", rotation);
+    const label = live ? "UAV" + (info ? " " + info : "") : "UAV (no live data)";
+    feature.setStyle(this.uavStyle(rotation, live, label));
+  }
+
+  // Handles both formats: tcp.client.js sends { data: { lat, lon, ip, remaining_time } },
+  // older code sends { gJson: { geometry: { coordinates: [[lon, lat], ...] }, properties: { ip } } }.
+  updateUavPosition(results: any) {
+    let ip = "uav";
+    let coord: number[] = null;
+    let info = "";
+    if (results.data && results.data.lat !== undefined && results.data.lat !== "") {
+      ip = results.data.ip || ip;
+      coord = [Number(results.data.lon), Number(results.data.lat)];
+      if (results.data.remaining_time !== undefined && results.data.remaining_time !== "") {
+        info = "| batt " + results.data.remaining_time;
+      }
+    } else if (results.gJson && results.gJson.geometry) {
+      ip = (results.gJson.properties && results.gJson.properties.ip) || ip;
+      const c = results.gJson.geometry.coordinates;
+      coord = Array.isArray(c[0]) ? c[c.length - 1] : c;
+      // keep the flight path line as before
+      const layer = this.findLayer("uav_tracks");
+      if (layer && Array.isArray(c[0])) {
+        const existing = layer.getSource().getFeatures().find((f) => f.getProperties().ip === ip);
+        if (existing) {
+          existing.getGeometry().setCoordinates(c);
+        } else {
+          this.createFeatureOnGeoJSON(layer, results);
+        }
+      }
+    }
+    if (!coord) return;
+    const headingDeg = results.data && results.data.heading !== undefined ? results.data.heading : null;
+    // the first live fix replaces the "no live data" placeholder
+    if (this.uavMarkers["uav-home"] && ip !== "uav-home") {
+      this.ensureUavMarkerLayer().getSource().removeFeature(this.uavMarkers["uav-home"]);
+      delete this.uavMarkers["uav-home"];
+    }
+    this.setUavMarker(ip, coord, true, info, headingDeg);
+  }
+
   createFeatureOnGeoJSON(layer, results) {
     layer.getSource().addFeature(
       new Feature({
@@ -2504,6 +4115,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     const targetAlarmId = results[0].alarm_id;
+    const wasHidden = this.hiddenEarlyAlarms.some((h: any) => String(h.id) === String(targetAlarmId));
+    this.hiddenEarlyAlarms = this.hiddenEarlyAlarms.filter((h: any) => String(h.id) !== String(targetAlarmId));
     const overlaysToRemove = [];
     this.olmap
       .getOverlays()
@@ -2524,6 +4137,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       overlaysToRemove.forEach((overlay) => {
         this.removeTrack(overlay.id);
       });
+      if (wasHidden && !overlaysToRemove.length) this.removeTrack(targetAlarmId);
     }
   }
 
@@ -2587,7 +4201,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.audio.src = "../../../assets/audio/alarm.wav";
     this.audio.loop = true;
     this.audio.load();
-    this.audio.play();
+    const playing: any = this.audio.play();
+    if (playing && playing.catch) playing.catch(() => { }); // browser may block sound until the page is clicked
   }
 
   // Add Sensors
@@ -2731,7 +4346,11 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                 }
               }
             };
-            this.olmap.addOverlay(marker);
+            if (element.alarm_type === 2 && !this.earlyWarningVisible) {
+              this.keepHiddenEarlyAlarm(marker); // Early Warning switch is off
+            } else {
+              this.olmap.addOverlay(marker);
+            }
           }
         });
       }
@@ -2760,6 +4379,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     );
 
+    // Assign UAV / Return Home buttons on the alarm cards
+    this.uavCommandSubscription = this.alarmService.receiveUavCommand.subscribe((cmd: any) => this.onAlarmCardUavCommand(cmd));
+
     this.slewTISubscription = this.alarmService.receiveSlewTIEvent.subscribe(
       (res) => {
         if (res) {
@@ -2777,6 +4399,10 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           console.log("Slew TI Event Received: ", res.data);
 
           this.activeSlewAlarm = res.data;
+          if (this.useDemoFeed("slew") && res.data && res.data.alarm_id !== undefined) {
+            this.demoPan = null; this.demoTilt = null; this.demoZoomM = null;
+            this.camDemo("SLEW -> TRK " + res.data.alarm_id, "camera slewed to track " + res.data.alarm_id);
+          }
           this.enableVideo = true;
 
           if (!this.isSlewPopupEnabled) {
@@ -2853,40 +4479,33 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   isFullScreen = false;
   // Allow video in full screen mode
   openFullscreen(type): void {
-    const elem: any = (type === 'ti') ? document.getElementById("slew-ti-video") : document.getElementById("camera-video");
+    const elem: any = (type === 'ti')
+      ? (document.getElementById("slew-ti-video") || document.getElementById("slew-demo-canvas"))
+      : (document.getElementById("camera-video") || document.getElementById("uav-demo-canvas"));
+    if (!elem) return;
     this.isFullScreen = true;
     this.commonService.enableFullScreen(elem);
   }
   manualTrack(type): void {
+    if (this.camDemo("MANUAL LOCK", "Manual lock")) return;
     let body = {
       mode: "manual_lock"          // Add the IP to the body
     };
     this.dataService.doAutoTrack(body).subscribe(
-      (res: any) => {
-        if (res && !res.error && !res.errorInfo) {
-          console.log(res);
-        } else {
-          console.log(res);
-        }
-      },
-      (err) => {
-        console.log(err);
-      }
+      (res: any) => this.camOk("Manual lock sent", res),
+      (err) => this.camFail(err)
     );
 
   }
 
   cancelTrack(type): void {
+    if (this.camDemo("TRACK CANCELLED", "Track cancelled")) return;
     let body = {
       mode: "cancel"
     };
     this.dataService.doAutoTrack(body).subscribe(
-      (res: any) => {
-        console.log("Visual tracker cancel response:", res);
-      },
-      (err) => {
-        console.log("Visual tracker cancel error:", err);
-      }
+      (res: any) => this.camOk("Track cancelled", res),
+      (err) => this.camFail(err)
     );
 
     //kkl documented
@@ -2917,17 +4536,21 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   startTrack(type): void {
+    if (!this.needSlewAlarm("Start Tracking")) return;
+    const trackNo = radarTrackIdOf(this.activeSlewAlarm);
+    if (trackNo === null) {
+      this.toastr.warning("Track ID 0 is not a valid target - tracking not started.");
+      return;
+    }
+    if (this.camDemo("TRACKING " + trackNo, "Tracking started for track " + trackNo)) return;
     if (this.activeSlewAlarm) {
+      // spec v2: track_id must be an integer (the radar track id)
       let body = {
-        track_id: this.activeSlewAlarm.alarm_id
+        track_id: trackNo
       };
       this.dataService.startContinuousTrack(body).subscribe(
-        (res: any) => {
-          console.log("Start continuous tracking response:", res);
-        },
-        (err) => {
-          console.log("Start continuous tracking error:", err);
-        }
+        (res: any) => this.camOk("Tracking started for track " + body.track_id, res),
+        (err) => this.camFail(err)
       );
 
       // this.activeSlewAlarm.acknowledged_cleared = 9; // Slew TI Started
@@ -2946,14 +4569,12 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   stopTrack(type): void {
+    if (!this.needSlewAlarm("Stop Tracking")) return;
+    if (this.camDemo("TRACKING STOPPED", "Tracking stopped")) return;
     if (this.activeSlewAlarm) {
       this.dataService.stopContinuousTrack().subscribe(
-        (res: any) => {
-          console.log("Stop continuous tracking response:", res);
-        },
-        (err) => {
-          console.log("Stop continuous tracking error:", err);
-        }
+        (res: any) => this.camOk("Tracking stopped", res),
+        (err) => this.camFail(err)
       );
 
       // this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
@@ -2972,14 +4593,11 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   returnHome(type): void {
-    if (this.activeSlewAlarm) {
+    if (this.camDemo("RETURNING HOME", "Camera returning home")) return;
+    {
       this.dataService.returnCameraHome().subscribe(
-        (res: any) => {
-          console.log("Return camera home response:", res);
-        },
-        (err) => {
-          console.log("Return camera home error:", err);
-        }
+        (res: any) => this.camOk("Camera returning home", res),
+        (err) => this.camFail(err)
       );
 
       // this.activeSlewAlarm.acknowledged_cleared = 10; // Slew TI Stopped
@@ -3048,51 +4666,47 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // "Early Warning" switch (sub-header): hide / show the radar alarm markers (alarm_type 2) on the map.
+  // Hidden markers are kept here and put back when the switch is turned on again.
+  earlyWarningVisible = true;
+  private hiddenEarlyAlarms: any[] = [];
+
   enableDisableLayers(results, sources, type) {
-    if (results) {
-      if (!results.target.checked) {
-        if (sources) {
-          for (var index = 0; index < sources.length; index++) {
-            var src = sources[index];
-            if (src.options && src.options.type == 2) {
-              this.removedLayersAlarmLayers.push(src);
-            } else {
-              this.checkedLayers.push(src);
-            }
-          }
+    if (!results || !results.target || type !== "overlay") return;
+    this.earlyWarningVisible = !!results.target.checked;
+    if (!this.earlyWarningVisible) {
+      (sources || []).slice().forEach((o: any) => {
+        if (o && o.options && o.options.type == 2) {
+          this.keepHiddenEarlyAlarm(o);
+          this.olmap.removeOverlay(o);
         }
-        if (this.removedLayersAlarmLayers.length > 0 && type === "overlay") {
-          for (
-            var index = 0;
-            index < this.removedLayersAlarmLayers.length;
-            index++
-          ) {
-            this.olmap.removeOverlay(this.removedLayersAlarmLayers[index]);
-          }
-        } else if (this.checkedLayers.length > 0) {
-          for (var index = 0; index < this.checkedLayers.length; index++) {
-            this.olmap.removeLayer(this.checkedLayers[index]);
-          }
-        }
-      } else {
-        if (this.removedLayersAlarmLayers.length > 0 && type === "overlay") {
-          for (
-            var index = 0;
-            index < this.removedLayersAlarmLayers.length;
-            index++
-          ) {
-            this.olmap.addOverlay(this.removedLayersAlarmLayers[index]);
-          }
-        } else if (this.checkedLayers.length > 0) {
-          for (var index = 0; index < this.checkedLayers.length; index++) {
-            this.addLayerToMap(this.checkedLayers[index]);
-          }
-        }
-      }
+      });
+    } else {
+      const onMap = this.olmap.getOverlays().getArray();
+      this.hiddenEarlyAlarms.forEach((o: any) => {
+        if (onMap.indexOf(o) === -1) this.olmap.addOverlay(o);
+      });
+      this.hiddenEarlyAlarms = [];
     }
   }
 
+  // one entry per alarm id (a newer marker for the same alarm replaces the old one)
+  private keepHiddenEarlyAlarm(o: any) {
+    const id = String(o.id !== undefined ? o.id : (o.options && o.options.id));
+    this.hiddenEarlyAlarms = this.hiddenEarlyAlarms.filter((h: any) => String(h.id !== undefined ? h.id : (h.options && h.options.id)) !== id);
+    this.hiddenEarlyAlarms.push(o);
+  }
+
   ngOnDestroy(): void {
+    this.stopCamHealth();
+    this.stopDemoFeeds();
+    this.stopUavPolling();
+    this.stopDemoPursuit();
+    if (this.clearedTracksSubscription) {
+      this.clearedTracksSubscription.unsubscribe();
+    }
+    this.stopSimRadar();
+    this.stopSimUav();
     if (this.alarmSubscription) {
       this.alarmSubscription.unsubscribe();
     }
@@ -3104,6 +4718,9 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.radarTrackSubscription) {
       this.radarTrackSubscription.unsubscribe();
+    }
+    if (this.uavCommandSubscription) {
+      this.uavCommandSubscription.unsubscribe();
     }
     if (this.slewTISubscription) {
       this.slewTISubscription.unsubscribe();
@@ -3309,7 +4926,11 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       .getArray()
       .filter((layer, i) => {
         if (layer.get("id") !== 1 && layer.values_.id !== "tileLayer") {
+          // only icon layers: polygon layers (e.g. Border, International Border) have no icon source,
+          // and new Icon() without one throws (OpenLayers error #6), which stopped the theme switch
+          const iconSrc = layer.get("options") && layer.get("options").Style && layer.get("options").Style.source;
           if (
+            iconSrc &&
             layer.get("title") !== "LF" &&
             layer.get("title") !== "RNDF" &&
             (layer.get("zIndex") === 3 || layer.get("zIndex") === 4)
@@ -3720,105 +5341,89 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   //     }
   //   );
   // }
+  // Right-click on the TI icon / slew event: remember which camera. The spec has no "query position"
+  // call, so nothing is sent here (the old code posted an unsupported body to /ptz).
   setPTZControls(camera_ip?: string) {
-    const ip = camera_ip || '192.168.30.71';
-
-    // Build the body object
-    let body = {
-      ...this.ptzControls, // Include the current PTZ control data
-      ip: ip              // Add the IP to the body
-    };
-    console.log("*** body",);
-
-
-    // Define the URL
-    let url = `http://192.168.2.100:8000`;
-
-    console.log("Body:", body);
-
-    // Use POST method to send the body as a request payload
-    this.dataService.postPTZControls(url, body).subscribe(
-      (res: any) => {
-        if (res && !res.error && !res.errorInfo) {
-          this.ptzControls = res;
-        } else {
-          console.log(res);
-        }
-      },
-      (err) => {
-        console.log(err);
-      }
-    );
+    if (camera_ip) this.ti_camera_ip = camera_ip;
   }
 
   applyPTZControls(type, event) {
     this.ptzControls[type] = event.target.value;
   }
 
+  // PTZ CONTROLS -> Submit: spec v2 POST :8000/move with only the ticked fields
   submitPTZControls() {
-    const ip = this.ti_camera_ip || '192.168.30.71';
-
-    let trackId = null;
-    if (this.ptzControls && this.ptzControls.track_id) {
-      trackId = this.ptzControls.track_id;
-    } else if (this.activeSlewAlarm) {
-      trackId = this.activeSlewAlarm.alarm_id || this.activeSlewAlarm.id || null;
-    }
-
-    let body: any = {
-      query: this.ptzControls.query || "position",
-      camera: this.ptzControls.camera || 2,
-      track_id: trackId,
-      ip: ip
-    };
-
-    let hasSelection = false;
-    if (this.ptzSelected.pan) {
-      if (this.ptzControls.pan === undefined || this.ptzControls.pan === null) {
-        this.ptzControls.pan = 0;
-      }
-      body.pan = Number(this.ptzControls.pan);
-      hasSelection = true;
-    }
-    if (this.ptzSelected.tilt) {
-      if (this.ptzControls.tilt === undefined || this.ptzControls.tilt === null) {
-        this.ptzControls.tilt = 0;
-      }
-      body.tilt = Number(this.ptzControls.tilt);
-      hasSelection = true;
-    }
-    if (this.ptzSelected.zoom) {
-      if (this.ptzControls.zoom === undefined || this.ptzControls.zoom === null) {
-        this.ptzControls.zoom = 0;
-      }
-      body.zoom = Number(this.ptzControls.zoom);
-      hasSelection = true;
-    }
-
-    if (!hasSelection) {
-      this.toastr.warning("Please select at least one control (Pan, Tilt, or Zoom) to submit.");
+    const body: any = {};
+    if (this.ptzSelected.pan) body.pan = Number(this.ptzControls.pan || 0);
+    if (this.ptzSelected.tilt) body.tilt = Math.max(-45, Math.min(45, Number(this.ptzControls.tilt || 0)));
+    if (this.ptzSelected.zoom) body.zoom_distance_m = Math.max(0, Number(this.ptzControls.zoom_distance_m || 0));
+    if (!Object.keys(body).length) {
+      this.toastr.warning("Nothing to send: move a slider or tick Pan, Tilt or Zoom first.");
       return;
     }
+    body.gimbal_mode = Number(this.ptzControls.gimbal_mode || 0);
 
-    let url = `http://192.168.2.100:8000`;
-
-    console.log("Submitting PTZ Controls Body:", body);
-
-    this.dataService.postPTZControls(url, body).subscribe(
-      (res: any) => {
-        if (res && !res.error && !res.errorInfo) {
-          this.ptzControls = { ...this.ptzControls, ...res };
-          this.toastr.success("PTZ controls submitted successfully.");
-        } else {
-          console.log(res);
-          this.toastr.error("Failed to submit PTZ controls.");
-        }
-      },
+    if (this.useDemoFeed("slew")) {
+      if (body.pan !== undefined) this.demoPan = body.pan;
+      if (body.tilt !== undefined) this.demoTilt = body.tilt;
+      if (body.zoom_distance_m !== undefined) { this.demoZoomBand = this.zoomBandFor(body.zoom_distance_m); this.demoZoomM = body.zoom_distance_m; }
+      this.camDemo("MOVE " + (body.pan !== undefined ? "P" + body.pan + " " : "") + (body.tilt !== undefined ? "T" + body.tilt : ""),
+        "camera moved" + (body.zoom_distance_m !== undefined ? ", zoom band " + this.demoZoomBand : ""));
+      return;
+    }
+    // API spec v2: "Call /track/stop first if radar tracking is active, otherwise the next radar packet
+    // will override the manual move". /track/stop is harmless when not tracking (camera just holds).
+    this.dataService.stopContinuousTrack().subscribe(
+      () => this.sendCameraMove(body),
       (err) => {
-        console.log(err);
-        this.toastr.error("Error submitting PTZ controls.");
+        if (err && typeof err.status === "number" && err.status > 0) this.sendCameraMove(body); // server answered: still move
+        else this.camFail(err);                                                                // not reachable
       }
     );
+  }
+
+  private sendCameraMove(body: any) {
+    this.dataService.cameraMove(body).subscribe(
+      (res: any) => {
+        const z = res && res.zoom;
+        const band = z && z.band ? " (zoom " + z.band + ")" : (z === "unchanged" ? " (zoom unchanged)" : "");
+        this.toastr.success("Camera moved" + band);
+      },
+      (err) => this.camFail(err)
+    );
+  }
+
+  // PTZ - / + buttons: Pan 1 deg (wraps 0-360), Tilt 1 deg (-45..45), Zoom 100 m (0-10000). Ticks that control.
+  ptzStep(type: "pan" | "tilt" | "zoom", dir: number) {
+    const c = this.ptzControls;
+    if (type === "pan") {
+      c.pan = Math.round(((Number(c.pan) || 0) + dir + 360) % 360 * 10) / 10;
+    } else if (type === "tilt") {
+      c.tilt = Math.max(-45, Math.min(45, Math.round(((Number(c.tilt) || 0) + dir) * 10) / 10));
+    } else {
+      c.zoom_distance_m = Math.max(0, Math.min(10000, Math.round(((Number(c.zoom_distance_m) || 0) + dir * 100) / 50) * 50));
+    }
+    this.ptzSelected[type] = true;
+  }
+
+  // Camera's own visual tracker: automatic target acquisition (spec: /tracker auto_start | auto_stop)
+  autoAcquire(start: boolean) {
+    const mode = start ? "auto_start" : "auto_stop";
+    if (this.camDemo(start ? "AUTO ACQUIRE" : "AUTO ACQUIRE OFF", start ? "automatic acquisition started" : "automatic acquisition stopped")) return;
+    this.dataService.doAutoTrack({ mode }).subscribe(
+      (res: any) => this.camOk(start ? "Automatic acquisition started" : "Automatic acquisition stopped", res),
+      (err) => this.camFail(err)
+    );
+  }
+
+  // demo display of the manual camera move
+  demoPan: number = null;
+  demoTilt: number = null;
+  demoZoomBand = "";
+  private zoomBandFor(m: number): string {
+    const bands = [0, 250, 500, 1000, 1500, 2500, 4000, 6000, 10000];
+    for (let i = bands.length - 1; i >= 0; i--) if (m >= bands[i]) return bands[i] + "m+";
+    return "0m+";
   }
 
   onResizeStart(event: MouseEvent) {
@@ -4137,6 +5742,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       projection: layeroptions.Projection,
       source: clusterSource(),
       zIndex: layeroptions.zIndex,
+      minZoom: layeroptions.minZoom !== undefined ? layeroptions.minZoom : undefined,
+      maxZoom: layeroptions.maxZoom !== undefined ? layeroptions.maxZoom : undefined,
       style: styleFunction,
       opacity: layeroptions.opacity === "No" ? 0 : 1,
       options: layeroptions,
@@ -4416,6 +6023,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       projection: layeroptions.Projection,
       source: clusterSource(),
       zIndex: layeroptions.zIndex,
+      minZoom: layeroptions.minZoom !== undefined ? layeroptions.minZoom : undefined,
+      maxZoom: layeroptions.maxZoom !== undefined ? layeroptions.maxZoom : undefined,
       style: styleFunction,
       opacity: layeroptions.opacity === "No" ? 0 : 1,
       options: layeroptions,
@@ -4482,6 +6091,18 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     }
     this.removeCoverage();
+  }
+
+  onZoneSwitchShown() {
+    let popup = this.popup;
+    let closer = this.popupCloser ? this.popupCloser.nativeElement : null;
+    if (popup) {
+      popup.setPosition(undefined);
+      if (closer) {
+        closer.blur();
+      }
+    }
+    this.getUpdatedLayers();
   }
 
   removeCoverage() {

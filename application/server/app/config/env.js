@@ -26,6 +26,13 @@ const env = {
   },
   jwt_secret_key: process.env.JWT_SECRET_KEY,
   tcp_host: process.env.TCP_SOCKET_HOST,
+  // Other PC: camera/UAV APIs, recording, UAV TCP. Change here, or set PEER_HOST in .env.
+  peer_host: process.env.PEER_HOST || '172.16.8.237',
+  // Kafka broker(s) the radar consumer reads 'radar_processed' from (comma-separated)
+  kafka_brokers: (process.env.KAFKA_BROKERS || '172.16.8.237:9092').split(',').map(b => b.trim()),
+  // Also read the drone position from Kafka topic 'drone_telemetry' (spec v2). Optional - the UI also polls :7999/telemetry.
+  // Set DRONE_TELEMETRY_KAFKA=off in .env to switch it off.
+  drone_telemetry_kafka: (process.env.DRONE_TELEMETRY_KAFKA || 'on') !== 'off',
   tcp_port: process.env.TCP_SOCKET_PORT,
   tcp_port_send_command: process.env.TCP_SOCKET_PORT_SEND_CMD,
   iffThreshold: 70,

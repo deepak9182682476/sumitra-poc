@@ -31,21 +31,24 @@ wss.on('connection', function (ws) {
 });
 
 /** Handling websocket */
-router.get('/to-ui', async function (req, res) {
+async function toUiHandler(req, res) {
     // Make sure body exists
     if (req.body) {
         // Loop through all connected clients
         wss.clients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
                 console.log("to-ui back end",req.body);
-//                
+//
                 client.send(JSON.stringify(req.body));
             }
         });
     }
 
     res.send("data received");
-});
+}
+router.get('/to-ui', toUiHandler);
+// POST version so the browser (Manual Input panel) can push data too - browsers can't send a body with GET
+router.post('/to-ui', toUiHandler);
 
 
 // /** Handling websocket  */

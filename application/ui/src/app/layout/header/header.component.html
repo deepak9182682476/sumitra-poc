@@ -146,7 +146,9 @@
 
             <div class="col-4 navbar-nav d-flex mt-2 align-items-center justify-content-end right-nav headerCol3Cls">
                 <!-- right box -->
-                <div class="d-flex align-items-top">
+                <!-- Sensor health icons (RADAR, UAV, UGV, EOIR, TI, IFF, AGU, LF, BFO): hidden for the Sundarbans setup,
+                     no sensor sends health notifications (they came from the old ROS system). Change *ngIf="false" to *ngIf="true" to show them again. -->
+                <div class="d-flex align-items-top" *ngIf="false">
                     <ul class="navbar-nav align-items-center sensors-container">
 
                         <li class="nav-item" *ngFor="let iconInfo of iconsDetails">

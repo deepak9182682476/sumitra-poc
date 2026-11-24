@@ -3,7 +3,7 @@
 /* Label column — fixed position, never affected by video open/close */
 .video-labels-stack {
   position: absolute;
-  top: 100px;
+  top: 70px;
   left: 5px;
   z-index: 1001;
   display: flex;
@@ -15,11 +15,14 @@
 /* Video column — right of labels, panels stack top-to-bottom */
 .video-panels-stack {
   position: absolute;
-  top: 150px;
-  left: -25px;   /* 5px margin + 90px label + 5px gap */
+  top: 70px;     /* same line as the labels - below the IFF / Early Warning bar */
+  bottom: 8px;   /* never run past the bottom of the map */
+  left: 102px;   /* 5px margin + 90px label + 7px gap */
   z-index: 1000;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  flex-wrap: wrap;          /* not enough height for both -> UAV moves to a 2nd column */
+  align-content: flex-start;
   align-items: flex-start;
   gap: 8px;
   pointer-events: none;
@@ -47,6 +50,8 @@
 .checkbox-label {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 6px;
   font-size: 11px;
   white-space: nowrap;
@@ -64,16 +69,29 @@
 /* Video panel — compact fixed size */
 .video-sec {
   position: relative;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: auto !important;
+  right: auto !important;
   width: 220px;
-  height: 220px;
-  background: rgba(20, 20, 20, 0.92);
+  height: 180px;
+  background: rgba(20, 20, 20, 0.95);
   border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
   padding: 5px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  max-height: 100%;         /* a single tall panel scrolls instead of being cut off */
+  overflow-y: auto;
   pointer-events: all;
+  transition: margin-top 0.25s ease;
+
+  &.uav-only {
+    margin-top: 0;
+  }
 
   &.resizing {
     transition: none !important;
@@ -100,11 +118,11 @@
 
 /* Slew TI video panel - expandable height */
 .slew-ti-sec {
-  height: 160px; /* Collapsed height by default */
+  height: 180px; /* Collapsed height by default */
   transition: height 0.3s ease;
 
   &.ptz-expanded {
-    height: 300px; /* Expanded height to accommodate PTZ controls, checkboxes, and submit button */
+    height: 380px; /* Expanded height to accommodate PTZ controls, checkboxes, and submit button */
   }
 
   .ptz-controls {
@@ -144,28 +162,56 @@
   }
 }
 
+/* Panel header bar above the video feed */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 20px;
+  min-height: 20px;
+  padding: 0 4px 3px 4px;
+  user-select: none;
+  flex-shrink: 0;
+
+  .panel-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    color: #bbb;
+    text-transform: uppercase;
+  }
+}
+
 /* Video fills all space above PTZ controls */
 .video-wrapper {
   flex: 1 1 0;
+  min-height: 110px;        /* keep the video visible when the panel is height-limited */
   min-height: 0;
   position: relative;
   overflow: hidden;
   border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #000;
 }
 
 .video-wrapper img.video-tag,
-.video-wrapper video.video-tag {
+.video-wrapper video.video-tag,
+.video-wrapper canvas.video-tag {
+  position: static;   /* cancels the old global .video-tag { top: 10px } that pushed the picture down and cut its bottom */
+  top: auto;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 3px;
+  border-radius: 2px;
+  border: none !important;
+  outline: none !important;
 }
 
 /* Day / Thermal toggle — bottom-left of video */
 .feed-toggle {
   position: absolute;
-  bottom: 4px;
+  top: 17px;          /* top-left, under the title line - keeps the bottom text of the video visible */
   left: 4px;
   display: flex;
   gap: 2px;
@@ -194,21 +240,27 @@
   }
 }
 
-/* Action icons overlaid top-right of video */
+/* Action icons in the panel header above the video feed */
 .video-icons {
-  position: absolute;
-  top: 3px;
-  right: 3px;
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 7px;
   z-index: 10;
+  margin-left: auto;
 
   span {
     cursor: pointer;
     color: #fff;
     font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-    &:hover { color: #7df; }
+    transition: color 0.15s ease;
+
+    &:hover {
+      color: #03a9f4;
+    }
   }
 }
 
@@ -449,9 +501,11 @@
   box-shadow: 0px 3px 6px var(--box-shadow-color);
   border-radius: 5px;
   cursor: pointer;
+  z-index: 5; /* keep it above the map canvas so clicks reach it */
 
   img {
     filter: var(--winvert);
+    pointer-events: none;
   }
 }
 
@@ -752,12 +806,6 @@
 
 .video-sec {
   color: var(--color);
-  position: relative;
-  left: 30vh;
-  width: 270px;
-  bottom: 20vh;
-  border: 2px solid var(--border-color);
-  background: var(--bg2);
   .videos {
     color: var(--color);
     padding: 0px;
@@ -1089,4 +1137,443 @@ ng-scrollbar.lc-list-items {
     border: none;
     margin: 2px;
   }
+}
+/* ===== Header tool icons (Manual Input + VMS + Track History) ===== */
+.map-header-tools {
+  position: fixed;
+  top: 14px;
+  right: 200px;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header-tool-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  /* Manual — amber always */
+  &.tool-manual {
+    color: #ffb74d;
+    &:hover { background: rgba(255, 183, 77, 0.15); border-color: rgba(255, 183, 77, 0.3); }
+    &.active { background: rgba(255, 183, 77, 0.2); border-color: #ffb74d; box-shadow: 0 0 8px rgba(255, 183, 77, 0.35); }
+  }
+  /* VMS — red always */
+  &.tool-vms {
+    color: #ff5252;
+    &:hover { background: rgba(255, 82, 82, 0.15); border-color: rgba(255, 82, 82, 0.3); }
+    &.active { background: rgba(255, 82, 82, 0.2); border-color: #ff5252; box-shadow: 0 0 8px rgba(255, 82, 82, 0.35); }
+  }
+  /* Track History — cyan always */
+  &.tool-history {
+    color: #00e5ff;
+    &:hover { background: rgba(0, 229, 255, 0.15); border-color: rgba(0, 229, 255, 0.3); }
+    &.active { background: rgba(0, 229, 255, 0.2); border-color: #00e5ff; box-shadow: 0 0 8px rgba(0, 229, 255, 0.35); }
+  }
+}
+
+/* ===== Manual Input panel ===== */
+
+.sim-panel {
+  position: fixed;
+  left: 16px;
+  bottom: 100px;
+  z-index: 1001;
+  width: 330px;
+  max-height: 75vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #00e5ff;
+  border-radius: 6px;
+  background: rgba(10, 20, 30, 0.95);
+  color: #e6e6e6;
+  font-size: 12px;
+
+  .sim-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #00e5ff;
+    cursor: move;
+    user-select: none;
+    i { cursor: pointer; }
+    i.fa-arrows { cursor: move; }
+  }
+
+  .sim-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    select { flex: 1; }
+  }
+
+  .sim-section {
+    margin: 10px 0 6px;
+    padding-top: 6px;
+    border-top: 1px solid #2c3e50;
+    font-weight: bold;
+    color: #00e5ff;
+  }
+
+  .sim-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    label { display: flex; flex-direction: column; margin: 0; min-width: 0; }
+  }
+
+  input, select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    margin-top: 2px;
+    padding: 2px 4px;
+    border: 1px solid #3c4f63;
+    border-radius: 3px;
+    background: #0f1b26;
+    color: #ffffff;
+    font-size: 12px;
+  }
+
+  .sim-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+    .btn { padding: 2px 8px; font-size: 11px; }
+  }
+
+  .sim-stop-all {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #2c3e50;
+    .btn { width: 100%; }
+  }
+
+  .sim-status {
+    margin-top: 6px;
+    color: #9be7a1;
+    font-size: 11px;
+  }
+}
+
+/* ===== Edge + corner resize handles (sim-panel) ===== */
+.sim-panel .resize-handle { position: absolute; z-index: 10; }
+.sim-panel .resize-n  { top: 0;    left: 12px; right: 12px; height: 6px; cursor: n-resize; }
+.sim-panel .resize-s  { bottom: 0; left: 12px; right: 12px; height: 6px; cursor: s-resize; }
+.sim-panel .resize-w  { left: 0;   top: 12px;  bottom: 12px; width: 6px; cursor: w-resize; }
+.sim-panel .resize-e  { right: 0;  top: 12px;  bottom: 12px; width: 6px; cursor: e-resize; }
+.sim-panel .resize-nw { top: 0;    left: 0;   width: 12px; height: 12px; cursor: nw-resize; }
+.sim-panel .resize-ne { top: 0;    right: 0;  width: 12px; height: 12px; cursor: ne-resize; }
+.sim-panel .resize-sw { bottom: 0; left: 0;   width: 12px; height: 12px; cursor: sw-resize; }
+.sim-panel .resize-se { bottom: 0; right: 0;  width: 12px; height: 12px; cursor: se-resize; }
+
+/* ===== UAV Controls (Drone API) ===== */
+.uav-demo-tag {
+  margin-left: 4px;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 8px;
+}
+.uav-link {
+  margin-left: auto;
+  margin-right: 6px;
+  font-size: 8px;
+  font-weight: 600;
+  &.up { color: #34c759; }
+  &.down { color: #ff3b30; }
+}
+.uav-ctl {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #ccc;
+
+  .uav-telemetry {
+    font-family: monospace;
+    font-size: 9px;
+    color: #9be7a1;
+  }
+  .uav-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .uav-label { width: 44px; font-size: 9px; color: #aaa; }
+  input[type="number"] {
+    flex: 1;
+    min-width: 0;
+    height: 20px;
+    padding: 0 3px;
+    font-size: 10px;
+    color: #fff;
+    background: #0f1b26;
+    border: 1px solid #3c4f63;
+    border-radius: 2px;
+    &.short { flex: 0 0 52px; }
+  }
+  input[type="range"] { flex: 1; min-width: 0; height: 4px; }
+  .uav-btn {
+    height: 20px;
+    padding: 0 7px;
+    font-size: 9px;
+    color: #fff;
+    background: rgba(60, 60, 60, 0.9);
+    border: 1px solid #666;
+    border-radius: 2px;
+    cursor: pointer;
+    &:hover { border-color: #03a9f4; }
+    &.go { background: rgba(30, 120, 200, 0.85); border-color: #4af; }
+    &.warn { background: rgba(200, 120, 0, 0.85); border-color: #fb3; }
+    &.sq { width: 24px; height: 22px; padding: 0; }
+  }
+  .uav-pads { justify-content: space-around; align-items: flex-start; }
+  .uav-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 24px);
+    gap: 3px;
+    &.cam { grid-template-columns: repeat(2, 24px); }
+  }
+  .uav-pad-labels {
+    display: flex;
+    justify-content: space-around;
+    font-size: 8px;
+    letter-spacing: 0.6px;
+    color: #888;
+  }
+}
+
+/* PTZ panel additions (spec v2) */
+.ptz-controls {
+  .ptz-label.wide { width: 52px; }
+  .ptz-value.wide { width: 46px; }
+  .ptz-select {
+    flex: 1;
+    min-width: 0;
+    height: 18px;
+    font-size: 10px;
+    color: #fff;
+    background: #0f1b26;
+    border: 1px solid #3c4f63;
+    border-radius: 2px;
+  }
+  .ptz-mini-btn {
+    height: 18px;
+    padding: 0 8px;
+    font-size: 9px;
+    color: #fff;
+    background: rgba(60, 60, 60, 0.9);
+    border: 1px solid #666;
+    border-radius: 2px;
+    cursor: pointer;
+    &:hover { border-color: #03a9f4; }
+  }
+}
+
+/* UAV controls: full-width action buttons + remote-style pads */
+.uav-ctl {
+  .uav-btn.wide { flex: 1; height: 22px; font-size: 10px; i { margin-right: 3px; } }
+  .uav-target {
+    font-size: 9px;
+    color: #9be7a1;
+    margin-top: -2px;
+    &.none { color: #e0a84a; }
+  }
+  .uav-remotes {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: stretch;
+    margin-top: 2px;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .remote-divider { width: 1px; background: rgba(255, 255, 255, 0.08); margin: 2px 0; }
+  .remote-box { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .remote-title { font-size: 8px; font-weight: 700; letter-spacing: 1.2px; color: #9fb3c3; }
+  /* compact pads (3 x 18px grid) so the video keeps its size when the controls are open */
+  .remote {
+    position: relative;
+    width: 54px;
+    height: 54px;
+    .r-btn {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      font-size: 16px;
+      line-height: 1;
+      color: #8fd4ff;
+      background: transparent;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s, text-shadow 0.15s;
+      &:hover { color: #fff; background: rgba(3, 169, 244, 0.18); text-shadow: 0 0 8px rgba(3, 169, 244, 0.9); }
+      &:active { transform: scale(0.9); }
+      &.zoom { font-size: 14px; font-weight: 700; }
+      &:focus { outline: none; }
+    }
+    .r-up    { top: 0;    left: 18px; }
+    .r-down  { bottom: 0; left: 18px; }
+    .r-left  { left: 0;   top: 18px; }
+    .r-right { right: 0;  top: 18px; }
+    .r-center {
+      position: absolute;
+      left: 18px; top: 18px;
+      width: 18px; height: 18px;
+      display: flex; align-items: center; justify-content: center;
+      color: #5f7f96;
+      font-size: 11px;
+      pointer-events: none;
+      svg { width: 14px; height: 14px; }
+    }
+  }
+  .turn-row { height: 13px; display: flex; gap: 6px; }
+  .turn-btn {
+    padding: 0 2px;
+    font-size: 8.5px;
+    color: #ffd27a;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    &:hover { color: #fff; text-shadow: 0 0 6px rgba(240, 160, 32, 0.9); }
+    &:focus { outline: none; }
+  }
+}
+
+/* Light theme: the offline map server only has dark tiles, so invert them into a light map */
+.light-map-tiles canvas {
+  filter: invert(1) hue-rotate(180deg) brightness(1.05) contrast(0.9);
+}
+/* Same filter, switched by the "light-map" class on the map element (see setLightMapClass) */
+.light-map .base-map-tiles canvas {
+  filter: invert(1) hue-rotate(180deg) brightness(1.05) contrast(0.9);
+}
+
+/* PTZ - value + steppers */
+.ptz-controls .ptz-step {
+  flex: 0 0 78px;
+  display: flex;
+  align-items: center;
+  height: 18px;
+  border: 1px solid #3c4f63;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #0f1b26;
+  button {
+    width: 18px;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: #23323e;
+    color: #8fd4ff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    &:hover { background: #03a9f4; color: #fff; }
+    &:active { background: #0277bd; }
+    &:focus { outline: none; }
+  }
+  span {
+    flex: 1;
+    text-align: center;
+    font-size: 9.5px;
+    color: #ddd;
+    white-space: nowrap;
+  }
+}
+
+/* (Track History + VMS buttons are now in .map-bottom-toolbar above) */
+
+/* Map info popups: hidden until OpenLayers places them on the map (inside .ol-overlay-container).
+   Before the first click on a marker the empty popup used to show at the bottom-left with only its close cross. */
+.ol-popup, .ol-dapopup, .ol-papopup { display: none; }
+.ol-overlay-container .ol-popup,
+.ol-overlay-container .ol-dapopup,
+.ol-overlay-container .ol-papopup { display: block; }
+
+/* ---- UAV Tracking mode: video becomes clickable for one click ---- */
+.video-wrapper.uav-pick {
+  cursor: crosshair;
+  border-color: #03a9f4;
+  box-shadow: inset 0 0 0 2px #03a9f4;
+}
+.uav-pick-hint {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  font-size: 10px;
+  color: #fff;
+  background: rgba(3, 169, 244, 0.85);
+  border-radius: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.uav-pick-marker {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 2px solid #ff3b30;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: uavPickPulse 1.5s ease-out forwards;
+  &::before, &::after {
+    content: "";
+    position: absolute;
+    background: #ff3b30;
+  }
+  &::before { left: 50%; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; }
+  &::after { top: 50%; left: -6px; right: -6px; height: 2px; margin-top: -1px; }
+}
+@keyframes uavPickPulse {
+  0% { transform: scale(1.6); opacity: 1; }
+  70% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+.uav-ctl .uav-btn.uav-pick-btn.active {
+  background: rgba(3, 169, 244, 0.9);
+  border-color: #03a9f4;
+}
+
+/* ---- UAV Detection / Track icons in the UAV header (same look as the Slew TI icons) ---- */
+.video-icons .uav-hdr-btn {
+  &.on { color: #4cd964; }            /* detection running */
+  &.off { opacity: .45; }             /* stop detection: nothing to stop */
+  &.picking { color: #03a9f4; }       /* waiting for the click on the video */
+  &.busy { opacity: .45; cursor: wait; }
+}
+.uav-detect-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  padding: 1px 7px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: #fff;
+  background: rgba(46, 160, 67, 0.85);
+  border-radius: 8px;
+  pointer-events: none;
 }

@@ -84,7 +84,9 @@ app.use(function (err, req, res, next) {
 // Create a Server
 const HOST = process.env.HOST;
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, HOST, function () {
+// Listen on all network cards so the other PC (172.16.8.237) can reach this backend.
+// HOST in .env stays 'localhost' because it is also used for the backend's own internal calls.
+const server = app.listen(PORT, process.env.BIND_HOST || "0.0.0.0", function () {
 
   let host = server.address().address;
   let port = server.address().port;

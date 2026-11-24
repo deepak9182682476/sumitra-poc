@@ -10,6 +10,7 @@ const responseRouter = require('./response');
 const sensorRouter = require('./sensor');
 const zoneRouter = require('./zone');
 const imageRouter = require('./image');
+const tracksRouter = require('./tracks'); // Track History dashboard
 // const maingateRouter = require('./maingate');
 
 router.use('/api', dbRouter);
@@ -23,6 +24,7 @@ router.use('/api/response', responseRouter);
 router.use('/api/sensor', sensorRouter);
 router.use('/api/zone', zoneRouter);
 router.use('/api/image', imageRouter);
+router.use('/api/tracks', tracksRouter);
 // router.use('/api/maingate', maingateRouter);
 
 module.exports = router;

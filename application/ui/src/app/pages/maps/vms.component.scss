@@ -1,0 +1,154 @@
+/* VMS — 2x2 camera tile grid */
+.vms-head { cursor: move; }
+.vms-panel {
+  position: fixed;
+  top: 132px;
+  left: 320px;
+  z-index: 1004;
+  width: 720px;
+  max-width: calc(100vw - 420px);
+  max-height: calc(100vh - 180px);
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  font-size: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.vms-panel.max {
+  transform: none !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  z-index: 2000;
+}
+
+.vms-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #222;
+  border-bottom: 1px solid #333;
+  font-size: 13px;
+  font-weight: 500;
+  i.fa-video-camera { margin-right: 6px; color: #ff3b30; }
+  .vms-sub { font-weight: 400; font-size: 12px; opacity: 0.7; }
+}
+.vms-head-icons i {
+  margin-left: 14px;
+  cursor: pointer;
+  opacity: 0.8;
+  &:hover { opacity: 1; }
+}
+
+.vms-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  min-height: 300px;
+  background: #111;
+}
+.vms-grid.single-tile {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.vms-tile {
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+  overflow: hidden;
+  min-height: 0;
+}
+.vms-tile.hidden-tile {
+  display: none;
+}
+
+.vms-tile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background: #252525;
+  border-bottom: 1px solid #333;
+  font-size: 11px;
+}
+.vms-tile-label {
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.vms-tile-icons i {
+  margin-left: 10px;
+  cursor: pointer;
+  opacity: 0.7;
+  font-size: 12px;
+  &:hover { opacity: 1; }
+}
+
+.vms-tile-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: #111;
+  min-height: 120px;
+}
+
+.vms-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.vms-no-feed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #555;
+  i { font-size: 28px; }
+  span { font-size: 11px; }
+}
+.vms-error {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  color: #ff6b6b;
+}
+
+/* ===== Edge + corner resize handles ===== */
+$handle-edge: 6px;   /* grab-zone width on edges */
+$handle-corner: 12px; /* grab-zone size at corners */
+
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+}
+/* Edge handles */
+.resize-n  { top: 0;    left: $handle-corner; right: $handle-corner; height: $handle-edge; cursor: n-resize; }
+.resize-s  { bottom: 0; left: $handle-corner; right: $handle-corner; height: $handle-edge; cursor: s-resize; }
+.resize-w  { left: 0;   top: $handle-corner;  bottom: $handle-corner; width: $handle-edge; cursor: w-resize; }
+.resize-e  { right: 0;  top: $handle-corner;  bottom: $handle-corner; width: $handle-edge; cursor: e-resize; }
+/* Corner handles */
+.resize-nw { top: 0;    left: 0;   width: $handle-corner; height: $handle-corner; cursor: nw-resize; }
+.resize-ne { top: 0;    right: 0;  width: $handle-corner; height: $handle-corner; cursor: ne-resize; }
+.resize-sw { bottom: 0; left: 0;   width: $handle-corner; height: $handle-corner; cursor: sw-resize; }
+.resize-se { bottom: 0; right: 0;  width: $handle-corner; height: $handle-corner; cursor: se-resize; }

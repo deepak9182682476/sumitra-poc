@@ -1,0 +1,62 @@
+<div class="vms-panel" [class.max]="maximized" [class.single]="enlargedIdx >= 0" cdkDrag cdkDragBoundary="body" [cdkDragDisabled]="maximized || isResizing">
+  <!-- Resize handles on edges & corners -->
+  <div class="resize-handle resize-n"  (mousedown)="startResize($event, 'n')"  *ngIf="!maximized"></div>
+  <div class="resize-handle resize-s"  (mousedown)="startResize($event, 's')"  *ngIf="!maximized"></div>
+  <div class="resize-handle resize-w"  (mousedown)="startResize($event, 'w')"  *ngIf="!maximized"></div>
+  <div class="resize-handle resize-e"  (mousedown)="startResize($event, 'e')"  *ngIf="!maximized"></div>
+  <div class="resize-handle resize-nw" (mousedown)="startResize($event, 'nw')" *ngIf="!maximized"></div>
+  <div class="resize-handle resize-ne" (mousedown)="startResize($event, 'ne')" *ngIf="!maximized"></div>
+  <div class="resize-handle resize-sw" (mousedown)="startResize($event, 'sw')" *ngIf="!maximized"></div>
+  <div class="resize-handle resize-se" (mousedown)="startResize($event, 'se')" *ngIf="!maximized"></div>
+
+  <div class="vms-head" cdkDragHandle title="Drag to move">
+    <span>
+      <i class="fa fa-video-camera"></i> VMS — Video Management
+      <span class="vms-sub" *ngIf="enlargedIdx >= 0"> — {{ feeds[enlargedIdx].label }}</span>
+    </span>
+    <span class="vms-head-icons">
+      <i class="fa" [ngClass]="maximized ? 'fa-compress' : 'fa-expand'" (click)="toggleFullscreen()" [title]="maximized ? 'Exit fullscreen' : 'Fullscreen'"></i>
+      <i class="fa fa-th-large" *ngIf="enlargedIdx >= 0" (click)="enlargedIdx = -1" title="Show all tiles"></i>
+      <i class="fa fa-times" (click)="close.emit()" title="Close VMS"></i>
+    </span>
+  </div>
+
+  <div class="vms-grid" [class.single-tile]="enlargedIdx >= 0">
+    <div class="vms-tile" *ngFor="let f of feeds; let i = index" [class.hidden-tile]="!isVisible(i)">
+      <div class="vms-tile-head">
+        <span class="vms-tile-label">{{ f.label }}</span>
+        <span class="vms-tile-icons">
+          <i class="fa" [ngClass]="playing[i] ? 'fa-pause' : 'fa-play'"
+             (click)="togglePlay(i)" [title]="playing[i] ? 'Pause' : 'Play'"
+             *ngIf="f.url"></i>
+          <i class="fa" [ngClass]="enlargedIdx === i ? 'fa-compress' : 'fa-expand'"
+             (click)="enlarge(i)" [title]="enlargedIdx === i ? 'Back to grid' : 'Enlarge'"></i>
+        </span>
+      </div>
+      <div class="vms-tile-body">
+        <!-- MJPEG stream (existing cameras) -->
+        <ng-container *ngIf="f.type === 'mjpeg'">
+          <img *ngIf="f.url && playing[i]" class="vms-feed" [src]="f.url" (error)="onFeedError(i)" />
+        </ng-container>
+        <!-- HLS stream (via MediaMTX) -->
+        <ng-container *ngIf="f.type === 'hls'">
+          <video #videoEl [attr.data-idx]="i" class="vms-feed" autoplay muted playsinline
+                 *ngIf="f.url && playing[i]"></video>
+        </ng-container>
+        <!-- Paused / no URL / error states -->
+        <div class="vms-no-feed" *ngIf="!f.url">
+          <i class="fa fa-video-camera"></i>
+          <span>No camera configured</span>
+        </div>
+        <div class="vms-no-feed" *ngIf="f.url && !playing[i]">
+          <i class="fa fa-pause-circle-o"></i>
+          <span>Paused</span>
+        </div>
+        <div class="vms-no-feed vms-error" *ngIf="f.url && playing[i] && errors[i]">
+          <i class="fa fa-exclamation-triangle"></i>
+          <span>Stream unavailable</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

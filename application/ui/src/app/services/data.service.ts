@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError, BehaviorSubject } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { config } from './../../config/config';
+import { config, server_info } from './../../config/config';
 
 
 @Injectable({
@@ -46,6 +46,11 @@ export class DataService {
   public getZoneCoordinates(): Observable<any> {
     const API_URL = `${this.config.serverApiUrl.zoneService}/all`;
     return this.http.get(API_URL).pipe(catchError(this.handleError));
+  }
+
+  public deleteZone(zoneId: any): Observable<any> {
+    const API_URL = `${this.config.serverApiUrl.zoneService}/${encodeURIComponent(String(zoneId))}`;
+    return this.http.delete(API_URL).pipe(catchError(this.keepError));
   }
 
   public setZoneCoordinates(data): Observable<any> {
@@ -92,7 +97,8 @@ export class DataService {
   public assignToResponse_new(body: any) {
     console.log("body uav: ",body)
     console.log("testing")
-    return this.http.post("http://192.168.30.52:7999/fly_track", body).pipe(
+    // Drone API spec v2: POST /fly_track {"track_id": <int>}
+    return this.http.post(`${server_info.DRONE_API}/fly_track`, { track_id: parseInt(body.track_id, 10) }).pipe(
       catchError(this.handleError)
     );
    
@@ -101,9 +107,58 @@ export class DataService {
   public returnToHome(data) {
     console.log("testing to rh")
 
-    return this.http.get(`http://192.168.30.52:7999/rtl`).pipe(
+    return this.http.post(`${server_info.DRONE_API}/rtl`, {}).pipe(
       catchError(this.handleError)
     );
+  }
+
+  // ---------------- Drone API (spec v2, port 7999) ----------------
+  private drone(path: string) { return `${server_info.DRONE_API}${path}`; }
+
+  public droneFlyTrack(trackId: number) {
+    return this.http.post(this.drone('/fly_track'), { track_id: trackId }).pipe(catchError(this.keepError));
+  }
+  public droneFlyTo(latitude: number, longitude: number, altitude?: number) {
+    const body: any = { latitude, longitude };
+    if (altitude !== undefined && altitude !== null && !isNaN(altitude)) body.altitude = altitude;
+    return this.http.post(this.drone('/fly_to'), body).pipe(catchError(this.keepError));
+  }
+  public droneSetAltitude(altitude: number) {
+    return this.http.post(this.drone('/set_altitude'), { altitude }).pipe(catchError(this.keepError));
+  }
+  public droneRtl() {
+    return this.http.post(this.drone('/rtl'), {}).pipe(catchError(this.keepError));
+  }
+  public droneStopTracking() {
+    return this.http.post(this.drone('/stop_tracking'), {}).pipe(catchError(this.keepError));
+  }
+  // Detection mode on / off. It stays on until the operator turns it off.
+  // NOTE: endpoint names to be confirmed with the drone API (backend must add these).
+  public droneDetectionStart() {
+    return this.http.post(this.drone('/detection/start'), {}).pipe(catchError(this.keepError));
+  }
+  public droneDetectionStop() {
+    return this.http.post(this.drone('/detection/stop'), {}).pipe(catchError(this.keepError));
+  }
+  // Tracking mode: point clicked on the UAV video.
+  // x, y = pixel in the video frame itself (0,0 = top-left); width, height = frame size in pixels.
+  // NOTE: endpoint name to be confirmed with the drone API (backend must add POST /track_pixel).
+  public droneTrackPixel(x: number, y: number, width: number, height: number) {
+    return this.http.post(this.drone('/track_pixel'), { x, y, width, height }).pipe(catchError(this.keepError));
+  }
+  // direction: forward | backward | left | right | yaw_left | yaw_right
+  public droneMove(direction: string) {
+    return this.http.post(this.drone('/move/' + direction), {}).pipe(catchError(this.keepError));
+  }
+  // action: up | down | zoom_in | zoom_out
+  public droneCamera(action: string) {
+    return this.http.post(this.drone('/camera/' + action), {}).pipe(catchError(this.keepError));
+  }
+  public droneTelemetry() {
+    return this.http.get(this.drone('/telemetry')).pipe(catchError(this.keepError));
+  }
+  public droneHealth() {
+    return this.http.get(this.drone('/health')).pipe(catchError(this.keepError));
   }
   // public assignCommand(data) {
   //   const API_URL = `${this.config.serverApiUrl.responseService}/assign-uav-command`;
@@ -193,47 +248,76 @@ export class DataService {
     // const headers = {'Access-Control-Allow-Origin': '*','Access-Control-Allow-Methods': 'GET, POST, OPTIONS','Access-Control-Allow-Headers': 'Origin, Content-Type, X-Auth-Token',"content-type":"text/plain"}
     //return this.http.get(API_URL).pipe(catchError(this.handleError));
     const API_URL = `${this.config.serverApiUrl.sensorService}`;
-    return this.http.get("http://10.91.245.227:8000/ptz?" + queryParams).pipe(catchError(this.handleError));
+    return this.http.get(`${server_info.CAMERA_API}/ptz?` + queryParams).pipe(catchError(this.handleError));
   }
 
   public doAutoTrack(body: any) {
     console.log("TI track: ",body)
-    return this.http.post("http://10.91.245.227:8000/tracker", body).pipe(
-      catchError(this.handleError)
+    return this.http.post(`${server_info.CAMERA_API}/tracker`, body).pipe(
+      this.camCheck, catchError(this.keepError)
     );
   }
 
   public postPTZControls(url: string, body: any) {
     // Sending a POST request with the body (PTZ controls) and headers
-    return this.http.post("http://10.91.245.227:8000/ptz", body).pipe(
+    return this.http.post(`${server_info.CAMERA_API}/ptz`, body).pipe(
       catchError(this.handleError)
     );
   }
 
   public startContinuousTrack(body: any) {
-    return this.http.post("http://10.91.245.227:8000/track/start", body).pipe(
-      catchError(this.handleError)
+    return this.http.post(`${server_info.CAMERA_API}/track/start`, body).pipe(
+      this.camCheck, catchError(this.keepError)
     );
   }
 
   public stopContinuousTrack() {
-    return this.http.post("http://10.91.245.227:8000/track/stop", {}).pipe(
-      catchError(this.handleError)
+    return this.http.post(`${server_info.CAMERA_API}/track/stop`, {}).pipe(
+      this.camCheck, catchError(this.keepError)
     );
   }
 
   public returnCameraHome() {
-    return this.http.post("http://10.91.245.227:8000/home", {}).pipe(
-      catchError(this.handleError)
+    return this.http.post(`${server_info.CAMERA_API}/home`, {}).pipe(
+      this.camCheck, catchError(this.keepError)
     );
   }
 
+  // ---------------- Camera API (spec v2, port 8000) ----------------
+  // Camera server answers HTTP 200 with {"error": "..."} for bad input (e.g. invalid track_id / mode).
+  // Turn that into an error so the UI shows the message instead of "success".
+  private camCheck = map((res: any) => {
+    if (res && res.error) {
+      throw { status: 200, error: { message: String(res.error) + (res.supported ? " (supported: " + res.supported.join(", ") + ")" : "") } };
+    }
+    return res;
+  });
+  // Slew once to a radar track: the camera server works out pan/tilt itself.
+  public cameraSlewOnce(trackId: number) {
+    return this.http.post(`${server_info.CAMERA_API}/ptz`, { track_id: trackId }).pipe(this.camCheck, catchError(this.keepError));
+  }
+  // Camera service health: { camera, angle_scale, encoding, zoom: {last_eo, last_ir}, kafka }
+  public cameraHealth() {
+    return this.http.get(`${server_info.CAMERA_API}/health`).pipe(catchError(this.keepError));
+  }
+  // Manual pan / tilt / zoom: all fields optional
+  // { pan (deg), tilt (deg, -45..45), zoom_distance_m (m), gimbal_mode (0 Position, 1 Stabilize, 2 Velocity, 4 Halt) }
+  public cameraMove(body: any) {
+    return this.http.post(`${server_info.CAMERA_API}/move`, body).pipe(this.camCheck, catchError(this.keepError));
+  }
+
   public slewOnce(body: any) {
-    return this.http.post("http://10.91.245.227:8000/ptz", body).pipe(
+    return this.http.post(`${server_info.CAMERA_API}/ptz`, body).pipe(
       catchError(this.handleError)
     );
   }
   
+
+  // Spec v2 camera/drone calls: pass the HTTP error through unchanged, so the screen can show the
+  // server's own message (e.g. 400 {"status":"error","message":"altitude must be 0-5000 m"}) instead of "not reachable".
+  keepError(error: HttpErrorResponse): any {
+    return throwError(error);
+  }
 
   // Handle Errors
   handleError(error: HttpErrorResponse): any {

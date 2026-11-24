@@ -1,0 +1,23 @@
+Steps to create bright theme osm map:
+ 
+Download india-latest.osm.pbf from geofabrik website and follow these below steps
+ 
+1. docker volume create openstreetmap-data
+ 
+2. docker run -v Absolute path to osm.pbf file/india-latest.osm.pbf:/data.osm.pbf -v openstreetmap-data:/var/lib/postgresql/12/main overv/openstreetmap-tile-server import
+ 
+3. docker volume create openstreetmap-bright-rendered-tiles
+ 
+4. docker run -p 6090:80 -p 5432:5432 -e THREADS=10 -e "OSM2PGSQL_EXTRA_ARGS=-C 4096" -v openstreetmap-data:/var/lib/postgresql/12/main -e ALLOW_CORS=enabled -v openstreetmap-bright-rendered-tiles:/var/lib/mod_tile -d overv/openstreetmap-tile-server run
+ 
+Steps to create dark theme osm map:
+ 
+Download india-latest.osm.pbf from geofabrik website and follow these below steps 1. download file from https://download.geofabrik.de/asia/india-latest.osm.pbf
+ 
+1. docker volume create openstreetmap-data
+ 
+2. docker run -v Absolute path to osm.pbf file/india-latest.osm.pbf:/data.osm.pbf -v openstreetmap-data:/var/lib/postgresql/12/main cvpr/openstreetmap-tile-server import
+ 
+3. docker volume create openstreetmap-dark-rendered-tiles
+ 
+4. docker run -p 6090:80 -p 5432:5432 -e THREADS=10 -e "OSM2PGSQL_EXTRA_ARGS=-C 4096" -v openstreetmap-data:/var/lib/postgresql/12/main -e ALLOW_CORS=enabled -v openstreetmap-dark-rendered-tiles:/var/lib/mod_tile -d cvpr/openstreetmap-tile-server run

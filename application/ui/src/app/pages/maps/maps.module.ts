@@ -5,6 +5,8 @@ import { MapsComponent } from './maps.component';
 import { MapsRoutingModule } from './maps-routing.module';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ManualRouteMapComponent } from '../manual-route-map/manual-route-map.component';
+import { TrackHistoryComponent } from './track-history.component';
+import { VmsComponent } from './vms.component';
 // import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 @NgModule({
@@ -16,7 +18,9 @@ import { ManualRouteMapComponent } from '../manual-route-map/manual-route-map.co
   ],
   declarations: [
     MapsComponent,
-    ManualRouteMapComponent
+    ManualRouteMapComponent,
+    TrackHistoryComponent,
+    VmsComponent
   ],
   exports: [
     MapsComponent,

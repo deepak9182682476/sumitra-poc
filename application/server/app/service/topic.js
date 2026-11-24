@@ -1,7 +1,9 @@
 //var ROSLIB = require('roslib');
 var request = require("request");
+const env = require("../config/env");
 const armContr = require("../controllers/alarm");
 const mapsContr = require("../controllers/map");
+const { isValidTrackId, logSkipped } = require("../utils/trackId");
 
 var intrusion_alarm_topic_details = { 'name': '/intrusion_alarm', 'type': 'perception_msgs/AlarmMsg' }
 var early_warning_topic_details = { 'name': '/early_warning_alarm', 'type': 'perception_msgs/AlarmMsg' }
@@ -56,11 +58,14 @@ function callingRadarKafka() {
     clientId: 'radar-app',
     //brokers: ['127.0.0.1:9092'],
     //brokers: ['192.168.31.1:9092']
-    brokers: ['localhost:9092']
+    // Radar data is published on the other PC's Kafka (172.16.8.237). Change in env.js (kafka_brokers) or KAFKA_BROKERS in .env.
+    brokers: env.kafka_brokers
   });
 
   const consumer = kafka.consumer({
-    groupId: 'radar-group',
+    // Own consumer group: if the other PC also reads radar_processed with 'radar-group', Kafka would split the
+    // messages between the two apps (one partition = only one of them gets data). A separate group gets every message.
+    groupId: 'radar-group-sumitra-' + require('os').hostname(),
     //sessionTimeout: 500000,      // 5 minutes
     heartbeatInterval: 10000,    // 10 sec
     sessionTimeout: 60000,
@@ -72,13 +77,18 @@ function callingRadarKafka() {
 
     await consumer.subscribe({
       topic: 'radar_processed',
-      fromBeginning: true,
+      fromBeginning: false, // live tracks only - don't replay the other PC's whole radar history as new alarms
     });
 
     await consumer.run({
       eachMessage: async ({ message }) => {
         try {
           const kafkaData = JSON.parse(message.value.toString());
+          // Track ID 0 / empty = not a real target: no alarm, no track on the map, nothing saved
+          if (!kafkaData || !kafkaData.track || !isValidTrackId(kafkaData.track.id)) {
+            logSkipped("kafka radar_processed", kafkaData && kafkaData.track ? kafkaData.track.id : undefined);
+            return;
+          }
           console.log("Received Kafka message:");
 
           // 🔹 Transform Kafka radar data into AlarmMsg structure
@@ -112,11 +122,55 @@ function callingRadarKafka() {
   };
 
   run().catch(console.error);
+  callingDroneTelemetryKafka(kafka);
+}
+
+// Drone position from Kafka topic 'drone_telemetry' (spec v2, 1 message/second):
+// {drone_id, drone_key, latitude, longitude, altitude_m, heading_deg, battery_voltage, stale, age_s, received_at}
+// (the UI uses altitude_m / heading_deg; older altitude / heading only as a fallback)
+// Separate consumer so a missing topic never stops the radar consumer. Forwarded to the UI over the WebSocket.
+function callingDroneTelemetryKafka(kafka) {
+  if (!env.drone_telemetry_kafka) return;
+  let warned = false;
+  let consumer = null;
+  const run = async () => {
+    consumer = kafka.consumer({ groupId: 'drone-telemetry-sumitra-' + require('os').hostname() });
+    await consumer.connect();
+    await consumer.subscribe({ topic: 'drone_telemetry', fromBeginning: false });
+    console.log('Listening to Kafka topic drone_telemetry');
+    await consumer.run({
+      eachMessage: async ({ message }) => {
+        try {
+          const d = JSON.parse(message.value.toString());
+          if (d.latitude === undefined || d.longitude === undefined) return;
+          request({
+            url: env.base_url + "/communication/to-ui",
+            method: "POST",
+            json: true,
+            body: { category: "drone_telemetry", data: d },
+          }, () => {});
+        } catch (err) {
+          console.error("drone_telemetry parse error:", err.message);
+        }
+      },
+    });
+  };
+  const start = () => run().catch(async (err) => {
+    if (!warned) { console.log("drone_telemetry not available yet (" + err.message + ") - retrying every 30 s. UI still polls /telemetry."); warned = true; }
+    try { if (consumer) await consumer.disconnect(); } catch (e) {}
+    setTimeout(start, 30000);
+  });
+  start();
 }
 
 var track = [];
 
 async function processAlarmInfo(data, type, url, ip) {
+  // Track ID 0 / empty is never accepted (no alarm, no recording, nothing saved)
+  if (type == "perception_msgs/AlarmMsg" && !isValidTrackId(data && data.event_id)) {
+    logSkipped("alarm message", data && data.event_id);
+    return;
+  }
   //  console.log("processAlarmInfo data",data, type, url, ip);
   if (type == "perception_msgs/AlarmMsg") {
     //console.log('kkl',data, type, url, ip)
@@ -161,7 +215,10 @@ async function processAlarmInfo(data, type, url, ip) {
         radarId: 223,
         ip: "195.67.6.3",
         tail: [[target.track.longitude, target.track.latitude]],
-        range: target.track.range
+        range: target.track.range,
+        // Track History: keep the full radar fields (azimuth, speed, heading, ...) and where it came from
+        source: "kafka",
+        raw: target.track
       };
       sendRadarTrackDataToMapService([radar_target]);
     }
@@ -230,7 +287,7 @@ async function processAlarmInfo(data, type, url, ip) {
 function sendRequest(ip, alarm_id, event) {
   request({
     method: 'get',
-    url: 'http://195.67.15.3:5000/' + event + '/record?ip=' + ip + '&name=' + alarm_id,
+    url: 'http://' + env.peer_host + ':5000/' + event + '/record?ip=' + ip + '&name=' + alarm_id,
     json: true,
   }, function (error, response, body) {
     if (!error && response.statusCode == 200) {

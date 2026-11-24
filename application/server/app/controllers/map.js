@@ -6,12 +6,26 @@ const multer = require("multer");
 const fs = require("fs");
 const db = require("../controllers/db");
 const log = require("../utils/log");
+const trackStore = require("../service/trackStore"); // Track History: every radar position is saved
+const { isValidTrackId, logSkipped } = require("../utils/trackId");
 const { response } = require("express");
 //const comr = require("../routes/communication");
 let radarTrackData = [];
 let alarmTrackInfo = [];
 let alarmData = [];
 let earlyWarningsInfo = [];
+// Radars re-use track ids (every radar session starts again from 1). If an id has not been seen for
+// trackStore.GAP_SECONDS it is a NEW target: it gets its own alarm (the old one is kept with its timestamp).
+let lastSeenById = {};
+const newSessionIds = new Set();
+function startNewTrackSession(id) {
+  const key = String(id);
+  console.log(`[track] track ${key} seen again after more than ${trackStore.GAP_SECONDS} s - treating it as a new target`);
+  earlyWarningsInfo = earlyWarningsInfo.filter((ew) => String(ew.id) !== key); // raise a new alarm
+  delete tracksById[key];                                                      // new trail, not joined to the old one
+  alarmTrackInfo = alarmTrackInfo.filter((a) => String(a.track_id) !== key);
+  newSessionIds.add(key);
+}
 let ewInfo = {};
 let trackIds = []
 earlyWarningsInfo.push(ewInfo)
@@ -191,13 +205,39 @@ var newRadarTrack = false;
 // Retrieve Alarm from the ROS-Web Adapter.
 exports.track = async (req, res, next) => {
   res.send("received");
+  // Track ID 0 / empty is not a real target: drop it before anything is shown or saved
+  const incoming = Array.isArray(req.body && req.body.track) ? req.body.track : [];
+  const validTracks = incoming.filter((t) => {
+    if (t && isValidTrackId(t.id)) return true;
+    logSkipped("map radar/track", t ? t.id : undefined);
+    return false;
+  });
+  if (!validTracks.length) return;
   newRadarTrack = true;
-  radarTrackData = req.body.track;
+  radarTrackData = validTracks;
 
   if (radarTrackData && radarTrackData.length > 0) {
     const trackInfo = radarTrackData[0];
     const location = trackInfo.tail[0];
     if (location != undefined) {
+      // same track id again after a long gap = a new target (radar re-used the id)
+      const nowMs = Date.now();
+      const prevSeen = lastSeenById[String(trackInfo.id)];
+      lastSeenById[String(trackInfo.id)] = nowMs;
+      if (prevSeen && nowMs - prevSeen > trackStore.GAP_SECONDS * 1000) startNewTrackSession(trackInfo.id);
+      // Track History: save this position (Kafka radar and Manual Input "through backend")
+      const raw = trackInfo.raw || {};
+      trackStore.savePoint({
+        track_id: trackInfo.id,
+        latitude: location[1],
+        longitude: location[0],
+        range_km: trackInfo.range,
+        azimuth: raw.azimuth,
+        speed: raw.velocity !== undefined && raw.velocity !== null ? raw.velocity : raw.speed, // spec v2: track.velocity (m/s)
+        heading: raw.heading,
+        source: trackInfo.source || "manual",
+        raw: trackInfo.raw || null,
+      });
       let isEWPresent = checkEWPresense(trackInfo.id);
       if (!isEWPresent) {
         console.log("*********************************************************************************************************")
@@ -394,7 +434,8 @@ function sendAlarmDataToAlarmService(lat, lon, id, type, st, ip, range) {
     camera_id: "192.168.1.10",
     alarm_type: type,
     sensors_triggered: st,
-    range: range
+    range: range,
+    new_session: newSessionIds.delete(String(id)), // true = this id was re-used for a new target
   };
   options.method = "POST";
   options.json = true;

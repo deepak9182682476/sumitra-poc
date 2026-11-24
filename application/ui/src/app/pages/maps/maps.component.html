@@ -121,9 +121,9 @@
                               [class.resizing]="isResizing"
                               *ngIf="enableVideo"
                               [style.width.px]="slewTiWidth"
-                              [style.height.px]="(isPtzExpanded ? 300 : 160) + slewTiHeightOffset">
-                          <div class="video-wrapper">
-                            <img class="video-tag" id="slew-ti-video" [src]="slewFeedUrl" />
+                              [style.height.px]="(isPtzExpanded ? 380 : 180) + slewTiHeightOffset">
+                          <div class="panel-header">
+                            <span class="panel-title">Slew TI</span>
                             <span class="video-icons">
                               <span><i (click)="startTrack('ti');" class="fa fa-play" title="Start Tracking" aria-hidden="true"></i></span>
                               <span><i (click)="stopTrack('ti');" class="fa fa-stop" title="Stop Tracking" aria-hidden="true"></i></span>
@@ -133,6 +133,10 @@
                               <span><i (click)="openFullscreen('ti');" class="fa fa-arrows-alt" title="Fullscreen" aria-hidden="true"></i></span>
                               <span><i class="fa fa-remove" aria-hidden="true" (click)="enableVideo=false;" title="Close Video Feed" id="close-icon-slew-ti-popup"></i></span>
                             </span>
+                          </div>
+                          <div class="video-wrapper">
+                            <img *ngIf="!useDemoFeed('slew')" class="video-tag" id="slew-ti-video" [src]="slewFeedUrl" (error)="onFeedError('slew')" />
+                            <canvas *ngIf="useDemoFeed('slew')" class="video-tag demo-feed" id="slew-demo-canvas"></canvas>
                             <div class="feed-toggle">
                               <button [class.active]="!isThermalFeed" (click)="isThermalFeed=false">Day</button>
                               <button [class.active]="isThermalFeed" (click)="isThermalFeed=true">Thermal</button>
@@ -141,6 +145,7 @@
                           
                           <div class="ptz-toggle" (click)="isPtzExpanded = !isPtzExpanded">
                             <span class="ptz-toggle-text">PTZ CONTROLS</span>
+                            <span class="uav-link" [ngClass]="camLink" [title]="camHealthTitle" *ngIf="camLink !== 'unknown'">{{ camLink === 'up' ? 'CAM LINK UP' : 'CAM LINK DOWN' }}</span>
                             <i class="fa" [ngClass]="isPtzExpanded ? 'fa-angle-up' : 'fa-angle-down'"></i>
                           </div>
 
@@ -148,20 +153,46 @@
                             <div class="ptz-row">
                               <input type="checkbox" [(ngModel)]="ptzSelected.pan" class="ptz-checkbox" id="ptz-pan-check" />
                               <label for="ptz-pan-check" class="ptz-label">Pan</label>
-                              <input type="range" min="0" max="360" [(ngModel)]="ptzControls.pan" (change)="applyPTZControls('pan',$event)" />
-                              <span class="ptz-value">{{ptzControls.pan}}</span>
+                              <input type="range" min="0" max="360" step="0.5" [(ngModel)]="ptzControls.pan" (input)="ptzSelected.pan = true" />
+                              <div class="ptz-step">
+                                <button type="button" (click)="ptzStep('pan', -1)" title="Pan left 1&deg;">&minus;</button>
+                                <span>{{ ptzControls.pan }}&deg;</span>
+                                <button type="button" (click)="ptzStep('pan', 1)" title="Pan right 1&deg;">+</button>
+                              </div>
                             </div>
                             <div class="ptz-row">
                               <input type="checkbox" [(ngModel)]="ptzSelected.tilt" class="ptz-checkbox" id="ptz-tilt-check" />
                               <label for="ptz-tilt-check" class="ptz-label">Tilt</label>
-                              <input type="range" min="-25" max="25" [(ngModel)]="ptzControls.tilt" (change)="applyPTZControls('tilt',$event)" />
-                              <span class="ptz-value">{{ptzControls.tilt}}</span>
+                              <input type="range" min="-45" max="45" step="0.5" [(ngModel)]="ptzControls.tilt" (input)="ptzSelected.tilt = true" />
+                              <div class="ptz-step">
+                                <button type="button" (click)="ptzStep('tilt', -1)" title="Tilt down 1&deg;">&minus;</button>
+                                <span>{{ ptzControls.tilt }}&deg;</span>
+                                <button type="button" (click)="ptzStep('tilt', 1)" title="Tilt up 1&deg;">+</button>
+                              </div>
                             </div>
                             <div class="ptz-row">
                               <input type="checkbox" [(ngModel)]="ptzSelected.zoom" class="ptz-checkbox" id="ptz-zoom-check" />
-                              <label for="ptz-zoom-check" class="ptz-label">Zoom</label>
-                              <input type="range" min="0" max="17" [(ngModel)]="ptzControls.zoom" (change)="applyPTZControls('zoom',$event)" />
-                              <span class="ptz-value">{{ptzControls.zoom}}</span>
+                              <label for="ptz-zoom-check" class="ptz-label" title="Target distance in metres - the camera picks the zoom for that distance">Zoom</label>
+                              <input type="range" min="0" max="10000" step="50" [(ngModel)]="ptzControls.zoom_distance_m" (input)="ptzSelected.zoom = true" />
+                              <div class="ptz-step">
+                                <button type="button" (click)="ptzStep('zoom', -1)" title="Zoom distance -100 m">&minus;</button>
+                                <span>{{ ptzControls.zoom_distance_m }}m</span>
+                                <button type="button" (click)="ptzStep('zoom', 1)" title="Zoom distance +100 m">+</button>
+                              </div>
+                            </div>
+                            <div class="ptz-row">
+                              <span class="ptz-label wide">Mode</span>
+                              <select class="ptz-select" [(ngModel)]="ptzControls.gimbal_mode" title="Gimbal mode">
+                                <option [ngValue]="0">Position</option>
+                                <option [ngValue]="1">Stabilize</option>
+                                <option [ngValue]="2">Velocity</option>
+                                <option [ngValue]="4">Halt</option>
+                              </select>
+                            </div>
+                            <div class="ptz-row">
+                              <span class="ptz-label wide">Auto acq.</span>
+                              <button type="button" class="ptz-mini-btn" (click)="autoAcquire(true)" title="Camera's own tracker: start automatic target acquisition">Start</button>
+                              <button type="button" class="ptz-mini-btn" (click)="autoAcquire(false)" title="Stop automatic target acquisition">Stop</button>
                             </div>
                             <div class="ptz-submit-row">
                               <button type="button" class="ptz-submit-btn" (click)="submitPTZControls()" title="Submit Selected PTZ Controls">
@@ -174,17 +205,105 @@
 
                         <div class="video-sec" 
                              *ngIf="enableUavVideo"
+                             [class.uav-only]="!enableVideo"
                              [class.resizing]="isUavResizing"
                              [style.width.px]="uavWidth"
-                             [style.height.px]="uavHeight">
-                          <div class="video-wrapper">
-                            <video class="video-tag" id="uav-video" autoplay muted>
-                              <source [src]="uavStreamUrl" type="video/mp4" />
-                            </video>
+                             [style.height.px]="uavHeight + (isUavCtlExpanded ? 274 : 0)">
+                          <div class="panel-header">
+                            <span class="panel-title">UAV</span>
                             <span class="video-icons">
-                              <span><i (click)="openFullscreen('uav');" class="fa fa-arrows-alt" aria-hidden="true"></i></span>
+                              <!-- 1. start detection, 2. stop detection (only the operator stops it), 3. track: next click on the video sends that pixel -->
+                              <span class="uav-hdr-btn" [class.on]="uavDetectionOn" [class.busy]="uavDetectionBusy"><i (click)="setUavDetection(true);" class="fa fa-binoculars" [title]="uavDetectionOn ? 'Detection is on' : 'Start Detection'" aria-hidden="true"></i></span>
+                              <span class="uav-hdr-btn" [class.off]="!uavDetectionOn" [class.busy]="uavDetectionBusy"><i (click)="setUavDetection(false);" class="fa fa-stop-circle" title="Stop Detection" aria-hidden="true"></i></span>
+                              <span class="uav-hdr-btn" [class.picking]="uavPickMode"><i (click)="toggleUavPickMode();" class="fa fa-bullseye" [title]="uavPickMode ? 'Click a point on the video (Esc to cancel)' : 'Track: click a point on the video'" aria-hidden="true"></i></span>
+                              <span><i (click)="openFullscreen('uav');" class="fa fa-arrows-alt" title="Fullscreen" aria-hidden="true"></i></span>
                               <span><i class="fa fa-remove" aria-hidden="true" (click)="enableUavVideo=false;"></i></span>
                             </span>
+                          </div>
+                          <div class="video-wrapper" [class.uav-pick]="uavPickMode" (click)="onUavVideoClick($event)">
+                            <img *ngIf="!useDemoFeed('uav')" class="video-tag" id="uav-video" [src]="uavStreamUrl" (error)="onFeedError('uav')" />
+                            <canvas *ngIf="useDemoFeed('uav')" class="video-tag demo-feed" id="uav-demo-canvas"></canvas>
+                            <!-- Tracking mode: hint while waiting for the click, and a marker where the user clicked -->
+                            <div class="uav-detect-badge" *ngIf="uavDetectionOn">DETECTION ON</div>
+                            <div class="uav-pick-hint" *ngIf="uavPickMode">Click a point to track &middot; Esc to cancel</div>
+                            <div class="uav-pick-marker" *ngIf="uavPickMarker" [style.left.px]="uavPickMarker.left" [style.top.px]="uavPickMarker.top"></div>
+                          </div>
+
+                          <div class="ptz-toggle" (click)="isUavCtlExpanded = !isUavCtlExpanded">
+                            <span class="ptz-toggle-text">UAV CONTROLS <span *ngIf="droneDemo" class="uav-demo-tag">DEMO</span></span>
+                            <span class="uav-link" [ngClass]="uavLink">{{ uavLink === 'up' ? 'LINK UP' : (uavLink === 'down' ? 'LINK DOWN' : '') }}{{ uavLink && telemetrySource === 'kafka' && !droneDemo ? ' · KAFKA' : '' }}</span>
+                            <i class="fa" [ngClass]="isUavCtlExpanded ? 'fa-angle-up' : 'fa-angle-down'"></i>
+                          </div>
+
+                          <div class="uav-ctl" *ngIf="isUavCtlExpanded">
+                            <div class="uav-telemetry" *ngIf="uavTelemetry">
+                              ALT {{ uavTelemetry.altitude | number:'1.0-0' }} m &nbsp; HDG {{ uavTelemetry.heading | number:'1.0-0' }}&deg; &nbsp;
+                              BAT {{ uavTelemetry.battery_voltage }} V
+                              <span *ngIf="uavHealth?.active_track_id"> &nbsp; TRK {{ uavHealth.active_track_id }}</span>
+                            </div>
+
+                            <!-- Chase / stop / return. Pursue chases the alarm selected with the camera icon on its alarm card. -->
+                            <div class="uav-row">
+                              <button class="uav-btn go wide" (click)="uavPursue()" title="Chase the alarm selected with the camera icon on its alarm card"><i class="fa fa-crosshairs"></i> Pursue</button>
+                              <button class="uav-btn wide" (click)="uavStopTracking()" title="Stop chasing - hover where it is"><i class="fa fa-pause"></i> Stop</button>
+                              <button class="uav-btn warn wide" (click)="uavRtl()" title="Return To Launch - fly back home"><i class="fa fa-home"></i> RTL</button>
+                            </div>
+                            <div class="uav-target" [class.none]="pursueTarget === null">
+                              <ng-container *ngIf="pursueTarget !== null">Target: TRK {{ pursueTarget }}</ng-container>
+                              <ng-container *ngIf="pursueTarget === null">Target: none - click the camera icon on an alarm card</ng-container>
+                            </div>
+
+
+                            <div class="uav-row">
+                              <input type="number" step="0.0001" [(ngModel)]="uavCtl.lat" placeholder="Lat" title="Latitude" />
+                              <input type="number" step="0.0001" [(ngModel)]="uavCtl.lon" placeholder="Lon" title="Longitude" />
+                              <input type="number" [(ngModel)]="uavCtl.alt" placeholder="Alt m" title="Altitude (m, optional)" class="short" />
+                              <button class="uav-btn go" (click)="uavFlyTo()" title="Fly to this latitude / longitude and hover there">Fly To</button>
+                            </div>
+
+                            <div class="uav-row">
+                              <span class="uav-label">Altitude</span>
+                              <input type="range" min="0" max="1000" step="10" [(ngModel)]="uavCtl.setAlt" />
+                              <input type="number" min="0" max="5000" [(ngModel)]="uavCtl.setAlt" class="short" />
+                              <button class="uav-btn" (click)="uavSetAltitude()" title="Change the flying height (0-5000 m)">Set</button>
+                            </div>
+
+                            <!-- Remote-style pads: drone camera on the left, drone flight on the right -->
+                            <div class="uav-remotes">
+                              <div class="remote-box">
+                                <div class="remote-title">CAMERA</div>
+                                <div class="remote">
+                                  <button class="r-btn r-up" (click)="uavCamera('up')" title="Tilt camera up"><i class="fa fa-caret-up"></i></button>
+                                  <button class="r-btn r-down" (click)="uavCamera('down')" title="Tilt camera down"><i class="fa fa-caret-down"></i></button>
+                                  <button class="r-btn r-left zoom" (click)="uavCamera('zoom_out')" title="Zoom out">&minus;</button>
+                                  <button class="r-btn r-right zoom" (click)="uavCamera('zoom_in')" title="Zoom in">+</button>
+                                  <div class="r-center"><i class="fa fa-video-camera"></i></div>
+                                </div>
+                              </div>
+                              <div class="remote-divider"></div>
+                              <div class="remote-box">
+                                <div class="remote-title">DRONE</div>
+                                <div class="remote">
+                                  <button class="r-btn r-up" (click)="uavMove('forward')" title="Move forward"><i class="fa fa-caret-up"></i></button>
+                                  <button class="r-btn r-down" (click)="uavMove('backward')" title="Move back"><i class="fa fa-caret-down"></i></button>
+                                  <button class="r-btn r-left" (click)="uavMove('left')" title="Move left"><i class="fa fa-caret-left"></i></button>
+                                  <button class="r-btn r-right" (click)="uavMove('right')" title="Move right"><i class="fa fa-caret-right"></i></button>
+                                  <div class="r-center">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                      <g fill="none" stroke="currentColor" stroke-width="1.6">
+                                        <circle cx="5" cy="5" r="3"/><circle cx="19" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/>
+                                        <path d="M7.2 7.2L10 10M16.8 7.2L14 10M7.2 16.8L10 14M16.8 16.8L14 14"/>
+                                      </g>
+                                      <rect x="9.5" y="9.5" width="5" height="5" rx="1" fill="currentColor"/>
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div class="turn-row">
+                                  <button class="turn-btn" (click)="uavMove('yaw_left')" title="Turn left - rotate on the spot">&#8630; Turn left</button>
+                                  <button class="turn-btn" (click)="uavMove('yaw_right')" title="Turn right - rotate on the spot">Turn right &#8631;</button>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           <div class="resize-handle" (mousedown)="onUavResizeStart($event)" title="Drag to Resize"></div>
                         </div>
@@ -196,7 +315,7 @@
                         <div id="popup-content" #overlayElement></div>
                     </div>
                     
-                    <div class="default-location" id="default-location">
+                    <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                         <img src="./assets/GPS.svg" width="12" height="12" />
                     </div>
                     <div class="layer-controls">
@@ -208,7 +327,7 @@
                             </span>
                             <span class="layer-btn">
                                 <img src="/assets/Flip-To-Back-24px.svg" #pop1="bs-popover" [popover]="zoneswitchPopup"
-                                    placement="right top" containerClass="popupParent" [outsideClick]="true" />
+                                    placement="right top" containerClass="popupParent" (onShown)="onZoneSwitchShown()" [outsideClick]="true" />
                             </span>
                         </div>
                         <ng-template #layerswitchPopup>
@@ -257,42 +376,53 @@
                             </div>
                         </ng-template>
                         <ng-template #zoneswitchPopup>
-                            <div *ngIf="zoneLayers.length > 0">
-                                <ul class="popup-list" *ngFor="let zonelayer of zoneLayers; let z = index;">
-                                    <span class="mb-3">{{getZoneLayerTitle(zonelayer?.LayerTitle)}}</span>
-                                    <li class="popup-list-item"
-                                        *ngFor="let zone of getZoneFeature(zonelayer); let i = index;">
-                                        <input type="checkbox" class="lyr-chkbx" id="{{'zone_'+i}}"
-                                            [checked]="zone.properties.checked" [value]="zone.properties.zone_area"
-                                            (change)="onZoneChkBoxChange($event,zonelayer,zone,z,i)" />
+                            <div class="zoneswitch-popup-content">
+                                <div *ngIf="zoneLayers.length > 0">
+                                    <ul class="popup-list" *ngFor="let zonelayer of zoneLayers; let z = index;">
+                                        <span class="mb-3">{{getZoneLayerTitle(zonelayer?.LayerTitle)}}</span>
+                                        <li class="popup-list-item"
+                                            *ngFor="let zone of getZoneFeature(zonelayer); let i = index;">
+                                            <input type="checkbox" class="lyr-chkbx" id="{{'zone_'+i}}"
+                                                [checked]="zone.properties.checked" [value]="zone.properties.zone_area"
+                                                (change)="onZoneChkBoxChange($event,zonelayer,zone,z,i)" />
 
-                                        <span #pop2="bs-popover" [popover]="zoneDetailsPopup" placement="right top"
-                                            containerClass="zoneDetailsPopup"
-                                            [outsideClick]="true">{{getTranslationLang("zone")}}-{{zone?.properties?.zone_area}}
-                                        </span>
+                                            <span #pop2="bs-popover" [popover]="zoneDetailsPopup" placement="right top"
+                                                containerClass="zoneDetailsPopup"
+                                                [outsideClick]="true">{{getTranslationLang("zone")}}-{{zone?.properties?.zone_area}}
+                                            </span>
 
-                                        <ng-template #zoneDetailsPopup>
-                                            <div class="w-mx-con">
-                                                <p class="mb-1">
-                                                    <span>{{getTranslationLang("zone_id")}}:</span>
-                                                    {{getTranslationLang("zone")}}-{{zone?.properties?.zone_area}}
+                                            <ng-template #zoneDetailsPopup>
+                                                <div class="w-mx-con">
+                                                    <p class="mb-1">
+                                                        <span>{{getTranslationLang("zone_id")}}:</span>
+                                                        {{getTranslationLang("zone")}}-{{zone?.properties?.zone_area}}
 
-                                                    <span class="custom-switch pl-5">
-                                                        <input type="checkbox" class="custom-control-input"
-                                                            [id]="'switch_'+i"
-                                                            [checked]="zone.properties.current_status"
-                                                            (change)="changeStatus($event, zone.properties)">
-                                                        <label class="custom-control-label" [for]="'switch_'+i"></label>
-                                                    </span>
-                                                </p>
-                                                <p class="mb-1">
-                                                    <span>{{getTranslationLang('priority')}}:</span>
-                                                    {{(zone?.properties?.zone_priority) ? 'Yes' : 'No'}}
-                                                </p>
-                                            </div>
-                                        </ng-template>
-                                    </li>
-                                </ul>
+                                                        <span class="custom-switch pl-5">
+                                                            <input type="checkbox" class="custom-control-input"
+                                                                [id]="'switch_'+i"
+                                                                [checked]="zone.properties.current_status"
+                                                                (change)="changeStatus($event, zone.properties)">
+                                                            <label class="custom-control-label" [for]="'switch_'+i"></label>
+                                                        </span>
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <span>{{getTranslationLang('priority')}}:</span>
+                                                        {{(zone?.properties?.zone_priority) ? 'Yes' : 'No'}}
+                                                    </p>
+                                                    <p class="mb-0 mt-2" *ngIf="signedInUserInfo?.isSignedIn && (signedInUserInfo?.role === 1 || signedInUserInfo?.role === 6)">
+                                                        <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                                                            (click)="deleteZone(zone?.properties)">
+                                                            {{ zoneDeleteArmed === zone?.properties?.zone_area ? 'Click again to delete' : 'Delete zone' }}
+                                                        </button>
+                                                    </p>
+                                                </div>
+                                            </ng-template>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div *ngIf="zoneLayers.length === 0" class="p-2 text-muted text-center" style="font-size: 12px; min-width: 130px;">
+                                    <span>{{getTranslationLang("no_zones_available") || "No zones available"}}</span>
+                                </div>
                                 <ul class="popup-list"
                                     *ngIf="signedInUserInfo?.isSignedIn && (signedInUserInfo?.role === 1 || signedInUserInfo?.role === 6)">
                                     <li class="popup-list-item">
@@ -364,7 +494,7 @@
                         </div>
                     </div>
 
-                    <div class="default-location" id="default-location">
+                    <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                         <img src="./assets/GPS.svg" width="12" height="12" />
                     </div>
                 </ng-container>
@@ -376,7 +506,7 @@
                                 <div id="da-popup-content" #daOverlayElement>
                                 </div>
                             </div>
-                            <div class="default-location" id="default-location">
+                            <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                                 <img src="./assets/GPS.svg" width="12" height="12" />
                             </div>
                         </div>
@@ -390,7 +520,7 @@
                                 <div id="da-popup-content" #daOverlayElement>
                                 </div>
                             </div>
-                            <div class="default-location" id="default-location">
+                            <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                                 <img src="./assets/GPS.svg" width="12" height="12" />
                             </div>
                         </div>
@@ -398,7 +528,7 @@
                 </ng-container>
                 <ng-container *ngSwitchCase="'system-configuration'">
                     <div id="system-config-map" class="sys-confg-map">
-                        <div class="default-location" id="default-location">
+                        <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                             <img src="./assets/GPS.svg" width="12" height="12" />
                         </div>
                     </div>
@@ -463,3 +593,78 @@
         </div>
     </div>
 </div> -->
+<!-- ===== Header tools: Manual Input + VMS + Track History ===== -->
+<div class="map-header-tools">
+  <button type="button" class="header-tool-btn tool-manual" [class.active]="showSimPanel" (click)="showSimPanel = !showSimPanel" title="Manual Input">
+      <i class="fa fa-crosshairs" aria-hidden="true"></i>
+  </button>
+  <button type="button" class="header-tool-btn tool-vms" [class.active]="showVms" (click)="showVms = !showVms" title="VMS — Live Camera Feeds">
+      <i class="fa fa-video-camera" aria-hidden="true"></i>
+  </button>
+  <button type="button" class="header-tool-btn tool-history" [class.active]="showTrackHistory" (click)="toggleTrackHistory()" title="Track History">
+      <i class="fa fa-history" aria-hidden="true"></i>
+  </button>
+</div>
+<app-track-history *ngIf="showTrackHistory" (close)="toggleTrackHistory(false)" (showPath)="showHistoryPath($event)" (clearPath)="clearHistoryPath()"></app-track-history>
+<app-vms *ngIf="showVms" (close)="showVms = false"></app-vms>
+
+<div class="sim-panel" [hidden]="!showSimPanel" cdkDrag cdkDragBoundary="body" [cdkDragDisabled]="isSimResizing">
+    <!-- Resize handles -->
+    <div class="resize-handle resize-n"  (mousedown)="startSimResize($event, 'n')"></div>
+    <div class="resize-handle resize-s"  (mousedown)="startSimResize($event, 's')"></div>
+    <div class="resize-handle resize-w"  (mousedown)="startSimResize($event, 'w')"></div>
+    <div class="resize-handle resize-e"  (mousedown)="startSimResize($event, 'e')"></div>
+    <div class="resize-handle resize-nw" (mousedown)="startSimResize($event, 'nw')"></div>
+    <div class="resize-handle resize-ne" (mousedown)="startSimResize($event, 'ne')"></div>
+    <div class="resize-handle resize-sw" (mousedown)="startSimResize($event, 'sw')"></div>
+    <div class="resize-handle resize-se" (mousedown)="startSimResize($event, 'se')"></div>
+
+    <div class="sim-head" cdkDragHandle title="Drag to move">
+        <span><i class="fa fa-arrows" aria-hidden="true"></i>&nbsp; Manual Input</span>
+        <i class="fa fa-remove" aria-hidden="true" (click)="showSimPanel = false" title="Close"></i>
+    </div>
+
+    <div class="sim-row">
+        <label>Send</label>
+        <select [(ngModel)]="simMode">
+            <option value="auto">Through backend (UI if it fails)</option>
+            <option value="ui">UI only</option>
+        </select>
+    </div>
+
+    <div class="sim-section">RADAR TARGET</div>
+    <div class="sim-grid">
+        <label>Track ID<input type="number" [(ngModel)]="simRadar.id" /></label>
+        <label>Speed m/s<input type="number" [(ngModel)]="simRadar.speed" /></label>
+        <label>Latitude<input type="number" step="0.0001" [(ngModel)]="simRadar.lat" /></label>
+        <label>Longitude<input type="number" step="0.0001" [(ngModel)]="simRadar.lon" /></label>
+        <label>Heading &deg;<input type="number" [(ngModel)]="simRadar.heading" title="0 = North, 90 = East, 180 = South, 270 = West" /></label>
+    </div>
+    <div class="sim-btns">
+        <button class="btn btn-sm btn-success" (click)="startSimRadar()" [disabled]="simRadarRunning" title="New target (new alarm + sound)">Start</button>
+        <button class="btn btn-sm btn-info" (click)="resumeSimRadar()" [disabled]="!canResumeSimRadar" title="Continue the stopped target (same Track ID, no new alarm)">Resume</button>
+        <button class="btn btn-sm btn-danger" (click)="stopSimRadar(); stopAlarmSound()">Stop</button>
+        <button class="btn btn-sm btn-primary" (click)="newSimRadarTrack()">New Track</button>
+    </div>
+    <div class="sim-status" *ngIf="simRadarStatus">{{ simRadarStatus }}</div>
+
+    <div class="sim-section">UAV</div>
+    <div class="sim-grid">
+        <label>Latitude<input type="number" step="0.0001" [(ngModel)]="simUav.lat" /></label>
+        <label>Longitude<input type="number" step="0.0001" [(ngModel)]="simUav.lon" /></label>
+        <label>Speed m/s<input type="number" [(ngModel)]="simUav.speed" /></label>
+    </div>
+    <div class="sim-btns">
+        <button class="btn btn-sm btn-success" (click)="flySimUav()">Fly To</button>
+        <button class="btn btn-sm btn-primary" (click)="flySimUavToTrack()" title="Fly to the current radar target">Fly To Target</button>
+        <button class="btn btn-sm btn-info" (click)="setSimUavPosition()" title="Place the drone here instantly">Place</button>
+        <button class="btn btn-sm btn-warning" (click)="returnSimUavHome()">Home</button>
+        <button class="btn btn-sm btn-danger" (click)="stopSimUav(); simUavStatus = 'Stopped'">Stop</button>
+    </div>
+    <div class="sim-status" *ngIf="simUavStatus">{{ simUavStatus }}</div>
+
+    <div class="sim-btns sim-stop-all">
+        <button class="btn btn-sm btn-danger" (click)="stopAllSim()">Stop All (Radar + UAV + Sound)</button>
+        <button class="btn btn-sm btn-secondary" (click)="stopAlarmSound()"><i class="fa fa-volume-off" aria-hidden="true"></i> Stop Sound only</button>
+    </div>
+</div>

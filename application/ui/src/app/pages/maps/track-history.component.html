@@ -1,0 +1,171 @@
+<div class="th-panel" [class.max]="maximized" cdkDrag cdkDragBoundary="body" [cdkDragDisabled]="maximized || isResizing">
+  <!-- Resize handles on edges & corners -->
+  <div class="resize-handle resize-n"  (mousedown)="startResize($event, 'n')"  *ngIf="!maximized"></div>
+  <div class="resize-handle resize-s"  (mousedown)="startResize($event, 's')"  *ngIf="!maximized"></div>
+  <div class="resize-handle resize-w"  (mousedown)="startResize($event, 'w')"  *ngIf="!maximized"></div>
+  <div class="resize-handle resize-e"  (mousedown)="startResize($event, 'e')"  *ngIf="!maximized"></div>
+  <div class="resize-handle resize-nw" (mousedown)="startResize($event, 'nw')" *ngIf="!maximized"></div>
+  <div class="resize-handle resize-ne" (mousedown)="startResize($event, 'ne')" *ngIf="!maximized"></div>
+  <div class="resize-handle resize-sw" (mousedown)="startResize($event, 'sw')" *ngIf="!maximized"></div>
+  <div class="resize-handle resize-se" (mousedown)="startResize($event, 'se')" *ngIf="!maximized"></div>
+
+  <div class="th-head" cdkDragHandle title="Drag to move">
+    <span>Track History</span>
+    <span class="th-head-icons">
+      <i class="fa" [ngClass]="maximized ? 'fa-compress' : 'fa-expand'" (click)="maximized = !maximized" [title]="maximized ? 'Restore' : 'Maximize'"></i>
+      <i class="fa fa-times" (click)="unselect(); close.emit()" title="Close"></i>
+    </span>
+  </div>
+
+  <div class="th-filters">
+    <select [ngModel]="range" (ngModelChange)="onRange($event)" title="Time range">
+      <option value="1h">Last 1 hour</option>
+      <option value="24h">Last 24 hours</option>
+      <option value="7d">Last 7 days</option>
+      <option value="custom">Custom</option>
+    </select>
+    <label>From <input type="datetime-local" [(ngModel)]="from" (change)="range = 'custom'" /></label>
+    <label>To <input type="datetime-local" [(ngModel)]="to" (change)="range = 'custom'" /></label>
+    <label>Track ID <input type="text" [(ngModel)]="trackId" placeholder="All" class="th-id" (keyup.enter)="load()" /></label>
+    <button type="button" class="btn btn-primary btn-sm" (click)="load()" [disabled]="loading">{{ loading ? 'Loading...' : 'Search' }}</button>
+
+    <button type="button" class="btn btn-secondary btn-sm th-pie-btn" [class.active]="pieOpen"
+      (click)="togglePie()" title="Alarm action pie chart">
+      <i class="fa fa-pie-chart"></i>
+    </button>
+    <!-- Export dropdown: CSV, Excel, PDF -->
+    <div class="th-export-menu" *ngIf="tracks.length">
+      <button type="button" class="btn btn-secondary btn-sm" (click)="exportMenuOpen = !exportMenuOpen">
+        Export <i class="fa fa-caret-down"></i>
+      </button>
+      <div class="th-export-drop" *ngIf="exportMenuOpen">
+        <div (click)="doExport('csv')"><i class="fa fa-file-text-o"></i> CSV</div>
+        <div (click)="doExport('excel')"><i class="fa fa-file-excel-o"></i> Excel</div>
+        <div (click)="doExport('pdf')"><i class="fa fa-file-pdf-o"></i> PDF</div>
+      </div>
+    </div>
+  </div>
+  <div class="th-pie" *ngIf="pieOpen">
+    <div class="th-pie-title">Alarm actions ({{ pieRangeText }}): <b>{{ pieTotal }}</b></div>
+    <div class="th-pie-body" *ngIf="pieTotal">
+      <svg viewBox="0 0 160 160" class="th-pie-svg">
+        <ng-container *ngFor="let s of pieSlices">
+          <path *ngIf="s.count" class="th-slice" fill-rule="evenodd"
+            [attr.d]="s.path" [attr.fill]="s.color"
+            [attr.transform]="isPopped(s.key) ? s.pop : null"
+            [class.dim]="isDim(s.key)" [class.selected]="pieSelected === s.key"
+            (mouseenter)="hoverSlice(s.key)" (mouseleave)="hoverSlice(null)" (click)="selectSlice(s.key)"></path>
+        </ng-container>
+        <text x="80" y="80" text-anchor="middle" class="th-pie-num">{{ centerNumber }}</text>
+        <text x="80" y="97" text-anchor="middle" class="th-pie-lbl">{{ centerLabel }}</text>
+      </svg>
+      <ul class="th-pie-legend">
+        <li *ngFor="let s of legendSlices" [class.zero]="!s.count" [class.dim]="isDim(s.key)" [class.active]="pieSelected === s.key"
+          (mouseenter)="hoverSlice(s.key)" (mouseleave)="hoverSlice(null)" (click)="selectSlice(s.key)"
+          [title]="s.count ? 'Click to list these alarms' : 'No alarms in this group'">
+          <span class="th-dot" [style.background]="s.color"></span>
+          <span class="th-leg-label">{{ s.label }}</span>
+          <b class="th-leg-count">{{ s.count }}</b>
+          <span class="th-leg-pct">{{ s.pct }}%</span>
+        </li>
+      </ul>
+    </div>
+    <div class="th-pie-empty" *ngIf="!pieTotal">No alarm actions recorded in this range.</div>
+
+    <div class="th-pie-list" *ngIf="pieSelected && selectedAlarms.length">
+      <div class="th-pie-list-head">
+        <span class="th-dot" [style.background]="pieColors[pieSelected]"></span>
+        {{ pieLabels[pieSelected] }}: {{ selectedAlarms.length }} alarm{{ selectedAlarms.length === 1 ? '' : 's' }}
+        <a href="javascript:void(0)" class="th-pie-clear" (click)="pieSelected = null">Clear</a>
+      </div>
+      <table class="th-pie-table">
+        <thead><tr><th>Alarm</th><th>Track ID</th><th>Actions (time)</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let a of selectedAlarms">
+            <td>{{ a.alarmNo ? 'Alarm - ' + a.alarmNo : '-' }}</td>
+            <td>{{ a.alarmId }}</td>
+            <td>
+              <span class="th-act-chip" *ngFor="let e of a.entries">{{ actionNames[e.action] }} {{ e.at | date:'dd MMM HH:mm:ss' }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="th-error" *ngIf="error">{{ error }}</div>
+
+  <div class="th-stats" *ngIf="tracks.length">
+    <span>Tracks: <b>{{ stats.tracks }}</b></span>
+    <span>Live: <b>{{ stats.active }}</b></span>
+    <span>Avg duration: <b>{{ dur(stats.avgDuration) }}</b></span>
+    <span>Longest: <b>{{ dur(stats.longest) }}</b><ng-container *ngIf="stats.longestId"> (Track {{ stats.longestId }})</ng-container></span>
+    <span>Positions: <b>{{ stats.points }}</b></span>
+  </div>
+
+  <!-- Interactive bar chart -->
+  <div class="th-chart" *ngIf="tracks.length && bars.length">
+    <div class="th-chart-title">Tracks started {{ bars[0].label.indexOf('/') > -1 ? 'per day' : 'per hour' }}
+      <span class="th-chart-hint" *ngIf="!selectedBar">(click a bar to filter)</span>
+      <span class="th-chart-clear" *ngIf="selectedBar" (click)="clearBarFilter()">&#x2715; Clear filter</span>
+    </div>
+    <div class="th-bars">
+      <div class="th-bar" *ngFor="let b of bars; let i = index"
+           [class.active]="hoveredBar === i"
+           [class.selected]="selectedBar === b.label"
+           [class.dimmed]="selectedBar && selectedBar !== b.label"
+           (mouseenter)="hoveredBar = i" (mouseleave)="hoveredBar = -1"
+           (click)="onBarClick(b)">
+        <div class="th-bar-count" *ngIf="hoveredBar === i && b.count">{{ b.count }}</div>
+        <div class="th-bar-fill" [style.height.%]="b.count ? 100 * b.count / barMax : 0"></div>
+        <div class="th-bar-l">{{ i % barLabelEvery() === 0 ? b.label : '' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="th-table-wrap">
+    <table class="th-table" *ngIf="filteredTracks.length">
+      <thead>
+        <tr>
+          <th>Track ID</th><th>First Seen</th><th>Last Seen</th><th>Duration</th><th>Positions</th><th>Distance</th><th title="As reported by the radar">Max Speed</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let t of filteredTracks">
+          <tr [class.sel]="key(t) === selectedKey" (click)="select(t)" title="Click to show this track on the map">
+            <td>{{ t.track_id }}</td>
+            <td>{{ time(t.first_seen) }}</td>
+            <td><span *ngIf="t.active" class="th-live">Live</span><ng-container *ngIf="!t.active">{{ time(t.last_seen) }}</ng-container></td>
+            <td>{{ dur(t.duration_s) }}</td>
+            <td>{{ t.points }}</td>
+            <td>{{ dist(t.distance_m) }}</td>
+            <td>{{ n1(t.max_speed) }}</td>
+            <td class="act">
+              <i class="fa" [ngClass]="pointsLoading === key(t) ? 'fa-spinner fa-spin' : (key(t) === selectedKey ? 'fa-eye-slash' : 'fa-map-marker')" [title]="key(t) === selectedKey ? 'Hide from map' : 'Show on map'"></i>
+              <span class="th-row-export" (click)="$event.stopPropagation()">
+                <i class="fa fa-download" (click)="toggleRowExport(key(t), $event)" title="Download track positions"></i>
+                <div class="th-row-export-drop" *ngIf="rowExportOpen === key(t)">
+                  <div (click)="exportPoints(t, $event, 'csv')"><i class="fa fa-file-text-o"></i> CSV</div>
+                  <div (click)="exportPoints(t, $event, 'excel')"><i class="fa fa-file-excel-o"></i> Excel</div>
+                  <div (click)="exportPoints(t, $event, 'pdf')"><i class="fa fa-file-pdf-o"></i> PDF</div>
+                </div>
+              </span>
+            </td>
+          </tr>
+          <tr class="th-detail" *ngIf="key(t) === selectedKey">
+            <td colspan="8">
+              Start: {{ coord(t.start_lat, t.start_lon) }} &nbsp;|&nbsp; End: {{ coord(t.end_lat, t.end_lon) }}
+              &nbsp;|&nbsp; Range: {{ n1(t.min_range_km) }} - {{ n1(t.max_range_km) }} km &nbsp;|&nbsp; Avg speed: {{ n1(t.avg_speed) }}
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+    <div class="th-empty" *ngIf="!filteredTracks.length && tracks.length && selectedBar">
+      No tracks in this time slot. <a (click)="clearBarFilter()" style="cursor:pointer;color:#2464ac">Clear filter</a>
+    </div>
+    <div class="th-empty" *ngIf="!tracks.length && !loading && !error">
+      No Tracks Found<br />
+      <small>Tracks are saved from now on, each time the radar (or Manual Input through backend) sends a position.</small>
+    </div>
+  </div>
+</div>

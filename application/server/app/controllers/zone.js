@@ -307,3 +307,27 @@ var errorHandler = function (message) {
     message: message || "Error occurred.. Please try later.",
   };
 };
+
+
+// Delete one zone: DELETE /api/zone/:id
+exports.deleteZone = async (req, res, next) => {
+  const id = String(req.params.id || "").trim();
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).send({ error: true, message: "invalid zone id", statusCode: 400 });
+  }
+  try {
+    const sequelize = require("../models").sequelize; // lazy (see models/index.js)
+    const rows = await sequelize.query(`DELETE FROM zone WHERE zone_id = :id RETURNING zone_id`,
+      { replacements: { id }, type: sequelize.QueryTypes.SELECT });
+    if (!rows || !rows.length) {
+      return res.status(404).send({ error: true, message: "zone " + id + " not found", statusCode: 404 });
+    }
+    log.createLog({ type: "info", root_module: "MCCS", sub_module: "Zone Service",
+      method: new Error().stack.split("\n")[1].trim(), log_message: "Zone " + id + " deleted" });
+    res.status(200).send({ error: false, data: { zone_id: id }, statusCode: 200 });
+  } catch (err) {
+    log.createLog({ type: "error", root_module: "MCCS", sub_module: "Zone Service",
+      method: new Error().stack.split("\n")[1].trim(), log_message: err.message || "Zone Delete Failed" });
+    res.status(400).send({ error: true, message: err.message, statusCode: 400 });
+  }
+};

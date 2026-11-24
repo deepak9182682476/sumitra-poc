@@ -3,7 +3,7 @@
  * Date of creation: 09-09-2020
  * E-Mail: m.vijayakumar@lnttsthales.com
  */
-import { Component, OnInit, ViewChild, OnDestroy } from "@angular/core";
+import { Component, OnInit, ViewChild, OnDestroy, DoCheck } from "@angular/core";
 import { AlarmService } from "../../services/alarm.service";
 import { Subscription } from "rxjs";
 import { DataService } from "./../../services/data.service";
@@ -12,13 +12,16 @@ import { EventService } from "src/app/services/event.service";
 import { ToastrService } from "ngx-toastr";
 import * as turf from "@turf/turf";
 import { AlarmDataService } from '../../shared/alarm-data.service';
+import { server_info, stream_urls } from '../../../config/config';
+import { isValidTrackId, radarTrackIdOf } from '../../shared/track-id';
+import { AlarmActionService } from "../../services/alarm-action.service";
 
 @Component({
   selector: "app-sidebar",
   templateUrl: "./sidebar.component.html",
   styleUrls: ["./sidebar.component.scss"],
 })
-export class SidebarComponent implements OnInit, OnDestroy {
+export class SidebarComponent implements OnInit, OnDestroy, DoCheck {
   dragPosition = { x: 0, y: 0 };
 
   total_alarms = 0;
@@ -58,7 +61,8 @@ export class SidebarComponent implements OnInit, OnDestroy {
     private toastr: ToastrService,
     private toasterService: ToastrService,
     private eventService: EventService,
-    private alarmDataService: AlarmDataService
+    private alarmDataService: AlarmDataService,
+    private alarmActions: AlarmActionService
 
 
   ) {
@@ -71,6 +75,26 @@ export class SidebarComponent implements OnInit, OnDestroy {
         }
       }
     });
+  }
+
+  // ---- Alarm action tracking for the Track History pie chart (nothing shown on the cards) ----
+  // Each alarm in the list is registered once (time = alarm time), so alarms with no action
+  // are counted as "No action" in the pie chart.
+  private seenAlarms = new Set<string>();
+
+  ngDoCheck(): void {
+    ["Confirmatory_Alarm", "Early_Alarm"].forEach((k) => {
+      const list = (this.alarms_list && this.alarms_list[k]) || [];
+      list.forEach((item) => this.registerAlarm(item));
+    });
+  }
+
+  private registerAlarm(item: any): void {
+    const id = item && item.alarm_id;
+    if (id === null || id === undefined || this.seenAlarms.has(String(id))) return;
+    this.seenAlarms.add(String(id));
+    const alarmTime = item.alarmmsg_time ? Date.parse(item.alarmmsg_time) : NaN;
+    this.alarmActions.record(id, "seen", item.id, alarmTime);
   }
 
   ngOnInit(): void {
@@ -95,6 +119,23 @@ export class SidebarComponent implements OnInit, OnDestroy {
       }
     );
     this.validateAckClearAlarm();
+    // radar re-used a track id: the old card keeps its own key (and its own Acknowledge / Clear)
+    this.alarmArchivedSubscription = this.alarmService.receiveAlarmArchived.subscribe((msg: any) => {
+      if (msg && msg.archived_id) this.renameAlarmId(msg.old_id, msg.archived_id);
+    });
+  }
+
+  alarmArchivedSubscription: any;
+  renameAlarmId(oldId: any, newId: any) {
+    const o = String(oldId);
+    const fix = (arr: any[]) => (arr || []).forEach((a: any) => { if (a && String(a.alarm_id) === o) a.alarm_id = newId; });
+    if (this.alarms_list) Object.keys(this.alarms_list).forEach((k) => fix(this.alarms_list[k]));
+    fix(this.alarmIndexes);
+    const ed: any = this.enableDisableAssignments;
+    if (ed) {
+      (ed.eventData || []).forEach((e: any) => { if (String(e.alarmId) === o) e.alarmId = newId; });
+      ed.alarmid = (ed.alarmid || []).map((x: any) => (String(x) === o ? newId : x));
+    }
   }
 
   changePosition() {
@@ -324,6 +365,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
         this.isLoading = null;
         if (!res.error) {
           const alarms = param;
+          this.alarmActions.record(alarmId, isAcknowledged ? "ack" : "reject", param.id);
           alarms.event_type = isAcknowledged ? 1 : 2;
           if (isAcknowledged) {
             this.alarmIndexes[alarmIndex] = {
@@ -388,6 +430,9 @@ export class SidebarComponent implements OnInit, OnDestroy {
       this.alarmIndexes = this.alarmIndexes.filter((element) => element.alarm_type !== 1);
       this.alarms_list["Confirmatory_Alarm"] = [];
     }
+
+    // Clear All counts as Cancelled for each alarm it removes
+    (clearedAlarms || []).forEach((a) => this.alarmActions.record(a && a.alarm_id, "reject", a && a.id));
 
     this.alarmService.publishClearedAlarms({
       type: type,
@@ -583,35 +628,21 @@ export class SidebarComponent implements OnInit, OnDestroy {
     let eventType = null;
     if (type === "uav") {
       eventType = 5; // UAV Assignment
-      let body = {
-        track_id: items.alarm_id             // Add the IP to the body
-      };
-      this.dataService.assignToResponse_new(body).subscribe(
-        (res: any) => {
-          if (res && !res.error && !res.errorInfo) {
-            console.log("failed")
-            console.log(res);
-          } else {
-            console.log(res);
-          }
-        },
-        (err) => {
-          console.log(err);
-        }
-      );
+      // Before: posted straight to the drone server and only wrote to the browser console, so nothing visible
+      // happened (and DEMO mode was ignored). Now the map runs it like the Pursue button in UAV Controls.
+      const rawId = items && (items.event_id !== undefined && items.event_id !== null ? items.event_id : items.alarm_id);
+      const trackId = parseInt(String(rawId), 10);
+      if (isNaN(trackId) || !isValidTrackId(trackId)) {
+        this.toastr.warning("This alarm has no valid track ID - cannot assign the UAV.");
+        return;
+      }
+      const loc = items && items.location ? (items.location.coordinates || items.location) : null;
+      this.alarmActions.record(items && items.alarm_id, "uav", items && items.id);
+      this.alarmService.publishUavCommand({ type: "pursue", track_id: trackId, location: Array.isArray(loc) ? loc : null });
     } else if (type == 'rh') {
-      this.dataService.returnToHome(type).subscribe(
-        (res: any) => {
-          if (res && !res.error && !res.errorInfo) {
-            console.log(res);
-          } else {
-            console.log(res);
-          }
-        },
-        (err) => {
-          console.log(err);
-        }
-      );
+      // Return Home = same as RTL in UAV Controls
+      this.alarmActions.record(items && items.alarm_id, "home", items && items.id);
+      this.alarmService.publishUavCommand({ type: "rtl" });
     }
     else if (type === "ugv") {
       eventType = 3; // UGV Assignment
@@ -867,73 +898,25 @@ export class SidebarComponent implements OnInit, OnDestroy {
 
 
 
+  // Camera icon on an alarm card: slew the camera once to this alarm's radar track.
+  // Spec v2: POST :8000/ptz {"track_id": N} - the camera server computes pan/tilt/zoom itself.
+  // (Replaces the old in-browser angle calculation, which used the alarm position as the camera position.)
   setAutoPTZControl(target_info, ti_camera_ip, ti_coordinates) {
-
-    console.log("autoptzcontroll")
-    // lat2 lon2 == target
-    // lat1 lat2 == ti
-
-    // z2 altitude of target
-    // Heights
-    let z2 = 11;
-    let z1 = 13;
-
-    // Locations
-    let target_location = target_info.location.coordinates;
-    let ti_location = ti_coordinates;
-    console.log("test...", ti_location)
-
-    // ---------------- PAN ----------------
-    let pan = turf.bearing(ti_location, target_location);
-
-    if (pan < 0) pan += 360;   // normalize
-
-    // Camera mounting offset (adjust after testing)
-    const PAN_OFFSET = 90;
-    pan = pan + PAN_OFFSET;
-
-    // ---------------- DISTANCE ----------------
-    let distMeters = turf.distance(ti_location, target_location) * 1000;
-
-    // ---------------- TILT ----------------
-    let heightDiff = z2 - z1;
-    let tilt = -(Math.atan2(heightDiff, distMeters) * 180 / Math.PI);
-
-    tilt = Math.max(-45, Math.min(45, tilt));
-
-    // ---------------- ZOOM ----------------
-    // Simple distance based zoom (stable method)
-    let zoom = "stop";
-
-    if (distMeters < 30) zoom = "out";
-    else if (distMeters > 80) zoom = "in";
-
-    console.log("Pan:", pan);
-    console.log("Tilt:", tilt);
-    console.log("Zoom:", zoom);
-
-
-    let queryParams = "pan=" + pan + "&tilt=" + tilt;
-    let url = "http://" + ti_camera_ip;
-    //  queryParams = queryParams + "&ip=" + ti_camera_ip;
-    console.log("track ID: ", target_info.alarm_id);
-
-    let body = {
-      pan: pan,
-      tilt: tilt,
-      zoom: zoom,
-      track_id: target_info.alarm_id             // Add the IP to the body
-    };
-    this.dataService.postPTZControls(url, body).subscribe(
-      (res: any) => {
-        if (res && !res.error && !res.errorInfo) {
-          console.log(res);
-        } else {
-          console.log(res);
-        }
-      },
+    const trackId = radarTrackIdOf(target_info); // radar track id (event_id), never 0
+    if (trackId === null) {
+      this.toastr.warning("This alarm has no valid track ID - cannot slew the camera.");
+      return;
+    }
+    if ((stream_urls as any).DEMO_FEED === "on") {
+      return; // demo mode: the map's demo camera shows the slew, no real request
+    }
+    this.dataService.cameraSlewOnce(trackId).subscribe(
+      (res: any) => this.toastr.success("Camera slewing to track " + trackId),
       (err) => {
-        console.log(err);
+        console.log("Camera slew error:", err);
+        const st = err && typeof err.status === "number" ? err.status : 0;
+        const msg = st > 0 && err.error && err.error.message;
+        this.toastr.error(st > 0 ? "Camera server: " + (msg || "error " + st) : "Camera server not reachable (" + server_info.CAMERA_API + ")");
       }
     );
   }
@@ -941,6 +924,7 @@ export class SidebarComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.roleAuthSubscription.unsubscribe();
     this.alarmsListSubscription.unsubscribe();
+    if (this.alarmArchivedSubscription) this.alarmArchivedSubscription.unsubscribe();
   }
 
   getTranslationLang(key) {

@@ -495,7 +495,7 @@ exports.uavTrack = (req, res, next) => {
     properties: {
       level: "20.17",
       remaining_time: "20.24",
-      ip: "195.67.15.6",
+      ip: env.peer_host,
       lat: req.query.lat,
       lon: req.query.lng,
       zone_id: ""
@@ -671,7 +671,7 @@ exports.sendCommands = async (req, res, next) => {
       Value3: "",
     });
   }
-  tcp_socket_command.tcpServerConnect({ host: "195.67.15.6", port: 3250 });
+  tcp_socket_command.tcpServerConnect({ host: env.peer_host, port: 3250 });
   tcp_socket_command.command(commandtoBeSent);
   log.createLog({
     type: "info",
@@ -1041,7 +1041,7 @@ function startTcpReceiving(ip, zoneId, lat, lon) {
   //let command = JSON.stringify({ 'DroneId': droneId, 'Command': 'Armed', 'Value1': '', 'Value2': '', 'Value3': '' });
   //let command = JSON.stringify({ 'DroneId': droneId, 'Command': 'Takeoff', 'Value1': '', 'Value2': '', 'Value3': '' });
   // console.log(command)
-  // tcp_socket_command.tcpServerConnect({ host: "195.67.15.6", port: 3250 });
+  // tcp_socket_command.tcpServerConnect({ host: env.peer_host, port: 3250 });
   // tcp_socket_command.command(command)
 
   // console.log("sending command is ",command)
@@ -1099,7 +1099,7 @@ function endTcpReceiving(ip, zoneId, event_type) {
 function sendUavRTL(ip) {
   console.log("---rtl--");
 
-  request.get(`http://195.67.16.27:5000/rtl?ip=${ip}`, (err, res, body) => {
+  request.get(`http://${env.peer_host}:5000/rtl?ip=${ip}`, (err, res, body) => {
     if (err) {
       err.errorCode = 500;
       err.errorInfo = {
@@ -1117,7 +1117,7 @@ function sendUavRTL(ip) {
 // KKL
 function sendUavTakeoff(ip) {
   console.log("---takeoff--");
-  request.get(`http://195.67.16.27:5000/takeoff?ip=${ip}`, (err, res, body) => {
+  request.get(`http://${env.peer_host}:5000/takeoff?ip=${ip}`, (err, res, body) => {
     if (err) {
       err.errorCode = 500;
       err.errorInfo = {
@@ -1136,7 +1136,7 @@ function sendUavTakeoff(ip) {
 function sendUavCommand(ip, lat, lng) {
   console.log("---fly--");
 
-  request.get(`http://195.67.16.27:5000/command?ip=${ip}&lat=${lat}&lng=${lng}`, (err, res, body) => {
+  request.get(`http://${env.peer_host}:5000/command?ip=${ip}&lat=${lat}&lng=${lng}`, (err, res, body) => {
     if (err) {
       err.errorCode = 500;
       err.errorInfo = {
@@ -1155,13 +1155,13 @@ receiveUAVData();
 
 function receiveUAVData() {
 
-  tcp_connect.tcpClient({ host: "195.67.15.6", port: 3251 });
+  tcp_connect.tcpClient({ host: env.peer_host, port: 3251 });
   var data = {
     category: "uav_status",
     properties: {
       level: "20.17",
       remaining_time: "20.24",
-      ip: "195.67.15.6",
+      ip: env.peer_host,
       lat: "",
       lon: "",
       zone_id: "19"

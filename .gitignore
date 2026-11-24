@@ -5,3 +5,20 @@ vms_packages/ai_modules/node_modules/
 vms_packages/ai_server/node_modules/
 
 vms_packages/ai_server/
+
+# --- keep secrets, local environments and generated files out of git ---
+# passwords and keys (e.g. application/server/.env holds the database password)
+.env
+**/.env
+# python virtual environments and caches
+*_venv/
+venv/
+.venv/
+__pycache__/
+*.pyc
+# local run output and backups
+.nyc_output/
+nohup.out
+*.bak
+# local Claude settings
+.claude/

@@ -11,6 +11,9 @@ router.post("/create", zones.create);
 // Enable or disable of zone
 router.post("/enable-disable-zone", zones.enableDisableZone);
 
+// Delete one zone (Zones menu -> click a zone -> Delete zone)
+router.delete("/:id", zones.deleteZone);
+
 
 // // Update
 // router.put("/:id/update", middleware.validateToken, zones.update);

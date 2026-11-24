@@ -20,6 +20,8 @@ export class SubHeaderComponent implements OnInit {
   selectedAlgoType = new FormControl();
   @ViewChild("selRobotsPopover") robotsPopover: PopoverDirective;
   isSignedIn: Boolean = false;
+  // UGV patrol buttons (Add Robot / Init / Assign MR) - hidden: no UGVs at the Sundarbans site. Set true to show again.
+  showRobotControls = false;
   uavs = [];
   ugvs = [];
   algorithm_types = [];

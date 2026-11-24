@@ -5,6 +5,8 @@ const db = require("../controllers/db");
 const log = require("./../utils/log");
 const response = require("../controllers/response");
 const mapsContr = require("./map");
+const { isValidTrackId, ZERO_ID_SQL_REGEX, logSkipped } = require("../utils/trackId");
+const trackStore = require("../service/trackStore");
 let isAutoManualMode = "";
 const alarms_queue = [];
 
@@ -19,6 +21,7 @@ exports.alarmInfo = async (req, res, next) => {
         ON alarm_events.alarm_id = alarms.alarm_id and alarm_events.event_type != 2
         LEFT JOIN (SELECT DISTINCT ON (alarm_id) * FROM alarm_tail) alarm_tail 
         ON alarm_tail.alarm_id = alarms.alarm_id and alarm_tail.status = true
+        WHERE COALESCE(alarms.alarm_id::text, '') !~ '${ZERO_ID_SQL_REGEX}'
         `;
     await db.selectWithQuery(customQuery).then(
       (results) => {
@@ -665,6 +668,11 @@ exports.createUpdateAlarms = (req, res, next) => {
       log_message: "Create UpdateAlarms Received",
     });
     let alarmInfo = req.body;
+    // Track ID 0 / empty: never create or update an alarm for it
+    if (!alarmInfo || !isValidTrackId(alarmInfo.alarm_id)) {
+      logSkipped("alarm create-update", alarmInfo ? alarmInfo.alarm_id : undefined);
+      return;
+    }
     alarmInfo.sensors_triggered = "Radar"
     alarmInfo.iff_data = (alarmInfo.iff_data == null || alarmInfo.iff_data == undefined) ? {} : alarmInfo.iff_data;
 
@@ -689,46 +697,15 @@ exports.createUpdateAlarms = (req, res, next) => {
           // means primary or early warning
           findZone(alarmInfo);//***inserting alarm
         } else {
-          if (alarmInfo.alarm_type != 2) {
-            alarmInfo.iff_data = (alarmInfo.iff_data == null || alarmInfo.iff_data == undefined) ? {} : alarmInfo.iff_data;
-            let query = `UPDATE alarms SET record_flag=${alarmInfo.record_flag},alarm_type=${alarmInfo.alarm_type} WHERE alarm_id='${alarmInfo.alarm_id}'`;
-            db.updateWithQuery(query).then(
-              (update_response) => {
-                if (results[0].alarm_type != alarmInfo.alarm_type || results[0].event_type == 2 || results[0].event_type == null) {
-                  alarmInfo.id = results[0].id; // pushing id of alarm into alarmInfo
-                  // means confirmatory or reactivating cleared alarm
-                  updateAlarmEvents(alarmInfo, results[0].zone_id);
-                }
-                if (alarmInfo.alarm_type == 1 && alarmInfo.record_flag == 1) {
-                  // means primary or confirmatory with record flag change
-                  // table_ext _alarm insert query has to be here
-                  let tbl_ext_alarm_create = `INSERT INTO tbl_external_alarm(start_time, end_time, clip_status, ftp_server_ip, ftp_filename) 
-                  VALUES(${new Date(results[0].alarmmsg_time).getTime()}, ${new Date().getTime()}, 'AVAILABLE', '195.67.15.3', '${env.videos_url + alarmInfo.alarm_id}_raw.mp4')`;
-                  // console.log("---tbl_ext_alarm---", tbl_ext_alarm_create);
-                  db.createWithQuery(tbl_ext_alarm_create).then((data) => {
-                    console.log(data);
-                  });
-                }
-              },
-              (err) => {
-                console.log("error ", err);
-                log.createLog({
-                  type: "error",
-                  root_module: "MCCS",
-                  sub_module: "Alarm Service",
-                  method: new Error().stack.split("\n")[1].trim(),
-                  log_message: err || "Create UpdateAlarms Error",
-                });
-              }
-            );
-            //there is no else added for new alarm after clear all on map
-          } else {
-            // For early warning (alarm_type === 2), reactivate if cleared or if type changed
-            if (results[0].alarm_type != alarmInfo.alarm_type || results[0].event_type == 2 || results[0].event_type == null) {
-              alarmInfo.id = results[0].id;
-              updateAlarmEvents(alarmInfo, results[0].zone_id);
+          // Same track id already has an alarm. If this is a NEW target re-using the id (old alarm cleared,
+          // or id not seen for a while) keep the old alarm under "<id>@<its start time>" and create a new one.
+          newOccurrence(alarmInfo, results[0]).then((archivedId) => {
+            if (archivedId) {
+              findZone(alarmInfo); // new alarm for the new target
+              return;
             }
-          }
+            updateExistingAlarm(alarmInfo, results);
+          });
         }
       },
       (error) => {
@@ -755,6 +732,122 @@ exports.createUpdateAlarms = (req, res, next) => {
 };
 
 
+
+// Existing alarm of the same target: update it (previous behaviour)
+function updateExistingAlarm(alarmInfo, results) {
+      if (results[0] && results[0].alarmmsg_time) alarmInfo.alarmmsg_time = results[0].alarmmsg_time; // card shows its start time
+      if (alarmInfo.alarm_type != 2) {
+        alarmInfo.iff_data = (alarmInfo.iff_data == null || alarmInfo.iff_data == undefined) ? {} : alarmInfo.iff_data;
+        let query = `UPDATE alarms SET record_flag=${alarmInfo.record_flag},alarm_type=${alarmInfo.alarm_type} WHERE alarm_id='${alarmInfo.alarm_id}'`;
+        db.updateWithQuery(query).then(
+          (update_response) => {
+            if (results[0].alarm_type != alarmInfo.alarm_type || results[0].event_type == 2 || results[0].event_type == null) {
+              alarmInfo.id = results[0].id; // pushing id of alarm into alarmInfo
+              // means confirmatory or reactivating cleared alarm
+              updateAlarmEvents(alarmInfo, results[0].zone_id);
+            }
+            if (alarmInfo.alarm_type == 1 && alarmInfo.record_flag == 1) {
+              // means primary or confirmatory with record flag change
+              // table_ext _alarm insert query has to be here
+              let tbl_ext_alarm_create = `INSERT INTO tbl_external_alarm(start_time, end_time, clip_status, ftp_server_ip, ftp_filename) 
+              VALUES(${new Date(results[0].alarmmsg_time).getTime()}, ${new Date().getTime()}, 'AVAILABLE', '195.67.15.3', '${env.videos_url + alarmInfo.alarm_id}_raw.mp4')`;
+              // console.log("---tbl_ext_alarm---", tbl_ext_alarm_create);
+              db.createWithQuery(tbl_ext_alarm_create).then((data) => {
+                console.log(data);
+              });
+            }
+          },
+          (err) => {
+            console.log("error ", err);
+            log.createLog({
+              type: "error",
+              root_module: "MCCS",
+              sub_module: "Alarm Service",
+              method: new Error().stack.split("\n")[1].trim(),
+              log_message: err || "Create UpdateAlarms Error",
+            });
+          }
+        );
+        //there is no else added for new alarm after clear all on map
+      } else {
+        // For early warning (alarm_type === 2), reactivate if cleared or if type changed
+        if (results[0].alarm_type != alarmInfo.alarm_type || results[0].event_type == 2 || results[0].event_type == null) {
+          alarmInfo.id = results[0].id;
+          updateAlarmEvents(alarmInfo, results[0].zone_id);
+        }
+      }
+}
+
+// ---- One alarm per target, even when the radar re-uses a track id ----
+// Returns the key the previous alarm was stored under (e.g. "12@20261110-062711"), or null = same target.
+async function newOccurrence(alarmInfo, prev) {
+  try {
+    let reason = null;
+    if (prev && prev.event_type == 2) reason = "its previous alarm was cleared";
+    else if (alarmInfo.new_session) reason = `it was not seen for more than ${trackStore.GAP_SECONDS} s`;
+    else {
+      const s = await trackStore.secondsSinceLastSeen(alarmInfo.alarm_id);
+      if (s !== null && s > trackStore.GAP_SECONDS) reason = `it was not seen for ${Math.round(s)} s`;
+    }
+    if (!reason) return null;
+    const archivedId = await archiveAlarm(String(alarmInfo.alarm_id));
+    if (archivedId) {
+      console.log(`[alarm] track ${alarmInfo.alarm_id} again (${reason}): previous alarm kept as "${archivedId}", new alarm created`);
+      sendArchivedToUI(String(alarmInfo.alarm_id), archivedId);
+    }
+    return archivedId;
+  } catch (err) {
+    console.log(`[alarm] could not keep the previous alarm of track ${alarmInfo.alarm_id} - updating it instead:`, err.message);
+    return null;
+  }
+}
+
+// Move alarm "<id>" (and its events, trail, videos, responses) to "<id>@<start time>", in one transaction.
+async function archiveAlarm(alarmId) {
+  const sequelize = require("../models").sequelize; // lazy: models/index.js requires this file's dependencies
+  return sequelize.transaction(async (t) => {
+    const o = (replacements) => ({ replacements, transaction: t, type: sequelize.QueryTypes.SELECT });
+    const rows = await sequelize.query(
+      `SELECT to_char(alarmmsg_time, 'YYYYMMDD-HH24MISS') AS st FROM alarms WHERE alarm_id = :id FOR UPDATE`, o({ id: alarmId }));
+    if (!rows.length) return null;
+    let key = `${alarmId}@${rows[0].st || "unknown"}`;
+    const same = await sequelize.query(`SELECT count(*)::int AS n FROM alarms WHERE alarm_id = :k OR alarm_id LIKE :k2`, o({ k: key, k2: key + "-%" }));
+    if (same[0].n > 0) key = `${key}-${same[0].n + 1}`; // two targets with this id starting in the same second
+    const cols = await sequelize.query(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'alarms' AND column_name <> 'alarm_id' ORDER BY ordinal_position`, o({}));
+    const list = cols.map((c) => '"' + c.column_name + '"').join(", ");
+    await sequelize.query(`INSERT INTO alarms (alarm_id, ${list}) SELECT :key, ${list} FROM alarms WHERE alarm_id = :id`,
+      { replacements: { key, id: alarmId }, transaction: t });
+    // every table pointing at alarms.alarm_id (foreign keys) + the known alarm tables
+    const fks = await sequelize.query(
+      `SELECT c.conrelid::regclass::text AS tbl, a.attname AS col
+       FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+       WHERE c.contype = 'f' AND c.confrelid = 'public.alarms'::regclass`, o({}));
+    const targets = {};
+    fks.forEach((f) => { targets[f.tbl + "|" + f.col] = f; });
+    for (const tbl of ["alarm_events", "alarm_tail", "alarm_videos", "alarm_response"]) {
+      const ex = await sequelize.query(`SELECT to_regclass(:t) IS NOT NULL AS ok`, o({ t: "public." + tbl }));
+      if (ex[0].ok && !Object.keys(targets).some((k) => k.split("|")[0].replace(/^public\./, "") === tbl)) {
+        targets[tbl + "|alarm_id"] = { tbl, col: "alarm_id" };
+      }
+    }
+    for (const k of Object.keys(targets)) {
+      const f = targets[k];
+      await sequelize.query(`UPDATE ${f.tbl} SET "${f.col}" = :key WHERE "${f.col}" = :id`,
+        { replacements: { key, id: alarmId }, transaction: t });
+    }
+    await sequelize.query(`DELETE FROM alarms WHERE alarm_id = :id`, { replacements: { id: alarmId }, transaction: t });
+    return key;
+  });
+}
+
+// Tell the UI: the alarm card "<oldId>" now belongs to "<archivedId>" (the old target)
+function sendArchivedToUI(oldId, archivedId) {
+  request({ uri: env.base_url + "/communication/to-ui", body: { category: "alarm_archived", old_id: oldId, archived_id: archivedId }, json: true },
+    (err) => { if (err) console.log("alarm_archived to UI:", err.code || err); });
+}
+
 function findZone(alarmInfo){
           console.log()
           let customQuery = `select * from zone order by zone_id desc`;
@@ -767,14 +860,15 @@ function findZone(alarmInfo){
                 });
                 let insertUpdateData = `INSERT INTO ALARMS(alarm_id, alarmmsg_time, alarm_type, event_id, camera_id, location, sensors_triggered, object_identified, pole_number, record_flag)
                             VALUES('${alarmInfo.alarm_id}', now(), ${alarmInfo.alarm_type}, '${alarmInfo.event_id}', '${alarmInfo.camera_id}',
-                                ST_GeomFromText('POINT(${alarmInfo.location[0]} ${alarmInfo.location[1]})', 4326), ARRAY['${alarmInfo.sensors_triggered}'], 'person', '15', 'false') RETURNING id`;
+                                ST_GeomFromText('POINT(${alarmInfo.location[0]} ${alarmInfo.location[1]})', 4326), ARRAY['${alarmInfo.sensors_triggered}'], 'person', '15', 'false') RETURNING id, alarmmsg_time`;
                 if (isAlarmExistsInZone) {
                   insertUpdateData = `INSERT INTO ALARMS(alarm_id, alarmmsg_time, alarm_type, event_id, camera_id, location, sensors_triggered, object_identified, pole_number, record_flag, zone_id)
                             VALUES('${alarmInfo.alarm_id}', now(), ${alarmInfo.alarm_type}, '${alarmInfo.event_id}', '${alarmInfo.camera_id}',
-                                ST_GeomFromText('POINT(${alarmInfo.location[0]} ${alarmInfo.location[1]})', 4326), ARRAY['${alarmInfo.sensors_triggered}'], 'person', '15', 'false', '${isAlarmExistsInZone.zone_id}') RETURNING id`;
+                                ST_GeomFromText('POINT(${alarmInfo.location[0]} ${alarmInfo.location[1]})', 4326), ARRAY['${alarmInfo.sensors_triggered}'], 'person', '15', 'false', '${isAlarmExistsInZone.zone_id}') RETURNING id, alarmmsg_time`;
                 }
                 db.createWithQuery(insertUpdateData).then((alarm_data) => {
                   alarmInfo.id = alarm_data[0][0].id;
+                  alarmInfo.alarmmsg_time = alarm_data[0][0].alarmmsg_time; // start time: tells apart alarms with the same track id
                   //if (alarmInfo.alarm_type == 2) {  // *** check as alarms are !2
                     let alarmEventInsert = `INSERT INTO ALARM_EVENTS(alarm_id, event_type, timeofevent,location) values('${alarmInfo.alarm_id}', 0,now(),ST_GeomFromText('POINT(${alarmInfo.location[0]} ${alarmInfo.location[1]})', 4326))`;
                     db.createWithQuery(alarmEventInsert).then((data) => {
