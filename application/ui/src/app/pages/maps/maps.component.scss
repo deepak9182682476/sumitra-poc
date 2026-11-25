@@ -1954,3 +1954,53 @@ ng-scrollbar.lc-list-items {
   .ptz-submit-row { padding-top: 16px; border-top: 1px solid #2a323b; }
 }
 .video-sec:fullscreen .uav-telemetry span { display: block; }
+
+/* ---- UAV number boxes: no spin arrows (they hid the last digits); arrow keys still change the value ---- */
+.uav-ctl input[type="number"] {
+  -moz-appearance: textfield;
+  &::-webkit-inner-spin-button, &::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+}
+
+/* ---- full screen: number boxes wide enough to show the whole value ---- */
+.video-sec:fullscreen > .uav-ctl {
+  > * { flex-shrink: 0; }   /* the column scrolls instead of squashing the read-out box */
+  input[type="number"] { padding: 0 8px; }
+  input[type="number"].short { flex: 0 0 84px; }
+  /* Fly to: latitude and longitude on the first line, altitude and Fly To on the second */
+  .uav-row.uav-fly-row {
+    flex-wrap: wrap;
+    > input, > input.short, > .uav-btn.go { flex: 1 1 calc(50% - 3px); min-width: 0; }
+  }
+}
+
+/* ---- full screen UAV column: compact sizes so everything fits without scrolling ---- */
+.video-sec:fullscreen > .uav-ctl {
+  gap: 7px;
+  padding: 2px 16px 10px;
+  .uav-telemetry { margin-top: 8px; padding: 7px 12px; font-size: 12.5px; line-height: 1.4; }
+  .uav-fs-label { margin-top: 2px; padding-top: 9px; font-size: 10.5px; }
+  .uav-telemetry + .uav-fs-label { padding-top: 2px; }
+  .fs-big-row { gap: 6px; }
+  .fs-big-btn { height: 46px; gap: 3px; font-size: 12px; i { font-size: 16px; } }
+  .uav-btn, .uav-btn.wide { height: 34px; font-size: 13px; }
+  .uav-target { font-size: 11.5px; line-height: 1.3; }
+  input[type="number"] { height: 32px; font-size: 13px; }
+  .uav-row { gap: 6px; }
+  .uav-row.uav-fly-row { row-gap: 6px; }
+  .uav-remotes { padding-top: 12px; gap: 6px; }
+  /* spare height is shared equally between the sections (not one big gap above the pads) */
+  > .uav-fs-label, > .uav-remotes { margin-top: auto; }
+  .remote-box { gap: 6px; }
+  .remote {
+    width: 104px;
+    height: 104px;
+    .r-btn { width: 32px; height: 32px; font-size: 19px; border-radius: 7px; &.zoom { font-size: 18px; } }
+    .r-up    { top: 0;    left: 36px; }
+    .r-down  { bottom: 0; left: 36px; }
+    .r-left  { left: 0;   top: 36px; }
+    .r-right { right: 0;  top: 36px; }
+    .r-center { left: 36px; top: 36px; width: 32px; height: 32px; font-size: 17px; svg { width: 20px; height: 20px; } }
+  }
+  .turn-btn { height: 26px; font-size: 10.5px; }
+}
+.video-sec:fullscreen > .panel-header { padding-top: 12px; padding-bottom: 10px; }

@@ -129,6 +129,7 @@ export class VmsComponent implements AfterViewInit, OnDestroy {
   togglePlay(idx: number) {
     if (!this.feeds[idx].url) return;
     this.playing[idx] = !this.playing[idx];
+    if (this.playing[idx]) this.errors[idx] = false; // play again = try the stream again
     if (this.feeds[idx].type === "hls") {
       if (this.playing[idx]) {
         this.startHls(idx);

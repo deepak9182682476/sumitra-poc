@@ -36,7 +36,7 @@
       <div class="vms-tile-body">
         <!-- MJPEG stream (existing cameras) -->
         <ng-container *ngIf="f.type === 'mjpeg'">
-          <img *ngIf="f.url && playing[i]" class="vms-feed" [src]="f.url" (error)="onFeedError(i)" />
+          <img *ngIf="f.url && playing[i]" class="vms-feed" [src]="f.url" (error)="onFeedError(i)" [style.visibility]="errors[i] ? 'hidden' : null" />
         </ng-container>
         <!-- HLS stream (via MediaMTX) -->
         <ng-container *ngIf="f.type === 'hls'">

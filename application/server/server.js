@@ -88,6 +88,12 @@ app.use(function (err, req, res, next) {
 });
 
 
+// A failed background job (for example one bad alarm message) is logged instead of stopping the whole backend.
+// Without this, newer Node versions exit the process on any promise error that nobody catches.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise error (backend keeps running):', reason && reason.stack ? reason.stack : reason);
+});
+
 // Create a Server
 const HOST = process.env.HOST;
 const PORT = process.env.PORT || 3000;
