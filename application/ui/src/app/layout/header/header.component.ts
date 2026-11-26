@@ -46,7 +46,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
     isEditable: false,
   };
 
-  getMode: any = "auto";
+  // getMode: any = "auto";   // earlier default
+  getMode: any = "manual";
   searchAlarmFilter = "";
   enableFilterIcon = false;
   isFiltersToggled = false;
@@ -614,7 +615,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     this.alarmService.getModeStatus().subscribe((results) => {
       if (this.mccsUsers.isOperator || this.mccsUsers.isSuperUser) {
-        this.getMode = results.mode ? results.mode : "auto";
+        this.getMode = results.mode ? results.mode : "manual";   // was "auto" when the server had no mode
         this.commonService.sendModeData(this.getMode);
       }
     });

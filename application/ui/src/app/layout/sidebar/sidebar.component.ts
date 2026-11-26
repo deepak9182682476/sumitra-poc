@@ -48,7 +48,8 @@ export class SidebarComponent implements OnInit, OnDestroy, DoCheck {
     isDeveloper: false,
   };
   isSignedIn = false;
-  modeData = "auto";
+  // modeData = "auto";   // earlier default
+  modeData = "manual";
   enableDisableAssignments = {
     alarmid: [],
     eventData: [],
@@ -128,6 +129,29 @@ export class SidebarComponent implements OnInit, OnDestroy, DoCheck {
     this.alarmArchivedSubscription = this.alarmService.receiveAlarmArchived.subscribe((msg: any) => {
       if (msg && msg.archived_id) this.renameAlarmId(msg.old_id, msg.archived_id);
     });
+    // highlight the alarm card the UAV was sent to
+    this.uavMissionSubscription = this.alarmService.receiveUavMission.subscribe((m: any) => {
+      this.uavMission = m;
+      if (m) setTimeout(() => this.scrollAlarmsToTop(), 50);   // the selected card is now first: bring it into view
+    });
+  }
+
+  // ---- UAV assigned to an alarm: that card is highlighted ----
+  uavMission: any = null;
+  uavMissionSubscription: any;
+  @ViewChild("scrollable") alarmScrollbar: any;
+  private scrollAlarmsToTop() {
+    try {
+      if (this.alarmScrollbar && this.alarmScrollbar.scrollTo) { this.alarmScrollbar.scrollTo({ top: 0, duration: 250 }); return; }
+    } catch (e) { }
+    const vp: any = document.querySelector("app-sidebar .ng-scroll-viewport");
+    if (vp) vp.scrollTop = 0;
+  }
+  isUavTarget(item: any): boolean {
+    const m = this.uavMission;
+    if (!m || !item) return false;
+    if (m.alarm_id !== undefined && m.alarm_id !== null && m.alarm_id !== "") return String(item.alarm_id) === String(m.alarm_id);
+    return Number(item.event_id) === Number(m.track_id);   // Pursue from UAV Controls: match by track ID
   }
 
   alarmArchivedSubscription: any;
@@ -643,7 +667,10 @@ export class SidebarComponent implements OnInit, OnDestroy, DoCheck {
       }
       const loc = items && items.location ? (items.location.coordinates || items.location) : null;
       this.alarmActions.record(items && items.alarm_id, "uav", items && items.id);
-      this.alarmService.publishUavCommand({ type: "pursue", track_id: trackId, location: Array.isArray(loc) ? loc : null });
+      this.alarmService.publishUavCommand({
+        type: "pursue", track_id: trackId, location: Array.isArray(loc) ? loc : null,
+        alarm_id: items && items.alarm_id, alarm_no: items && items.id, zone_id: items && items.zone_id,
+      });
     } else if (type == 'rh') {
       // Return Home = same as RTL in UAV Controls
       this.alarmActions.record(items && items.alarm_id, "home", items && items.id);
@@ -943,6 +970,7 @@ export class SidebarComponent implements OnInit, OnDestroy, DoCheck {
     this.roleAuthSubscription.unsubscribe();
     this.alarmsListSubscription.unsubscribe();
     if (this.alarmArchivedSubscription) this.alarmArchivedSubscription.unsubscribe();
+    if (this.uavMissionSubscription) this.uavMissionSubscription.unsubscribe();
   }
 
   getTranslationLang(key) {

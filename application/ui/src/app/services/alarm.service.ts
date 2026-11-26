@@ -164,6 +164,14 @@ export class AlarmService {
     this.uavCommandEvent.next(cmd);
   }
 
+  // Which alarm / track the UAV was sent to ({track_id, alarm_id, alarm_no, zone_id, at}), null after Return Home.
+  // The map sets it when the drone accepts the command; the alarm list highlights that card.
+  private uavMissionSource = new BehaviorSubject<any>(null);
+  receiveUavMission = this.uavMissionSource.asObservable();
+  publishUavMission(m: any): void {
+    this.uavMissionSource.next(m);
+  }
+
   // Radar re-used a track id for a new target: the old alarm card now has key "<id>@<start time>"
   private alarmArchivedEvent = new Subject<any>();
   receiveAlarmArchived = this.alarmArchivedEvent.asObservable();

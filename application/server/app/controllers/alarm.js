@@ -8,7 +8,11 @@ const response = require("../controllers/response");
 const mapsContr = require("./map");
 const { isValidTrackId, ZERO_ID_SQL_REGEX, logSkipped } = require("../utils/trackId");
 const trackStore = require("../service/trackStore");
-let isAutoManualMode = "";
+// let isAutoManualMode = "";   // earlier: empty -> the UI fell back to "auto"
+let isAutoManualMode = "manual";   // Manual is the default mode (operator assigns UAV / Return Home)
+// Old Bhuj rule: with one active alarm in a zone the backend switched to AUTO and sent the UAV by itself.
+// Off by default for Sundarbans (the operator chooses). Set AUTO_MODE_SWITCH=on in .env to bring it back.
+const AUTO_MODE_SWITCH = (process.env.AUTO_MODE_SWITCH || "off") === "on";
 const alarms_queue = [];
 
 // Retrieve all data from the database.
@@ -906,7 +910,9 @@ function updateAlarmEvents(alarmInfo, zoneId) {
     db.selectWithQuery(customQuery).then((results) => {
       // console.log("count is ", results);
       if (results && results.length) {
-        if (results && (1 < parseFloat(results[0].count) || parseFloat(results[0].count) > 1)) {
+        if (!AUTO_MODE_SWITCH) {
+          // keep the mode the operator chose (Manual by default); no automatic UAV assignment
+        } else if (results && (1 < parseFloat(results[0].count) || parseFloat(results[0].count) > 1)) {
           isAutoManualMode = "manual";
         } else if (results && parseFloat(results[0].count) <= 1) {
           isAutoManualMode = "auto";

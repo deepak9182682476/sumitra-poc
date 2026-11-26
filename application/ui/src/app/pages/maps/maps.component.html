@@ -233,6 +233,7 @@
                               <span class="uav-hdr-btn" [class.on]="uavDetectionOn" [class.busy]="uavDetectionBusy"><i (click)="setUavDetection(true);" class="fa fa-binoculars" [title]="uavDetectionOn ? 'Detection is on' : 'Start Detection'" aria-hidden="true"></i></span>
                               <span class="uav-hdr-btn" [class.off]="!uavDetectionOn" [class.busy]="uavDetectionBusy"><i (click)="setUavDetection(false);" class="fa fa-stop-circle" title="Stop Detection" aria-hidden="true"></i></span>
                               <span class="uav-hdr-btn" [class.picking]="uavPickMode"><i (click)="toggleUavPickMode();" class="fa fa-bullseye" [title]="uavPickMode ? 'Click a point on the video (Esc to cancel)' : 'Track: click a point on the video'" aria-hidden="true"></i></span>
+                              <span class="uav-hdr-btn" [class.tracking]="uavTrackLock"><i (click)="uavStopTargetTracking();" class="fa fa-ban" title="Stop visual tracking" aria-hidden="true"></i></span>
                               <span><i (click)="openFullscreen('uav');" class="fa" [ngClass]="fsPanel === 'uav-panel' ? 'fa-compress' : 'fa-arrows-alt'" [title]="fsPanel === 'uav-panel' ? 'Exit full screen' : 'Fullscreen'" aria-hidden="true"></i></span>
                               <span><i class="fa fa-remove" aria-hidden="true" (click)="enableUavVideo=false;"></i></span>
                             </span>
@@ -242,6 +243,15 @@
                             <canvas *ngIf="useDemoFeed('uav')" class="video-tag demo-feed" id="uav-demo-canvas"></canvas>
                             <!-- Tracking mode: hint while waiting for the click, and a marker where the user clicked -->
                             <div class="uav-detect-badge" *ngIf="uavDetectionOn">DETECTION ON</div>
+                            <!-- which alarm / track the UAV was sent to (Assign UAV on an alarm card, or Pursue) -->
+                            <div class="uav-mission-tag" *ngIf="uavMission && !uavPickMode" (click)="$event.stopPropagation()"
+                                 [title]="'UAV sent to track ' + uavMission.track_id">
+                              <i class="fa fa-crosshairs" aria-hidden="true"></i>
+                              <span *ngIf="uavMission.alarm_no != null">Alarm {{ uavMission.alarm_no }} &middot; </span>Track {{ uavMission.track_id }}<span *ngIf="uavMission.zone_id"> &middot; zone-{{ uavMission.zone_id }}</span>
+                            </div>
+                            <div class="uav-track-badge" *ngIf="uavTrackLock" (click)="$event.stopPropagation()">
+                              TRACKING<span *ngIf="lastUavTarget"> {{ lastUavTarget.x }}, {{ lastUavTarget.y }}</span><span *ngIf="uavIcdMode && uavTrackAck !== 'ON'" class="wait"> &middot; waiting for ACK</span>
+                            </div>
                             <div class="uav-pick-hint" *ngIf="uavPickMode">Click a point to track &middot; <a href="javascript:void(0)" (click)="$event.stopPropagation(); uavPickMode = false;">Cancel</a></div>
                             <div class="uav-pick-marker" *ngIf="uavPickMarker" [style.left.px]="uavPickMarker.left" [style.top.px]="uavPickMarker.top"></div>
                             <div class="uav-pick-status" *ngIf="uavPickStatus">{{ uavPickStatus }}</div>
@@ -250,6 +260,7 @@
                               <span [class.on]="uavDetectionOn" [class.busy]="uavDetectionBusy" (click)="setUavDetection(true)" [title]="uavDetectionOn ? 'Detection is on' : 'Start Detection'"><i class="fa fa-binoculars" aria-hidden="true"></i></span>
                               <span [class.off]="!uavDetectionOn" [class.busy]="uavDetectionBusy" (click)="setUavDetection(false)" title="Stop Detection"><i class="fa fa-stop-circle" aria-hidden="true"></i></span>
                               <span [class.picking]="uavPickMode" (click)="toggleUavPickMode()" [title]="uavPickMode ? 'Click a point on the video' : 'Track: click a point on the video'"><i class="fa fa-bullseye" aria-hidden="true"></i></span>
+                              <span (click)="uavStopTargetTracking()" title="Stop visual tracking"><i class="fa fa-ban" aria-hidden="true"></i></span>
                               <span (click)="exitUavFullscreen()" title="Exit full screen"><i class="fa fa-compress" aria-hidden="true"></i></span>
                             </div>
                           </div>
@@ -278,6 +289,9 @@
                               </button>
                               <button type="button" class="fs-big-btn" [class.picking]="uavPickMode" (click)="toggleUavPickMode()" [title]="uavPickMode ? 'Click a point on the video, or click here to cancel' : 'Click, then click a point on the video'">
                                 <i class="fa fa-bullseye" aria-hidden="true"></i><span>{{ uavPickMode ? 'Click video' : 'Track point' }}</span>
+                              </button>
+                              <button type="button" class="fs-big-btn" [class.on]="uavTrackLock" (click)="uavStopTargetTracking()" title="Stop visual tracking">
+                                <i class="fa fa-ban" aria-hidden="true"></i><span>Stop track</span>
                               </button>
                             </div>
                             <div class="uav-fs-label">Mission</div>
@@ -321,8 +335,9 @@
                                 </div>
                               </div>
                               <div class="remote-divider"></div>
-                              <div class="remote-box">
-                                <div class="remote-title">DRONE</div>
+                              <div class="remote-box" [class.locked]="uavTrackLock"
+                                   [title]="uavTrackLock ? 'Locked while visual tracking is on (stop tracking first)' : ''">
+                                <div class="remote-title">DRONE<span class="lock-note" *ngIf="uavTrackLock"> &middot; locked</span></div>
                                 <div class="remote">
                                   <button class="r-btn r-up" (click)="uavMove('forward')" title="Move forward"><i class="fa fa-caret-up"></i></button>
                                   <button class="r-btn r-down" (click)="uavMove('backward')" title="Move back"><i class="fa fa-caret-down"></i></button>

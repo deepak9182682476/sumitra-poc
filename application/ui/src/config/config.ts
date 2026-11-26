@@ -9,7 +9,23 @@ export const server_info = {
     DRONE_API: 'http://172.16.8.237:7999',
     // true  = UAV Controls drive the simulated drone on the map (no real drone needed, for testing)
     // false = UAV Controls send to DRONE_API
-    DRONE_DEMO: true,
+    // DRONE_DEMO: true,   // earlier value (simulated drone for testing)
+    DRONE_DEMO: false,
+    // How UAV detection, target selection, stop tracking, camera and movement buttons reach the SDE drone:
+    // 'icd'       = SDE Spotter ICD (SDE-ICD-SPT-001): the backend (:3058/api/uav) sends UDP/JSON to the SDE GCS
+    //               (GCS address and ports are in the backend .env: UAV_GCS_IP, UAV_CMD_PORT, UAV_TARGET_PORT ...)
+    // 'drone_api' = the integrator REST API at DRONE_API (:7999) - "Drone Visual Tracking" draft spec:
+    //               POST /visual_track/detection, /visual_track/select, /visual_track/stop, /move/*, /camera/*,
+    //               state (auto_mode, detection_enabled, visual_tracking_active) from GET /health
+    // Pursue / Fly To / altitude / RTL / telemetry keep using DRONE_API in both modes (they are not in the ICD).
+    // UAV_CONTROL: 'icd',   // earlier value: our own backend sends the ICD over UDP
+    UAV_CONTROL: 'drone_api',
+    // Bearer token for DRONE_API, only needed when the integrator runs with API_AUTH_ENABLED=true ('' = none)
+    DRONE_API_TOKEN: '',
+    // Resolution of the UAV camera picture (ICD 6.2). Clicked points are sent in these pixels,
+    // whatever size the video window is on screen.
+    UAV_VIDEO_WIDTH: 1280,
+    UAV_VIDEO_HEIGHT: 720,
     SERVER_WS_PORT: '8082'
 }
 
@@ -19,11 +35,15 @@ export const stream_urls = {
     // DAY: 'https://itms.gctp.in/stream?ip=10.0.207.190',   // earlier value, kept for reference
     DAY: 'http://172.16.8.204:5004/stream?ip=172.16.8.191',             // camera 7003 (RTSP: plays in VLC, not in the app)
     THERMAL: 'http://192.168.2.146:8091/thermal',            // thermal camera (earlier value)
-    UAV: 'https://itms.gctp.in/stream?ip=10.0.207.190',      // drone camera (earlier value)
+    // UAV: 'https://itms.gctp.in/stream?ip=10.0.207.190',      // drone camera (earlier value)
+    // SDE UAV camera: rtsp://192.168.144.33:8554/live (ICD), played through the streaming server as MJPEG 1280x720.
+    // To test with the recorded video instead, use ...?ip=uav-test
+    UAV: 'http://172.16.8.204:5004/stream?ip=192.168.144.33',
     // DEMO_FEED: 'on'   = always show the animated DEMO video (for testing without cameras)
     //            'auto' = show the real link, switch to DEMO only if it fails to load
     //            'off'  = real links only
-    DEMO_FEED: 'on',
+    // DEMO_FEED: 'on',   // earlier value (animated DEMO video)
+    DEMO_FEED: 'off',
 }
 
 export const server = {

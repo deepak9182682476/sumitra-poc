@@ -2984,16 +2984,19 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log("Drone API error:", err);
     this.toastr.error(this.apiErrorText(err, "Drone server", (server_info as any).DRONE_API));
   }
-  private droneCall(obs: any, okMsg: string) {
+  // onOk (optional): run when the drone server accepted the command
+  private droneCall(obs: any, okMsg: string, onOk?: () => void) {
     obs.subscribe(
       (res: any) => {
         if (res && res.status === "error") { this.toastr.error(res.message || "Drone server returned an error"); return; }
         // /fly_track: accepted, but no fresh radar position yet -> the drone leaves when the next radar packet arrives
         if (res && res.immediate_send === false) {
           this.toastr.info(okMsg + " - waiting for fresh radar data" + (res.reason ? " (" + res.reason + ")" : ""));
+          if (onOk) onOk();
           return;
         }
         this.droneOk(okMsg);
+        if (onOk) onOk();
       },
       (err: any) => this.droneFail(err)
     );
@@ -3001,6 +3004,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 1. Pursue radar track (POST /fly_track)
   uavPursue() {
+    if (this.uavLockedWarn()) return;
     const id = this.uavTargetTrack();
     if (id === null) { this.toastr.warning("No target: click the camera icon on an alarm card first."); return; }
     if (this.droneDemo) {
@@ -3010,13 +3014,28 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       this.startDemoPursuit(id);
       console.log("DEMO: pursuing track " + id);
+      this.setUavMission(this.missionForTrack(id));
       return;
     }
-    this.droneCall(this.dataService.droneFlyTrack(id), "Drone pursuing track " + id);
+    this.droneCall(this.dataService.droneFlyTrack(id), "Drone pursuing track " + id, () => this.setUavMission(this.missionForTrack(id)));
+  }
+
+  // ---- Which alarm / track the UAV was sent to: label on the UAV window + highlighted alarm card ----
+  uavMission: any = null;
+  private setUavMission(m: any) {
+    this.uavMission = m;
+    this.alarmService.publishUavMission(m);
+  }
+  // Pursue from UAV Controls: use the alarm picked with the camera icon if it is the same track
+  private missionForTrack(id: number): any {
+    const a: any = this.activeSlewAlarm;
+    const same = a && radarTrackIdOf(a) === id;
+    return { track_id: id, alarm_id: same ? a.alarm_id : null, alarm_no: same ? a.id : null, zone_id: same ? a.zone_id : null, at: Date.now() };
   }
 
   // 2. Fly to a point (POST /fly_to)
   uavFlyTo() {
+    if (this.uavLockedWarn()) return;
     const lat = Number(this.uavCtl.lat), lon = Number(this.uavCtl.lon), alt = Number(this.uavCtl.alt);
     if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) { this.toastr.warning("Enter a valid latitude and longitude."); return; }
     if (this.droneDemo) {
@@ -3031,6 +3050,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 3. Set mission altitude (POST /set_altitude, 0-5000 m)
   uavSetAltitude() {
+    if (this.uavLockedWarn()) return;
     const alt = Number(this.uavCtl.setAlt);
     if (isNaN(alt) || alt < 0 || alt > 5000) { this.toastr.warning("Altitude must be 0 - 5000 m."); return; }
     if (this.droneDemo) { this.demoDroneAlt = alt; console.log("DEMO: altitude set to " + alt + " m"); return; }
@@ -3056,12 +3076,15 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!cmd) return;
     if (cmd.type === "rtl") { this.uavRtl(); return; }
     if (cmd.type !== "pursue") return;
+    if (this.uavLockedWarn()) return;
     const id = Number(cmd.track_id);
     if (isNaN(id) || !isValidTrackId(id)) { this.toastr.warning("This alarm has no valid track ID - cannot assign the UAV."); return; }
+    const mission = { track_id: id, alarm_id: cmd.alarm_id, alarm_no: cmd.alarm_no, zone_id: cmd.zone_id, at: Date.now() };
     if (this.droneDemo) {
       if (Number(this.simRadar.id) === id && this.simRadarTail.length) {
         this.startDemoPursuit(id);
         console.log("DEMO: UAV assigned - pursuing track " + id);
+        this.setUavMission(mission);
         return;
       }
       // no moving demo target with this ID: fly the demo drone to where the alarm is
@@ -3070,18 +3093,23 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.stopDemoPursuit();
         this.flySimUav([Number(loc[0]), Number(loc[1])]);
         console.log("DEMO: UAV assigned - flying to the alarm of track " + id);
+        this.setUavMission(mission);
         return;
       }
       console.log("DEMO: no position for track " + id + " - start a target in Manual Input.");
       return;
     }
-    this.droneCall(this.dataService.droneFlyTrack(id), "UAV assigned - pursuing track " + id);
+    this.droneCall(this.dataService.droneFlyTrack(id), "UAV assigned - pursuing track " + id, () => this.setUavMission(mission));
   }
 
   // 4. Return to launch (POST /rtl)
   uavRtl() {
-    if (this.droneDemo) { this.stopDemoPursuit(); this.returnSimUavHome(); console.log("DEMO: returning to launch"); return; }
-    this.droneCall(this.dataService.droneRtl(), "Drone returning to launch");
+    if (this.droneDemo) { this.stopDemoPursuit(); this.returnSimUavHome(); console.log("DEMO: returning to launch"); this.setUavMission(null); return; }
+    this.droneCall(this.dataService.droneRtl(), "Drone returning to launch", () => {
+      this.setUavMission(null);
+      this.uavTrackingActive = false;   // RTL stops visual tracking first (integrator spec 3)
+      this.lastUavTarget = null;
+    });
   }
 
   // ---------- Detection mode: on / off switch, only the operator turns it off ----------
@@ -3193,14 +3221,26 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       offX = (rect.width - frameW * scale) / 2;
       offY = (rect.height - frameH * scale) / 2;
     }
-    // floor = the pixel the click is inside (0 .. width-1, 0 .. height-1)
-    const x = Math.floor((event.clientX - rect.left - offX) / sx);
-    const y = Math.floor((event.clientY - rect.top - offY) / sy);
-    if (x < 0 || y < 0 || x >= frameW || y >= frameH) {
+    // The browser reports the screen pixel that was clicked; use its centre (+0.5), then
+    // floor = the picture pixel the click is inside (0 .. width-1, 0 .. height-1).
+    // A click on the outermost screen pixel of the picture is kept inside it (clamped), not refused.
+    const px = (event.clientX + 0.5 - rect.left - offX) / sx;
+    const py = (event.clientY + 0.5 - rect.top - offY) / sy;
+    const edge = 1 / Math.min(sx, sy); // one screen pixel, in picture pixels
+    if (px < -edge || py < -edge || px >= frameW + edge || py >= frameH + edge) {
       this.toastr.warning("Click inside the video picture.");
       this.showUavPickStatus("Click inside the picture");
       return; // stay in tracking mode
     }
+    const x = Math.max(0, Math.min(frameW - 1, Math.floor(px)));
+    const y = Math.max(0, Math.min(frameH - 1, Math.floor(py)));
+
+    // Send the point in the UAV camera's own resolution (ICD 6.2: 1280x720), whatever size the player is.
+    // The picture is shown with its true aspect ratio ("contain"), so the scale is the same across and down.
+    const srcW = +(server_info as any).UAV_VIDEO_WIDTH || frameW;
+    const srcH = +(server_info as any).UAV_VIDEO_HEIGHT || frameH;
+    const sendX = Math.min(srcW - 1, Math.floor(((x + 0.5) * srcW) / frameW));
+    const sendY = Math.min(srcH - 1, Math.floor(((y + 0.5) * srcH) / frameH));
 
     // one click only: leave tracking mode straight away
     this.uavPickMode = false;
@@ -3212,13 +3252,16 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.uavPickMarkerTimer = setTimeout(() => (this.uavPickMarker = null), 1500);
 
     if (this.droneDemo) {
-      console.log("DEMO: tracking point x=" + x + ", y=" + y + " (frame " + frameW + "x" + frameH + ")");
-      this.showUavPickStatus("Tracking point x " + x + ", y " + y);
+      console.log("DEMO: tracking point x=" + sendX + ", y=" + sendY + " of " + srcW + "x" + srcH + " (picture shown " + frameW + "x" + frameH + ")");
+      this.showUavPickStatus("Tracking point x " + sendX + ", y " + sendY);
+      this.lastUavTarget = { x: sendX, y: sendY, w: srcW, h: srcH };
+      this.uavTrackingActive = true;
       return;
     }
-    const okMsg = "Tracking point sent: x " + x + ", y " + y;
-    this.showUavPickStatus("Sending x " + x + ", y " + y + "...");
-    this.dataService.droneTrackPixel(x, y, frameW, frameH).subscribe(
+    const okMsg = "Target sent: x " + sendX + ", y " + sendY + " (" + srcW + "x" + srcH + ")";
+    this.showUavPickStatus("Sending x " + sendX + ", y " + sendY + "...");
+    this.lastUavTarget = { x: sendX, y: sendY, w: srcW, h: srcH };
+    this.dataService.droneTrackPixel(sendX, sendY, srcW, srcH).subscribe(
       (res: any) => {
         if (res && res.status === "error") {
           const m = res.message || "Drone server returned an error";
@@ -3228,6 +3271,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         this.droneOk(okMsg);
         this.showUavPickStatus(okMsg);
+        this.uavTrackingActive = true;   // ICD: until STOP / ACK OFF;  drone_api: "status":"tracking" (VISUAL_TRACKING)
+        if (!this.uavIcdMode) this.uavAutoMode = (res && res.auto_mode) || "VISUAL_TRACKING";
       },
       (err: any) => {
         this.droneFail(err);
@@ -3242,8 +3287,69 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.droneCall(this.dataService.droneStopTracking(), "Tracking stopped - drone holding position");
   }
 
+  // ---------- SDE ICD target tracking state (from the backend: TRACK_STATUS_ACK / DETECTION_STATUS_ACK) ----------
+  get uavIcdMode(): boolean { return (server_info as any).UAV_CONTROL !== "drone_api"; }
+  uavTrackingActive = false;          // target tracking on (ACK ON, or target sent and not stopped yet)
+  uavAutoMode = "";                   // drone_api: IDLE | RADAR_PURSUIT | VISUAL_TRACKING (from GET /health or telemetry)
+
+  // Visual (click-to-track) tracking is on: drone movement, Pursue, Fly To and altitude are locked;
+  // camera, Stop tracking and RTL stay allowed (ICD sections 8 / 10, integrator spec section 3).
+  get uavTrackLock(): boolean {
+    return this.uavTrackingActive || this.uavAutoMode === "VISUAL_TRACKING";
+  }
+  private uavLockedWarn(): boolean {
+    if (!this.uavTrackLock) return false;
+    this.toastr.warning("Visual tracking is on - stop tracking first (camera controls and RTL still work).");
+    return true;
+  }
+
+  // drone_api: keep the buttons in step with the drone (GET /health and Kafka drone_telemetry carry these fields)
+  syncUavState(h: any) {
+    if (!h || this.uavIcdMode || this.droneDemo) return;
+    if (typeof h.auto_mode === "string") this.uavAutoMode = h.auto_mode;
+    if (typeof h.visual_tracking_active === "boolean") {
+      this.uavTrackingActive = h.visual_tracking_active;
+      if (!h.visual_tracking_active) this.lastUavTarget = null;
+    }
+    if (typeof h.detection_enabled === "boolean" && !this.uavDetectionBusy) this.uavDetectionOn = h.detection_enabled;
+  }
+  uavTrackAck: "" | "ON" | "OFF" = ""; // last TRACK_STATUS_ACK from the GCS
+  uavDetectAck: "" | "ON" | "OFF" = "";
+  lastUavTarget: { x: number; y: number; w: number; h: number } = null;
+  private uavIcdPollBusy = false;
+
+  private pollUavIcd() {
+    if (!this.uavIcdMode || this.droneDemo || this.uavIcdPollBusy) return;
+    this.uavIcdPollBusy = true;
+    this.dataService.uavIcdStatus().subscribe(
+      (s: any) => {
+        this.uavIcdPollBusy = false;
+        if (!s || s.status === "error") return;
+        this.uavTrackingActive = !!s.trackingActive;
+        this.uavTrackAck = s.tracking || "";
+        this.uavDetectAck = s.detection || "";
+        if (s.detection === "ON" || s.detection === "OFF") this.uavDetectionOn = s.detection === "ON";
+      },
+      () => (this.uavIcdPollBusy = false)
+    );
+  }
+
+  // {"type":"STOP_TRACKING",...} (ICD 6.3): stops target tracking; movement commands are allowed again
+  uavStopTargetTracking() {
+    if (this.droneDemo) { this.uavTrackingActive = false; this.lastUavTarget = null; console.log("DEMO: target tracking stopped"); return; }
+    // drone_api: POST /visual_track/stop -> the drone loiters where it is (no RTL, no radar pursuit)
+    this.droneCall(this.dataService.uavStopTargetTracking(), "Visual tracking stopped - drone holding position", () => {
+      this.uavTrackingActive = false;
+      this.uavAutoMode = this.uavIcdMode ? this.uavAutoMode : "IDLE";
+      this.lastUavTarget = null;
+    });
+    if (this.uavIcdMode) { this.uavTrackingActive = false; this.lastUavTarget = null; }
+  }
+
   // Manual nudge (POST /move/<direction>)
   uavMove(direction: string) {
+    // ICD section 8 / integrator spec 3: UAV movement is not sent while visual tracking is active
+    if (this.uavLockedWarn()) return;
     if (this.droneDemo) {
       this.stopDemoPursuit();
       this.stopSimUav();
@@ -3307,6 +3413,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private pollUav() {
     if (!this.enableUavVideo) return;
+    this.pollUavIcd();
     if (this.droneDemo) {
       const m = this.uavMarkers["sim-uav"] || this.uavMarkers["uav-home"];
       const p = m ? m.getGeometry().getCoordinates() : this.uavHome;
@@ -3316,7 +3423,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     // Kafka drone_telemetry arrived in the last 3 s -> no need to ask /telemetry (it is the backup)
     if (this.kafkaTelemetryFresh()) {
-      this.dataService.droneHealth().subscribe((h: any) => (this.uavHealth = h), () => (this.uavHealth = null));
+      this.dataService.droneHealth().subscribe((h: any) => { this.uavHealth = h; this.syncUavState(h); }, () => (this.uavHealth = null));
       return;
     }
     if (this.uavPollSkip > 0) { this.uavPollSkip--; return; } // back off after a failure
@@ -3328,7 +3435,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       },
       () => { this.uavLink = "down"; this.uavPollSkip = 4; }
     );
-    this.dataService.droneHealth().subscribe((h: any) => (this.uavHealth = h), () => (this.uavHealth = null));
+    this.dataService.droneHealth().subscribe((h: any) => { this.uavHealth = h; this.syncUavState(h); }, () => (this.uavHealth = null));
   }
 
   // Drone position from the Kafka topic drone_telemetry (backend forwards it over the WebSocket).
@@ -3343,6 +3450,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   onKafkaDroneTelemetry(d: any) {
     if (this.droneDemo || !d) return;
     this.lastKafkaTelemetryAt = Date.now();
+    this.syncUavState(d);
     this.applyDroneTelemetry(d, d.drone_key || d.drone_id || "default", "kafka");
   }
 

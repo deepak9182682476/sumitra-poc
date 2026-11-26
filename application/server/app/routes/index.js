@@ -11,6 +11,7 @@ const sensorRouter = require('./sensor');
 const zoneRouter = require('./zone');
 const imageRouter = require('./image');
 const tracksRouter = require('./tracks'); // Track History dashboard
+const uavRouter = require('./uav'); // SDE Spotter UAV over UDP (ICD SDE-ICD-SPT-001)
 // const maingateRouter = require('./maingate');
 
 router.use('/api', dbRouter);
@@ -25,6 +26,7 @@ router.use('/api/sensor', sensorRouter);
 router.use('/api/zone', zoneRouter);
 router.use('/api/image', imageRouter);
 router.use('/api/tracks', tracksRouter);
+router.use('/api/uav', uavRouter);
 // router.use('/api/maingate', maingateRouter);
 
 module.exports = router;

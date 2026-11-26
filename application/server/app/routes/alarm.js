@@ -1,5 +1,6 @@
 
 const alarms = require("../controllers/alarm");
+const alarmLog = require("../controllers/alarmLog"); // Track History -> Alarm Log (raised / acknowledged / cleared times)
 const events = require('events');
 const router = require("express").Router();
 const middleWare = require('../service/middleware');
@@ -16,6 +17,9 @@ router.get('/alarm-tail-info', alarms.alarmTailInfo);
 router.post('/create-update', alarms.createUpdateAlarm);
 
 router.put('/acknowledge-clear', alarms.acknowledgeClearAlarm);
+
+// When each alarm was raised, acknowledged and cleared: ?from=ISO&to=ISO
+router.get('/action-log', alarmLog.actionLog);
 
 router.post('/clear-intrusion-tracks', alarms.clearIntrusionTracks);
 

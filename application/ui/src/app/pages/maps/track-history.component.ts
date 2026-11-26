@@ -59,6 +59,124 @@ export class TrackHistoryComponent implements OnInit, OnDestroy {
 
   constructor(private http: HttpClient, private actions: AlarmActionService) {}
 
+  // ---------- Alarm Log: when each alarm was raised, acknowledged and cleared (cancelled) ----------
+  // Raised / Acknowledged / Cleared come from the database (alarm_events, written by Acknowledge / Clear on every PC).
+  // UAV / Home times are only recorded in this browser (they are not saved in the database).
+  logOpen = false;
+  logLoading = false;
+  logError = "";
+  logLocalOnly = false;   // database not reachable: showing this browser's records only
+  logRows: any[] = [];
+  logFilter: "all" | "ack" | "cleared" | "pending" = "all";
+
+  private get alarmApi(): string {
+    return String(config.serverApiUrl.map).replace(/\/map$/, "/alarm");
+  }
+
+  toggleLog(): void {
+    this.logOpen = !this.logOpen;
+    if (this.logOpen) {
+      if (this.pieOpen) this.togglePie();   // only the alarm log is shown
+      this.loadLog();
+    }
+  }
+
+  loadLog(): void {
+    const w = this.pieWindow();
+    if (isNaN(w.f) || isNaN(w.t)) return;
+    this.logLoading = true;
+    this.logError = "";
+    const params = { from: new Date(w.f).toISOString(), to: new Date(w.t).toISOString() };
+    this.http.get(this.alarmApi + "/action-log", { params }).subscribe(
+      (res: any) => {
+        this.logLoading = false;
+        this.logLocalOnly = false;
+        this.logRows = this.buildLogRows((res && res.data) || [], w);
+      },
+      (err: any) => {
+        this.logLoading = false;
+        this.logLocalOnly = true;
+        this.logError = err && err.status ? "Server error (" + err.status + ") reading the alarm log." : "Backend not reachable.";
+        this.logRows = this.buildLogRows([], w);   // still show what this browser recorded
+      }
+    );
+  }
+
+  private ms(v: any): number {
+    if (v === null || v === undefined || v === "") return null;
+    const t = typeof v === "number" ? v : /^\d+(\.\d+)?$/.test(String(v)) ? Number(v) : new Date(v).getTime();
+    return isNaN(t) ? null : t;
+  }
+
+  private buildLogRows(db: any[], w: { f: number; t: number }): any[] {
+    const local = this.actions.alarmsBetween(w.f, w.t);
+    const localById: { [id: string]: AlarmActionSummary } = {};
+    local.forEach((a) => (localById[String(a.alarmId)] = a));
+    const firstAt = (a: AlarmActionSummary, act: string) => {
+      const e = a && a.entries.find((x) => x.action === act);
+      return e ? e.at : null;
+    };
+    const rows: any[] = db.map((r: any) => {
+      const loc = localById[String(r.alarm_id)];
+      delete localById[String(r.alarm_id)];
+      return {
+        alarmId: r.alarm_id,
+        alarmNo: r.alarm_no,
+        trackId: r.track_id,
+        zone: r.zone_id,
+        raised: this.ms(r.raised_ms) || this.ms(r.alarmmsg_ms) || firstAt(loc, "seen"),
+        // database first; if the database has no row but this browser saw the click, show that time (marked *)
+        ack: this.ms(r.acknowledged_ms) || firstAt(loc, "ack"),
+        ackLocal: !this.ms(r.acknowledged_ms) && !!firstAt(loc, "ack"),
+        cleared: this.ms(r.cleared_ms) || firstAt(loc, "reject"),
+        clearedLocal: !this.ms(r.cleared_ms) && !!firstAt(loc, "reject"),
+        uav: firstAt(loc, "uav"),
+        home: firstAt(loc, "home"),
+      };
+    });
+    // alarms this browser recorded that the database did not return (or the database is down)
+    Object.keys(localById).forEach((id) => {
+      const a = localById[id];
+      rows.push({
+        alarmId: id, alarmNo: a.alarmNo, trackId: id, zone: null,
+        raised: firstAt(a, "seen"), ack: firstAt(a, "ack"), cleared: firstAt(a, "reject"),
+        uav: firstAt(a, "uav"), home: firstAt(a, "home"), localOnly: true,
+      });
+    });
+    rows.forEach((r) => {
+      r.status = r.cleared ? "Cleared" : r.ack ? "Acknowledged" : "Not acknowledged";
+      r.responseSec = r.ack && r.raised && r.ack >= r.raised ? Math.round((r.ack - r.raised) / 1000) : null;
+      r.last = Math.max(r.raised || 0, r.ack || 0, r.cleared || 0, r.uav || 0, r.home || 0);
+    });
+    return rows.sort((a, b) => b.last - a.last);
+  }
+
+  get logCounts() {
+    const c = { all: this.logRows.length, ack: 0, cleared: 0, pending: 0 };
+    this.logRows.forEach((r) => { if (r.ack) c.ack++; if (r.cleared) c.cleared++; if (!r.ack && !r.cleared) c.pending++; });
+    return c;
+  }
+
+  get logVisible(): any[] {
+    if (this.logFilter === "ack") return this.logRows.filter((r) => r.ack);
+    if (this.logFilter === "cleared") return this.logRows.filter((r) => r.cleared);
+    if (this.logFilter === "pending") return this.logRows.filter((r) => !r.ack && !r.cleared);
+    return this.logRows;
+  }
+
+  get avgResponse(): number {
+    const v = this.logRows.map((r) => r.responseSec).filter((x) => x !== null);
+    return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null;
+  }
+
+  exportLogCsv(): void {
+    const t = (ms: number) => (ms ? new Date(ms).toLocaleString() : "");
+    const head = ["Alarm", "Track ID", "Zone", "Raised", "Acknowledged", "Response (s)", "Cleared", "UAV sent", "Return Home", "Status"];
+    const rows = this.logVisible.map((r) =>
+      [r.alarmNo, r.trackId, r.zone, t(r.raised), t(r.ack), r.responseSec, t(r.cleared), t(r.uav), t(r.home), r.status].map((v) => this.csvCell(v)).join(","));
+    this.downloadBlob("alarm_log_" + this.stamp() + ".csv", new Blob([head.join(",") + "\n" + rows.join("\n")], { type: "text/csv;charset=utf-8" }));
+  }
+
   // ---------- Alarm action pie chart (recorded in this browser only) ----------
   pieOpen = false;
   pieCounts: { [category: string]: number } = {};
@@ -100,6 +218,7 @@ export class TrackHistoryComponent implements OnInit, OnDestroy {
   togglePie(): void {
     this.pieOpen = !this.pieOpen;
     if (this.pieOpen) {
+      this.logOpen = false;   // pie chart goes back to the normal track view
       this.refreshPie();
       // keep the chart live while it is open
       this.pieTimer = setInterval(() => this.refreshPie(), 2000);
@@ -251,6 +370,7 @@ export class TrackHistoryComponent implements OnInit, OnDestroy {
     if (isNaN(from.getTime()) || isNaN(to.getTime())) { this.error = "Please choose valid From / To times."; return; }
     if (from > to) { this.error = "From must be before To."; return; }
     this.refreshPie();
+    if (this.logOpen) this.loadLog();
     this.error = "";
     this.loading = true;
     this.selectedBar = null;

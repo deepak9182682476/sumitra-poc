@@ -39,7 +39,7 @@
                             {{getTranslationLang("loading")}}...
                         </p>
 
-                        <div class="alr-items pb-2"
+                        <div class="alr-items pb-2" [class.uav-target]="isUavTarget(item)"
                             *ngFor="let item of obj.value | search:'alarm_id,zone_id,formatted_zone_id,agu_no,radar_id,id':searchValue;let caIndex=index;">
                             <p class="alarm_id">
                                 {{item?.alarm_id ? getTranslationLang("alarm") + ' - ' + item?.id : '--'}}</p>

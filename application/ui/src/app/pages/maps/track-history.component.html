@@ -33,6 +33,11 @@
       (click)="togglePie()" title="Alarm action pie chart">
       <i class="fa fa-pie-chart"></i>
     </button>
+    <!-- Alarm Log: when each alarm was raised, acknowledged and cleared -->
+    <button type="button" class="btn btn-secondary btn-sm th-pie-btn th-log-btn" [class.active]="logOpen"
+      (click)="toggleLog()" title="Alarm log: when each alarm was acknowledged / cleared">
+      <i class="fa fa-list-alt"></i> Alarm Log
+    </button>
     <!-- Export dropdown: CSV, Excel, PDF -->
     <div class="th-export-menu" *ngIf="tracks.length">
       <button type="button" class="btn btn-secondary btn-sm" (click)="exportMenuOpen = !exportMenuOpen">
@@ -92,6 +97,48 @@
       </table>
     </div>
   </div>
+  <!-- Alarm Log panel -->
+  <div class="th-log" *ngIf="logOpen">
+    <div class="th-log-head">
+      <span class="th-log-title">Alarm Log ({{ pieRangeText }})</span>
+      <span class="th-log-chip" [class.active]="logFilter === 'all'" (click)="logFilter = 'all'">All <b>{{ logCounts.all }}</b></span>
+      <span class="th-log-chip ack" [class.active]="logFilter === 'ack'" (click)="logFilter = 'ack'">Acknowledged <b>{{ logCounts.ack }}</b></span>
+      <span class="th-log-chip clr" [class.active]="logFilter === 'cleared'" (click)="logFilter = 'cleared'">Cleared <b>{{ logCounts.cleared }}</b></span>
+      <span class="th-log-chip pend" [class.active]="logFilter === 'pending'" (click)="logFilter = 'pending'">Not acknowledged <b>{{ logCounts.pending }}</b></span>
+      <span class="th-log-avg" *ngIf="avgResponse !== null">Avg response: <b>{{ dur(avgResponse) }}</b></span>
+      <span class="th-log-actions">
+        <a href="javascript:void(0)" (click)="loadLog()" title="Refresh"><i class="fa fa-refresh" [class.fa-spin]="logLoading"></i></a>
+        <a href="javascript:void(0)" (click)="exportLogCsv()" *ngIf="logVisible.length" title="Download as CSV"><i class="fa fa-download"></i> CSV</a>
+      </span>
+    </div>
+    <div class="th-log-note" *ngIf="logLocalOnly">{{ logError }} Showing what this browser recorded only.</div>
+    <div class="th-log-empty" *ngIf="!logLoading && !logVisible.length">No alarms in this range.</div>
+    <div class="th-log-scroll" *ngIf="logVisible.length">
+      <table class="th-log-table">
+        <thead>
+          <tr><th>Alarm</th><th>Track ID</th><th>Zone</th><th>Raised</th><th>Acknowledged</th><th>Response</th><th>Cleared</th><th>UAV sent</th><th>Return Home</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of logVisible">
+            <td>{{ r.alarmNo != null ? 'Alarm - ' + r.alarmNo : '-' }}</td>
+            <td>{{ r.trackId }}</td>
+            <td>{{ r.zone ? 'zone-' + r.zone : '-' }}</td>
+            <td>{{ r.raised ? (r.raised | date:'dd MMM HH:mm:ss') : '-' }}</td>
+            <td class="t-ack">{{ r.ack ? (r.ack | date:'dd MMM HH:mm:ss') : '-' }}<span class="th-local" *ngIf="r.ackLocal || (r.localOnly && r.ack)" title="Not found in the database - time recorded by this browser">*</span></td>
+            <td>{{ r.responseSec !== null ? dur(r.responseSec) : '-' }}</td>
+            <td class="t-clr">{{ r.cleared ? (r.cleared | date:'dd MMM HH:mm:ss') : '-' }}<span class="th-local" *ngIf="r.clearedLocal || (r.localOnly && r.cleared)" title="Not found in the database - time recorded by this browser">*</span></td>
+            <td>{{ r.uav ? (r.uav | date:'dd MMM HH:mm:ss') : '-' }}</td>
+            <td>{{ r.home ? (r.home | date:'dd MMM HH:mm:ss') : '-' }}</td>
+            <td><span class="th-status" [ngClass]="r.cleared ? 's-clr' : r.ack ? 's-ack' : 's-pend'">{{ r.status }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="th-log-foot">Raised, Acknowledged and Cleared times are from the database (* = not in the database, recorded by this browser). UAV sent / Return Home are recorded in this browser.</div>
+  </div>
+
+  <!-- tracks part: hidden while the Alarm Log is open (the log fills the window) -->
+  <ng-container *ngIf="!logOpen">
   <div class="th-error" *ngIf="error">{{ error }}</div>
 
   <div class="th-stats" *ngIf="tracks.length">
@@ -168,4 +215,5 @@
       <small>Tracks are saved from now on, each time the radar (or Manual Input through backend) sends a position.</small>
     </div>
   </div>
+  </ng-container>
 </div>

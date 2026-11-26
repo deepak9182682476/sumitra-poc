@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError, BehaviorSubject } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
-import { config, server_info } from './../../config/config';
+import { config, server_info, server } from './../../config/config';
 
 
 @Injectable({
@@ -133,25 +133,49 @@ export class DataService {
     return this.http.post(this.drone('/stop_tracking'), {}).pipe(catchError(this.keepError));
   }
   // Detection mode on / off. It stays on until the operator turns it off.
-  // NOTE: endpoint names to be confirmed with the drone API (backend must add these).
+  // ---- SDE Spotter ICD (SDE-ICD-SPT-001): sent by our backend as UDP/JSON to the SDE GCS ----
+  private get useIcd(): boolean { return (server_info as any).UAV_CONTROL !== 'drone_api'; }
+  private uavIcd(path: string) { return `${server.SERVER_URL}/api/uav${path}`; }
+  private static readonly ICD_MOVE: any = { forward: 'MOVE_FORWARD', backward: 'MOVE_BACKWARD', left: 'MOVE_LEFT', right: 'MOVE_RIGHT', yaw_left: 'YAW_LEFT', yaw_right: 'YAW_RIGHT' };
+  private static readonly ICD_CAMERA: any = { up: 'PLD_Camera_UP', down: 'PLD_Camera_DOWN', zoom_in: 'PLD_Camera_ZOOMIN', zoom_out: 'PLD_Camera_ZOOMOUT' };
+  public uavIcdStatus() {
+    return this.http.get(this.uavIcd('/status')).pipe(catchError(this.keepError));
+  }
+  public uavStopTargetTracking() {   // {"type":"STOP_TRACKING",...} (ICD 6.3)
+    // drone_api: stop onboard visual tracking, drone loiters (radar pursuit is stopped with /stop_tracking)
+    // if (!this.useIcd) return this.http.post(this.drone('/stop_tracking'), {}).pipe(catchError(this.keepError));   // earlier
+    if (!this.useIcd) return this.http.post(this.drone('/visual_track/stop'), {}).pipe(catchError(this.keepError));
+    return this.http.post(this.uavIcd('/stop-tracking'), {}).pipe(catchError(this.keepError));
+  }
+
+  // NOTE (drone_api mode): endpoint names to be confirmed with the drone API (backend must add these).
   public droneDetectionStart() {
-    return this.http.post(this.drone('/detection/start'), {}).pipe(catchError(this.keepError));
+    if (this.useIcd) return this.http.post(this.uavIcd('/detection'), { enabled: true }).pipe(catchError(this.keepError));
+    // return this.http.post(this.drone('/detection/start'), {}).pipe(catchError(this.keepError));   // earlier guess
+    return this.http.post(this.drone('/visual_track/detection'), { enabled: true }).pipe(catchError(this.keepError));
   }
   public droneDetectionStop() {
-    return this.http.post(this.drone('/detection/stop'), {}).pipe(catchError(this.keepError));
+    if (this.useIcd) return this.http.post(this.uavIcd('/detection'), { enabled: false }).pipe(catchError(this.keepError));
+    // return this.http.post(this.drone('/detection/stop'), {}).pipe(catchError(this.keepError));   // earlier guess
+    return this.http.post(this.drone('/visual_track/detection'), { enabled: false }).pipe(catchError(this.keepError));
   }
   // Tracking mode: point clicked on the UAV video.
   // x, y = pixel in the video frame itself (0,0 = top-left); width, height = frame size in pixels.
   // NOTE: endpoint name to be confirmed with the drone API (backend must add POST /track_pixel).
   public droneTrackPixel(x: number, y: number, width: number, height: number) {
-    return this.http.post(this.drone('/track_pixel'), { x, y, width, height }).pipe(catchError(this.keepError));
+    // ICD 6.2: {"type":"SELECT_TARGET","x":..,"y":..,"video_width":1280,"video_height":720}
+    if (this.useIcd) return this.http.post(this.uavIcd('/select-target'), { x, y, video_width: width, video_height: height }).pipe(catchError(this.keepError));
+    // return this.http.post(this.drone('/track_pixel'), { x, y, width, height }).pipe(catchError(this.keepError));   // earlier guess
+    return this.http.post(this.drone('/visual_track/select'), { x, y, video_width: width, video_height: height }).pipe(catchError(this.keepError));
   }
   // direction: forward | backward | left | right | yaw_left | yaw_right
   public droneMove(direction: string) {
+    if (this.useIcd) return this.http.post(this.uavIcd('/command'), { command: DataService.ICD_MOVE[direction] || direction }).pipe(catchError(this.keepError));
     return this.http.post(this.drone('/move/' + direction), {}).pipe(catchError(this.keepError));
   }
   // action: up | down | zoom_in | zoom_out
   public droneCamera(action: string) {
+    if (this.useIcd) return this.http.post(this.uavIcd('/command'), { command: DataService.ICD_CAMERA[action] || action }).pipe(catchError(this.keepError));
     return this.http.post(this.drone('/camera/' + action), {}).pipe(catchError(this.keepError));
   }
   public droneTelemetry() {
