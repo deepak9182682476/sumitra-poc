@@ -257,8 +257,9 @@ export class GraphComponent implements OnInit {
           {
             y: 26.5,
             marker: {
-              symbol:
-                "url(https://www.highcharts.com/samples/graphics/sun.png)",
+              // symbol:
+              //   "url(https://www.highcharts.com/samples/graphics/sun.png)",  // online picture: not available offline
+              symbol: "circle",
             },
           },
           0,
@@ -284,8 +285,9 @@ export class GraphComponent implements OnInit {
           {
             y: 22,
             marker: {
-              symbol:
-                "url(https://www.highcharts.com/samples/graphics/snow.png)",
+              // symbol:
+              //   "url(https://www.highcharts.com/samples/graphics/snow.png)",  // online picture: not available offline
+              symbol: "diamond",
             },
           },
           0,

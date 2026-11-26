@@ -8,6 +8,36 @@
 @import './assets/css/main';
 @import "~@angular/material/prebuilt-themes/indigo-pink.css";
 
+/* Roboto bundled with the app (was loaded from Google Fonts in index.html) - works offline */
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 300;
+    font-display: swap;
+    src: url('assets/fonts/roboto/roboto-latin-300-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('assets/fonts/roboto/roboto-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('assets/fonts/roboto/roboto-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('assets/fonts/roboto/roboto-latin-700-normal.woff2') format('woff2');
+}
+
 body,
 html {
     padding: 0;

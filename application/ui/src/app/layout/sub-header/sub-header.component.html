@@ -1,4 +1,4 @@
-<nav class="navbar pl-3 pr-3 flex-fill bg-sub-nav">
+<nav class="navbar pl-3 pr-3 flex-fill bg-sub-nav" [class.sub-nav-empty]="!(isSignedIn && showRobotControls)">
   <!-- left box -->
   <div class="navbar-nav flex-fill align-items-left justify-content-start warning-nav">
     <div class="d-flex">
@@ -77,6 +77,8 @@
     </div>
 
     <div class="d-flex">
+      <!-- IFF / Early Warning switches hidden for Sundarbans: no IFF sensors or data in the database, and every alarm
+           is saved as type 1 (backend service/topic.js), so neither switch has anything to act on. Uncomment to show.
       <ul class="navbar-nav">
         <li class="nav-item sliderWrapper">
           <div class="custom-control custom-switch">
@@ -96,6 +98,7 @@
           </div>
         </li>
       </ul>
+      -->
     </div>
   </div>
 

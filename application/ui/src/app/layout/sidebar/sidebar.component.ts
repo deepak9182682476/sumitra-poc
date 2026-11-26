@@ -24,6 +24,9 @@ import { AlarmActionService } from "../../services/alarm-action.service";
 export class SidebarComponent implements OnInit, OnDestroy, DoCheck {
   dragPosition = { x: 0, y: 0 };
 
+  // Alarm list docked in (full list) or docked out (slim strip, map gets the space). Remembered in this browser.
+  dockedOut = false;
+
   total_alarms = 0;
   alarms_list = {
     Confirmatory_Alarm: [],
@@ -98,6 +101,8 @@ export class SidebarComponent implements OnInit, OnDestroy, DoCheck {
   }
 
   ngOnInit(): void {
+    try { this.dockedOut = localStorage.getItem("sumitra_alarm_list_docked_out") === "1"; } catch (e) { }
+    this.applyDockState(false);
     this.alarmDataService.alarms$.subscribe(data => {
       this.alarmsData = data;
       console.log("Sidebar received alarms:", this.alarmsData);
@@ -921,7 +926,20 @@ export class SidebarComponent implements OnInit, OnDestroy, DoCheck {
     );
   }
 
+  toggleDock(): void {
+    this.dockedOut = !this.dockedOut;
+    try { localStorage.setItem("sumitra_alarm_list_docked_out", this.dockedOut ? "1" : "0"); } catch (e) { }
+    this.applyDockState(true);
+  }
+
+  // The map page reads this body class to size the map; a resize event makes the map redraw at its new size.
+  private applyDockState(animate: boolean): void {
+    document.body.classList.toggle("alarms-docked-out", this.dockedOut);
+    setTimeout(() => window.dispatchEvent(new Event("resize")), animate ? 260 : 0);
+  }
+
   ngOnDestroy(): void {
+    document.body.classList.remove("alarms-docked-out");
     this.roleAuthSubscription.unsubscribe();
     this.alarmsListSubscription.unsubscribe();
     if (this.alarmArchivedSubscription) this.alarmArchivedSubscription.unsubscribe();

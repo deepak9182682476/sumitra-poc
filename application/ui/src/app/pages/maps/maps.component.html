@@ -93,7 +93,7 @@
                         </div>
                     </ng-template>
 
-                    <div id="map" class="map">
+                    <div id="map" class="map" [class.cam-docked]="camDockActive" [class.cam-docked-out]="(enableVideo || enableUavVideo) && camDockOut">
                       <!-- Label column: always at fixed position, unaffected by video open/close -->
                       <div class="video-labels-stack">
                         <div class="slew-popup">
@@ -115,13 +115,18 @@
                       </div>
 
                       <!-- Video column: panels stack independently to the right of labels -->
-                      <div class="video-panels-stack">
+                      <!-- dock in / dock out tab for the camera column (hides it; the videos keep running) -->
+                      <button type="button" class="cam-dock-tab" *ngIf="enableVideo || enableUavVideo" (click)="toggleCamDock()"
+                              [class.out]="camDockOut" [title]="camDockOut ? 'Show Slew TI / UAV' : 'Hide Slew TI / UAV'">
+                        <i class="fa" [ngClass]="camDockOut ? 'fa-angle-double-left' : 'fa-angle-double-right'"></i>
+                      </button>
+                      <div class="video-panels-stack" [class.cam-out]="camDockOut">
                          <div class="video-sec slew-ti-sec" id="slew-ti-panel"
                               [class.ptz-expanded]="isPtzExpanded" 
                               [class.resizing]="isResizing"
                               *ngIf="enableVideo"
                               [style.width.px]="slewTiWidth"
-                              [style.height.px]="(isPtzExpanded ? 380 : 180) + slewTiHeightOffset">
+                              [style.height.px]="(isPtzExpanded ? 336 : 160) + slewTiHeightOffset">
                           <div class="panel-header">
                             <span class="panel-title">Slew TI</span>
                             <span class="video-icons">
@@ -143,7 +148,7 @@
                             </div>
                           </div>
                           
-                          <div class="ptz-toggle" (click)="isPtzExpanded = !isPtzExpanded">
+                          <div class="ptz-toggle" (click)="toggleSlewSection()">
                             <span class="ptz-toggle-text">PTZ CONTROLS</span>
                             <span class="uav-link" [ngClass]="camLink" [title]="camHealthTitle" *ngIf="camLink !== 'unknown'">{{ camLink === 'up' ? 'CAM LINK UP' : 'CAM LINK DOWN' }}</span>
                             <i class="fa" [ngClass]="isPtzExpanded ? 'fa-angle-up' : 'fa-angle-down'"></i>
@@ -220,7 +225,7 @@
                              [class.uav-only]="!enableVideo"
                              [class.resizing]="isUavResizing"
                              [style.width.px]="uavWidth"
-                             [style.height.px]="uavHeight + (isUavCtlExpanded ? 274 : 0)">
+                             [style.height.px]="uavHeight + (isUavCtlExpanded ? 252 : 0)">
                           <div class="panel-header">
                             <span class="panel-title">UAV</span>
                             <span class="video-icons">
@@ -249,7 +254,7 @@
                             </div>
                           </div>
 
-                          <div class="ptz-toggle" (click)="isUavCtlExpanded = !isUavCtlExpanded">
+                          <div class="ptz-toggle" (click)="toggleUavSection()">
                             <span class="ptz-toggle-text">UAV CONTROLS <span *ngIf="droneDemo" class="uav-demo-tag">DEMO</span></span>
                             <span class="uav-link" [ngClass]="uavLink">{{ uavLink === 'up' ? 'LINK UP' : (uavLink === 'down' ? 'LINK DOWN' : '') }}{{ uavLink && telemetrySource === 'kafka' && !droneDemo ? ' · KAFKA' : '' }}</span>
                             <i class="fa" [ngClass]="isUavCtlExpanded ? 'fa-angle-up' : 'fa-angle-down'"></i>
@@ -296,7 +301,7 @@
                               <button class="uav-btn go" (click)="uavFlyTo()" title="Fly to this latitude / longitude and hover there">Fly To</button>
                             </div>
 
-                            <div class="uav-row">
+                            <div class="uav-row uav-alt-row">
                               <span class="uav-label">Altitude</span>
                               <input type="range" min="0" max="1000" step="10" [(ngModel)]="uavCtl.setAlt" />
                               <input type="number" min="0" max="5000" [(ngModel)]="uavCtl.setAlt" class="short" />
@@ -350,7 +355,7 @@
                         <div id="popup-content" #overlayElement></div>
                     </div>
                     
-                    <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
+                    <div class="default-location" id="default-location" [class.cam-docked]="camDockActive" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                         <img src="./assets/GPS.svg" width="12" height="12" />
                     </div>
                     <div class="layer-controls">
@@ -529,7 +534,7 @@
                         </div>
                     </div>
 
-                    <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
+                    <div class="default-location" id="default-location" [class.cam-docked]="camDockActive" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                         <img src="./assets/GPS.svg" width="12" height="12" />
                     </div>
                 </ng-container>
@@ -541,7 +546,7 @@
                                 <div id="da-popup-content" #daOverlayElement>
                                 </div>
                             </div>
-                            <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
+                            <div class="default-location" id="default-location" [class.cam-docked]="camDockActive" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                                 <img src="./assets/GPS.svg" width="12" height="12" />
                             </div>
                         </div>
@@ -555,7 +560,7 @@
                                 <div id="da-popup-content" #daOverlayElement>
                                 </div>
                             </div>
-                            <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
+                            <div class="default-location" id="default-location" [class.cam-docked]="camDockActive" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                                 <img src="./assets/GPS.svg" width="12" height="12" />
                             </div>
                         </div>
@@ -563,7 +568,7 @@
                 </ng-container>
                 <ng-container *ngSwitchCase="'system-configuration'">
                     <div id="system-config-map" class="sys-confg-map">
-                        <div class="default-location" id="default-location" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
+                        <div class="default-location" id="default-location" [class.cam-docked]="camDockActive" (click)="goToDefaultLocation()" title="Go to Sundarbans site">
                             <img src="./assets/GPS.svg" width="12" height="12" />
                         </div>
                     </div>

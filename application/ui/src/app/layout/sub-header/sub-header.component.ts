@@ -15,6 +15,11 @@ import { PopoverDirective } from 'ngx-bootstrap/popover';
   encapsulation: ViewEncapsulation.None,
 })
 export class SubHeaderComponent implements OnInit {
+  // The bar has nothing to show (robot controls off): collapse it and let the map use the height (see body.sub-nav-empty)
+  ngDoCheck(): void {
+    document.body.classList.toggle("sub-nav-empty", !(this.isSignedIn && this.showRobotControls));
+  }
+
 
   selectedRobots = new FormControl();
   selectedAlgoType = new FormControl();

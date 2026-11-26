@@ -936,7 +936,8 @@ ng-scrollbar.lc-list-items {
 @media screen and (min-width: 769px) and (max-width: 1400px) {
   #map {
     height: 76.5vh;
-    width: 77.5vw;
+    // width: 77.5vw;
+    width: calc(100vw - 244px);  /* full width beside the 240px alarm list */
   }
 
   .ol-zoom {
@@ -965,7 +966,8 @@ ng-scrollbar.lc-list-items {
 @media screen and (min-width: 1401px) {
   #map {
     height: 85vh;
-    width: 84.5vw;
+    // width: 84.5vw;
+    width: calc(100vw - 244px);  /* full width beside the 240px alarm list */
   }
 
   .ol-zoom {
@@ -2004,3 +2006,107 @@ ng-scrollbar.lc-list-items {
   .turn-btn { height: 26px; font-size: 10.5px; }
 }
 .video-sec:fullscreen > .panel-header { padding-top: 12px; padding-bottom: 10px; }
+
+/* ---- Slew TI / UAV windows (normal size): a little smaller, rows kept on one line ---- */
+.video-sec:not(:fullscreen) {
+  .uav-ctl .uav-target { font-size: 10.5px; line-height: 1.25; margin-top: -1px; }
+  .uav-ctl .uav-alt-row {
+    flex-wrap: nowrap;
+    .uav-label { flex: 0 0 auto; width: auto; font-size: 10.5px; }
+    input[type="range"] { flex: 1 1 auto; min-width: 0; width: auto; }
+    input[type="number"].short { flex: 0 0 44px; width: 44px; }
+  }
+  .uav-ctl .uav-remotes { margin-top: 0; padding-top: 3px; }
+  /* Pursue / Stop / RTL: icon and word on one line */
+  .uav-ctl .uav-btn.wide { white-space: nowrap; padding: 0 3px; gap: 3px; font-size: 11px; i { margin-right: 2px; } }
+}
+
+/* ---- alarm list docked out (40px strip): the map takes the space ---- */
+body.alarms-docked-out #map {
+  width: calc(100vw - 44px) !important;
+}
+
+/* =====================================================================
+   Slew TI / UAV docked in a fixed column on the right of the map
+   (full screen is unchanged: every rule below skips :fullscreen)
+   ===================================================================== */
+$cam-dock-w: 320px;
+
+#map.cam-docked {
+  box-sizing: border-box;
+  padding-right: $cam-dock-w;      /* the map itself (OpenLayers) uses the rest of the width */
+}
+#map.cam-docked-out { overflow: hidden; }
+
+#map .video-panels-stack {
+  top: 0;
+  bottom: 0;
+  left: auto;
+  right: 0;
+  width: $cam-dock-w;
+  flex-wrap: nowrap;
+  gap: 0;
+  align-items: stretch;
+  transition: transform 0.22s ease;
+  &.cam-out { transform: translateX(100%); }
+}
+#map.cam-docked .video-panels-stack {
+  background: var(--bg2, #15191e);
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  pointer-events: all;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* tab on the column's left edge, halfway down (moves to the map edge when the column is hidden) */
+.cam-dock-tab {
+  position: absolute;
+  top: 50%;
+  right: $cam-dock-w;
+  transform: translateY(-50%);
+  z-index: 1100;
+  width: 15px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  background: var(--bg2, #1e1e1e);
+  color: var(--color, #fff);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: -2px 0 6px rgba(0, 0, 0, 0.35);
+  transition: right 0.22s ease;
+  &.out { right: 0; }
+  &:hover { color: #03a9f4; }
+  &:focus { outline: none; }
+}
+
+/* panels fill the column width; height follows content, the videos share the spare height */
+#map .video-panels-stack > .video-sec:not(:fullscreen) {
+  width: 100% !important;
+  height: auto !important;
+  flex: 1 0 auto;          /* never squashed: if a small screen runs out of height the column scrolls instead of cutting controls off */
+  min-height: 0;
+  max-height: none;
+  border-radius: 0;
+  border: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none;
+  overflow: hidden;
+  .resize-handle { display: none; }
+  .video-wrapper { flex: 1 1 0; min-height: 72px; height: auto; }
+}
+
+/* "Go to Sundarbans site" button sits on the map's right edge: move it left of the camera column */
+.default-location { transition: transform 0.22s ease; }
+.default-location.cam-docked { transform: translateX(-$cam-dock-w); }
+
+/* top bar collapsed (no IFF / Early Warning switches): the map takes its 50px */
+@media screen and (min-width: 769px) and (max-width: 1400px) {
+  body.sub-nav-empty #map { height: calc(76.5vh + 50px); }
+}
+@media screen and (min-width: 1401px) {
+  body.sub-nav-empty #map { height: calc(85vh + 50px); }
+}

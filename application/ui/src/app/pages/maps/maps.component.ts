@@ -167,15 +167,15 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     tilt: false,
     zoom: false
   };
-  slewTiWidth = 220;
+  slewTiWidth = 200; // was 220
   slewTiHeightOffset = 0;
   isResizing = false;
   private startX = 0;
   private startY = 0;
   private startWidth = 220;
   private startHeightOffset = 0;
-  uavWidth = 220;
-  uavHeight = 180;
+  uavWidth = 200; // was 220
+  uavHeight = 160; // was 180
   isUavResizing = false;
   private startUavX = 0;
   private startUavY = 0;
@@ -282,10 +282,39 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onSlewToggle(event: any) {
     this.enableVideo = event.target.checked;
+    if (this.enableVideo) this.camDockOut = false;
   }
 
   onUavToggle(event: any) {
     this.enableUavVideo = event.target.checked;
+    if (this.enableUavVideo) this.camDockOut = false;
+  }
+
+  // ---- Slew TI / UAV docked in a column on the right of the map ----
+  camDockOut = false;   // column hidden with its tab (videos keep running)
+  get camDockActive(): boolean {
+    return (this.enableVideo || this.enableUavVideo) && !this.camDockOut;
+  }
+  toggleCamDock() {
+    this.camDockOut = !this.camDockOut;
+  }
+  // Opening one panel's controls folds the other one, so both videos fit without scrolling
+  toggleSlewSection() {
+    this.isPtzExpanded = !this.isPtzExpanded;
+    if (this.isPtzExpanded && this.enableUavVideo) this.isUavCtlExpanded = false;
+  }
+  toggleUavSection() {
+    this.isUavCtlExpanded = !this.isUavCtlExpanded;
+    if (this.isUavCtlExpanded && this.enableVideo) this.isPtzExpanded = false;
+  }
+  // The map gets narrower / wider when the column opens or closes: tell OpenLayers to re-measure
+  private lastCamDockState: any = null;
+  ngDoCheck() {
+    const now: any = this.camDockActive + "|" + document.body.classList.contains("sub-nav-empty");
+    if (now === this.lastCamDockState) return;
+    this.lastCamDockState = now;
+    setTimeout(() => { if (this.olmap) this.olmap.updateSize(); }, 0);
+    setTimeout(() => { if (this.olmap) this.olmap.updateSize(); }, 300);
   }
 
   closeSlewPopup() {
@@ -1385,7 +1414,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           SourceType: "GeoJSON",
           Style: {
             color: "#00FFF6",
-            width: 3,
+            width: 1.5, // was 3: thinner India boundary lines
             fill: "rgba(0, 0, 0, 0)",
             type: "Polygon",
           },
@@ -1470,7 +1499,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
           SourceType: "GeoJSON",
           Style: {
             color: "#00FFF6",
-            width: 3,
+            width: 1.5, // was 3: thinner India boundary lines
             fill: "rgba(0, 0, 0, 0)",
             type: "Polygon",
           },
@@ -1503,12 +1532,56 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Sensors placed outside India (old test entries, e.g. a radar saved in the sea west of Kutch) are not drawn.
+  // The test uses the India outline polygon in config.ts (border_layer); anything inside the Sundarbans site
+  // box is always shown, so a sensor on the coast is never hidden by the coarse outline. The database is untouched.
+  private indiaRings: number[][][] = null;
+  private isInsideIndia(lonlat: number[]): boolean {
+    if (!lonlat || lonlat.length < 2) return true;
+    const x = +lonlat[0], y = +lonlat[1];
+    if (x > 88.0 && x < 89.3 && y > 21.3 && y < 22.9) return true; // Sundarbans site (Indian side and border)
+    if (!this.indiaRings) {
+      const geo: any = this.dataService.config && this.dataService.config.border_layer;
+      const rings: number[][][] = [];
+      ((geo && geo.features) || []).forEach((f: any) => {
+        const g = f && f.geometry;
+        if (!g) return;
+        if (g.type === "Polygon") rings.push(g.coordinates[0]);
+        if (g.type === "MultiPolygon") g.coordinates.forEach((p: any) => rings.push(p[0]));
+      });
+      this.indiaRings = rings;
+    }
+    if (!this.indiaRings.length) return true; // no outline: show everything, as before
+    for (const ring of this.indiaRings) {
+      let hit = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+        if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+      }
+      if (hit) return true;
+    }
+    return false;
+  }
+  private keepSensorsInsideIndia(result: any): any {
+    if (!result || !Array.isArray(result.features)) return result;
+    const kept = result.features.filter((f: any) => this.isInsideIndia(f && f.geometry && f.geometry.coordinates));
+    if (kept.length !== result.features.length) {
+      console.log("Sensors outside India not drawn:", result.features.filter((f: any) => kept.indexOf(f) === -1).map((f: any) => f.properties && f.properties.sensor_type + " " + f.properties.sensor_id));
+    }
+    return Object.assign({}, result, { features: kept });
+  }
+
   getSensorCoordinates() {
+    this.loadSensorLayers();
+  }
+
+  private loadSensorLayers() {
     var sensor_types = this.commonService.apiConfig.sensor_types
     const updateList = [];
     sensor_types.forEach((element) => {
       this.dataService.getSensorCoordinates(element.sensor_type).subscribe(
         (result: any) => {
+          result = this.keepSensorsInsideIndia(result);
           updateList.push(element);
           if (element.sensor_type === "LF") {
             let LFCoordinates = {
@@ -1662,6 +1735,19 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       if (seq !== this.zoneLoadSeq) return; // a newer reload is on its way - only the latest one draws
       this.removeZoneLayers();              // never draw the zones on top of an older copy
       if (result && result.data.length > 0) {
+        // Zones start unselected (hidden); the user ticks the ones to show in the Zones menu.
+        // A tick is remembered while the page is open, and a zone drawn after the page opened shows straight away.
+        const firstLoad = this.zoneSeen === null;
+        if (firstLoad) this.zoneSeen = {};
+        result.data.forEach((element) => {
+          const feats = (element && element.geojson && element.geojson.features) || [];
+          feats.forEach((f) => {
+            if (!f || !f.properties) return;
+            const area = String(f.properties.zone_area);
+            if (!(area in this.zoneSeen)) this.zoneSeen[area] = !firstLoad; // new zone drawn now -> shown
+            f.properties.checked = this.zoneSeen[area];
+          });
+        });
         result.data.forEach((element) => {
           if (element.zone_priority) {
             this.addLayerToMap(
@@ -1706,8 +1792,28 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
             );
           }
         });
+        this.hideUncheckedZones();
         this.getUpdatedLayers();
       }
+    });
+  }
+
+  // zone_area -> ticked in the Zones menu (null until the zones are first loaded)
+  private zoneSeen: { [area: string]: boolean } = null;
+
+  // Same look as un-ticking a zone in the Zones menu: no fill, no outline
+  private hideUncheckedZones() {
+    this.olmap.getLayers().getArray().forEach((layer: any) => {
+      const title = layer.get("title");
+      if (title !== "Unmasked Zones" && title !== "Masked Zones") return;
+      const source = layer.getSource && layer.getSource();
+      if (!source || !source.getFeatures) return;
+      source.getFeatures().forEach((feature: any) => {
+        const area = String(feature.getProperties().zone_area);
+        if (this.zoneSeen && this.zoneSeen[area] === false) {
+          feature.setStyle(new Style({ fill: new Fill({ color: "transparent" }) }));
+        }
+      });
     });
   }
 
@@ -2215,10 +2321,13 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
 
         // If the tile is completely outside Bangladesh Sundarbans region:
         // Indian Sundarbans (west of border) keeps all blue dotted lines naturally!
-        if (maxLon < 88.9 || minLon > 91.5 || minLat > 23.5 || maxLat < 21.0) {
-          img.src = src;
-          return;
-        }
+        // (Now every tile is processed: the bright blue wetland dashes on the Indian side are softened to a
+        //  grey-blue so they no longer show as dark-blue edges next to the cyan boundary lines.)
+        // if (maxLon < 88.9 || minLon > 91.5 || minLat > 23.5 || maxLat < 21.0) {
+        //   img.src = src;
+        //   return;
+        // }
+        const outsideBdRegion = maxLon < 88.9 || minLon > 91.5 || minLat > 23.5 || maxLat < 21.0;
 
         const image = new Image();
         image.crossOrigin = "anonymous";
@@ -2258,6 +2367,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
               else if (lat < 22.45) borderLon = 89.010;
               else if (lat < 22.70) borderLon = 88.940;
               else borderLon = 88.890;
+              if (outsideBdRegion) borderLon = 999; // no Bangladesh land in this tile: whole tile is the Indian side
 
               for (let px = 0; px < canvas.width; px++) {
                 const idx = (py * canvas.width + px) * 4;
@@ -2277,6 +2387,13 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
                     data[idx] = 58;
                     data[idx + 1] = 58;
                     data[idx + 2] = 58;
+                    modified = true;
+                  } else {
+                    // Indian side: keep the Sundarbans water dashes, in a soft grey-blue instead of bright blue
+                    // (bright blue blended into a dark-blue wash when zoomed out)
+                    data[idx] = 96;
+                    data[idx + 1] = 140;
+                    data[idx + 2] = 160;
                     modified = true;
                   }
                 }
@@ -4830,6 +4947,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onZoneChkBoxChange(event, zonelayer, zone, zoneindex, index) {
+    if (this.zoneSeen && zone && zone.properties) this.zoneSeen[String(zone.properties.zone_area)] = !!event.target.checked;
     if (event.target.checked) {
       this.olmap
         .getLayers()
@@ -5507,7 +5625,7 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       const dx = moveEvent.clientX - this.startX;
       const dy = moveEvent.clientY - this.startY;
       
-      this.slewTiWidth = Math.max(220, Math.min(450, this.startWidth + dx));
+      this.slewTiWidth = Math.max(200, Math.min(450, this.startWidth + dx));
       this.slewTiHeightOffset = Math.max(0, Math.min(300, this.startHeightOffset + dy));
       
       this.cdr.detectChanges();
@@ -5537,8 +5655,8 @@ export class MapsComponent implements OnInit, AfterViewInit, OnDestroy {
       const dx = moveEvent.clientX - this.startUavX;
       const dy = moveEvent.clientY - this.startUavY;
       
-      this.uavWidth = Math.max(220, Math.min(450, this.startUavWidth + dx));
-      this.uavHeight = Math.max(220, Math.min(450, this.startUavHeight + dy));
+      this.uavWidth = Math.max(200, Math.min(450, this.startUavWidth + dx));
+      this.uavHeight = Math.max(160, Math.min(450, this.startUavHeight + dy));
       
       this.cdr.detectChanges();
     };

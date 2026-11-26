@@ -227,3 +227,102 @@ a.pulsingButton:hover {
 }
 
 /** Pulse Animation: End */
+
+/* ---- narrower alarm list (was 300px); the map takes the freed space (see #map in maps.component.scss) ---- */
+aside.sidebar {
+    width: 240px !important;
+    overflow: visible !important;
+    /* desktop layout keeps the list in place (static) - relative only so the dock tab can sit on its edge */
+    @media (min-width: 768px) { position: relative !important; left: 0 !important; }
+    transition: width 0.22s ease;
+    &.docked-out { width: 40px !important; }
+}
+
+/* dock in / dock out tab, half over the map edge, halfway down */
+.dock-tab {
+    position: absolute;
+    top: 50%;
+    right: -14px;
+    transform: translateY(-50%);
+    z-index: 1100;
+    width: 14px;
+    height: 52px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+    background: var(--bg2, #1e1e1e);
+    color: var(--color, #fff);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.35);
+    &:hover { color: #03a9f4; }
+    &:focus { outline: none; }
+}
+
+/* slim strip shown while docked out */
+.dock-strip {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding-top: 14px;
+    cursor: pointer;
+    color: var(--color, #fff);
+    .fa-bell { font-size: 16px; }
+    .dock-count {
+        min-width: 22px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 10px;
+        background: #555;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 20px;
+        text-align: center;
+        &.has-alarms { background: #e53935; }
+    }
+    .dock-label {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+        opacity: 0.8;
+    }
+    &:hover { background: rgba(255, 255, 255, 0.04); }
+}
+
+/* ---- compact alarm cards: less empty space, same information and buttons ---- */
+.sidebar-menu ul.menu-items li .alr-items {
+    padding: 7px 10px 7px 8px !important;
+
+    p {
+        margin-bottom: 1px !important;
+        line-height: 1.35;
+        font-size: 12px;
+    }
+    p.alarm_id {
+        margin-bottom: 3px !important;
+        font-size: 14px;
+    }
+    /* acknowledge / clear / Slew TI icons stay on the title line */
+    .mrinfo { top: 4px; padding-right: 10px !important; }
+    .mrinfo .d-flex { gap: 6px; }
+    .mrinfo .d-inline-block { display: inline-flex !important; gap: 6px; }
+    .mrinfo .circular-shape-ack, .mrinfo .circular-shape-acked, .mrinfo .circular-shape-cl { margin-right: 0 !important; }
+
+    /* Assign UAV / Return Home: bottom-right, on the same lines as the details (no extra row) */
+    .action-info {
+        position: absolute;
+        right: 8px;
+        bottom: 6px;
+        margin: 0 !important;
+        li { margin-top: 0 !important; padding-right: 0 !important; margin-left: 6px; }
+        .btn.nav-link { padding: 0 !important; line-height: 0; }
+        img { width: 24px; height: 24px; }
+    }
+}

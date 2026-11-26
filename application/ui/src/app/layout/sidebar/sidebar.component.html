@@ -1,5 +1,17 @@
-<aside class="sidebar shadow-sm">
-    <nav class="sidebar-menu pb-3">
+<aside class="sidebar shadow-sm" [class.docked-out]="dockedOut">
+    <!-- Dock in / dock out tab on the right edge of the alarm list -->
+    <button type="button" class="dock-tab" (click)="toggleDock()"
+        [title]="dockedOut ? 'Show alarm list' : 'Hide alarm list'">
+        <i class="fa" [ngClass]="dockedOut ? 'fa-angle-double-right' : 'fa-angle-double-left'"></i>
+    </button>
+    <!-- Docked out: slim strip with the alarm count; click anywhere on it to dock the list back in -->
+    <div class="dock-strip" *ngIf="dockedOut" (click)="toggleDock()" title="Show alarm list">
+        <i class="fa fa-bell"></i>
+        <span class="dock-count" [class.has-alarms]="(alarms_list['Confirmatory_Alarm']?.length + alarms_list['Early_Alarm']?.length) > 0">
+            {{alarms_list['Confirmatory_Alarm']?.length + alarms_list['Early_Alarm']?.length}}</span>
+        <span class="dock-label">{{getTranslationLang('alarms_list')}}</span>
+    </div>
+    <nav class="sidebar-menu pb-3" [hidden]="dockedOut">
         <div class="sidebar-header">
             <h4 class="col-6 d-inline-block">
                 {{getTranslationLang('alarms_list')}}
@@ -31,8 +43,10 @@
                             *ngFor="let item of obj.value | search:'alarm_id,zone_id,formatted_zone_id,agu_no,radar_id,id':searchValue;let caIndex=index;">
                             <p class="alarm_id">
                                 {{item?.alarm_id ? getTranslationLang("alarm") + ' - ' + item?.id : '--'}}</p>
-                            <p>{{"zone name : Kochi"}}
-                            </p>
+                            <!-- <p>{{"zone name : Kochi"}}
+                            </p> -->
+                            <!-- was a fixed text "Kochi" (old site); now the alarm's real zone from the database -->
+                            <p>Zone : {{item?.zone_id ? 'zone-' + item.zone_id : 'Outside zones'}}</p>
                             <p> Track ID : {{item?.event_id}}
                             </p>
                             <p>{{getTranslationLang("sensors_triggered")}}:
