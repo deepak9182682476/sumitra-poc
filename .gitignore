@@ -22,3 +22,6 @@ nohup.out
 *.bak
 # local Claude settings
 .claude/
+Modelfile
+ask-sumitra.sh
+sumitra_cheat_sheet.md
